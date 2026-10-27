@@ -1,9 +1,3 @@
-import { denyUnlessDemo } from "@/server/demo";
-import { NextResponse } from "next/server";
-import { myVouchers } from "@/fixtures/dummy";
-
-export async function GET() {
-  const denied = denyUnlessDemo();
-  if (denied) return denied;
-  return NextResponse.json({ data: myVouchers, total: myVouchers.length });
-}
+import {NextRequest} from "next/server";
+import {forward} from "@/server/backend";
+export async function GET(request:NextRequest){return forward(request,{params:Promise.resolve({path:["api","v1","consumer","vouchers"]})});}

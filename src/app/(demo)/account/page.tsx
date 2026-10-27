@@ -1,98 +1,137 @@
 "use client";
-
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import Icon from "@/features/dashboard/components/DashboardIcon";
+import { api, mutate } from "@/lib/api";
+import { useSession } from "@/features/auth/SessionContext";
 import { useShopBonus } from "@/features/shopper/ShopBonusContext";
-import { useSession, type AccountRole } from "@/features/auth/SessionContext";
-
+import { Panel, ErrorNotice, Button, Field } from "@/features/live/LivePages";
+type Legal = {
+    terms: {
+        version: string;
+        slug: string;
+    };
+    privacy: {
+        version: string;
+        slug: string;
+    };
+};
 function AccountForm() {
-  const params = useSearchParams();
-  const router = useRouter();
-  const { signIn } = useSession();
-  const { updateProfile, pushToast } = useShopBonus();
-  const [mode, setMode] = useState(params.get("mode") === "login" ? "login" : "register");
-  const [role, setRole] = useState<AccountRole>(params.get("role") === "consumer" ? "consumer" : "merchant");
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [showPassword, setShowPassword] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const login = mode === "login";
-
-  function finish(register = false) {
-    updateProfile({ email: form.email.trim(), ...(form.name.trim() ? { firstName: form.name.trim(), lastName: "" } : {}) });
-    signIn({ role, email: form.email.trim() });
-    const destination = params.get("next");
-    const safeNext = role === "merchant" && destination && /^\/dashboard(?:\/|$)/.test(destination);
-    router.push(register && role === "merchant" ? "/voor-webshops" : safeNext ? destination : role === "merchant" ? "/dashboard" : "/mijn-voordelen");
-    pushToast({ title: register ? "Welkom bij ShopBonus!" : "Welkom terug!", message: "Je demosessie is gestart.", kind: "success" });
-  }
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    if (verifying) {
-      if (code !== "123456") { setError("Gebruik de democode 123456 om je account te bevestigen."); return; }
-      finish(true);
-    } else if (login) finish();
-    else setVerifying(true);
-  }
-
-  function changeMode(value: string) {
-    setMode(value); setVerifying(false); setError(""); setCode("");
-  }
-
-  return (
-    <section className="account-page mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-      <p className="mb-3 text-xs font-extrabold uppercase tracking-[.19em] text-brand">Jouw voordeel begint hier</p>
-      <h1 className="max-w-5xl text-[clamp(2rem,4.3vw,3.7rem)] font-extrabold leading-[1.12] tracking-tight text-navy">
-        {login ? <>Welkom terug bij <span className="text-brand">ShopBonus.</span></> : <>Maak je <span className="text-brand">ShopBonus-account</span> aan</>}
-      </h1>
-      <p className="mt-3 text-lg text-muted sm:text-xl">Eén account voor al je voordelen en webshops.</p>
-      <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1.05fr_1fr] lg:gap-8">
-        <div className="surface p-5 sm:p-8">
-          <div className="segmented" aria-label="Accountactie">
-            {[['register','Account aanmaken'],['login','Inloggen']].map(([value,label]) => <button key={value} onClick={() => changeMode(value)} aria-pressed={mode === value} className={mode === value ? "selected" : ""}>{label}</button>)}
-          </div>
-          {!verifying && <div className="mt-4 grid grid-cols-2 gap-2" aria-label="Accounttype">
-            {([['consumer','Consument','users'],['merchant','Webshop eigenaar','store']] as const).map(([value,label,icon]) => <button key={value} onClick={() => setRole(value)} aria-pressed={role === value} className={`flex items-center justify-center gap-2 rounded-xl border px-2 py-3 text-sm font-bold transition ${role === value ? "border-brand bg-blue-50 text-brand" : "border-blue-100 text-muted hover:bg-blue-50"}`}><Icon name={icon} size={20}/>{label}</button>)}
-          </div>}
-          <form onSubmit={submit} className="mt-6 space-y-5">
-            {verifying ? <>
-              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-brand"><Icon name="check" size={28}/></span>
-              <div><h2 className="text-2xl font-extrabold text-navy">Bevestig je e-mailadres</h2><p className="mt-2 text-sm leading-relaxed text-muted">Je maakt een demoaccount aan voor <strong>{form.email}</strong>. Er wordt geen e-mail verstuurd. Gebruik code <strong>123456</strong>.</p></div>
-              <label className="field-label" htmlFor="verification">Verificatiecode</label>
-              <input id="verification" autoFocus autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} className="form-input text-center text-2xl tracking-[.5em]" placeholder="000000"/>
-            </> : <>
-              {!login && <div><label className="field-label" htmlFor="name">Voornaam</label><input id="name" autoComplete="given-name" required value={form.name} onChange={e => setForm({...form,name:e.target.value})} className="form-input" placeholder="Hoe mogen we je noemen?"/></div>}
-              <div><label className="field-label" htmlFor="email">E-mailadres</label><input id="email" type="email" autoComplete="email" required value={form.email} onChange={e => setForm({...form,email:e.target.value})} className="form-input" placeholder="jij@voorbeeld.nl"/></div>
-              <div><label className="field-label" htmlFor="password">Wachtwoord</label><div className="relative"><input id="password" type={showPassword ? "text" : "password"} autoComplete={login ? "current-password" : "new-password"} minLength={8} required value={form.password} onChange={e => setForm({...form,password:e.target.value})} className="form-input pr-14" placeholder="Minimaal 8 tekens"/><button type="button" aria-label={showPassword ? "Verberg wachtwoord" : "Toon wachtwoord"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted"><Icon name="eye" size={21}/></button></div></div>
-              {!login && <label className="flex items-start gap-3 text-sm leading-relaxed text-muted"><input required type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-blue-600"/>Ik begrijp dat dit een demo is en mijn gegevens alleen in deze browser worden bewaard.</label>}
-            </>}
-            {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-            <button type="submit" className="primary-button w-full">{verifying ? "Bevestigen en verder" : login ? "Inloggen" : "Account aanmaken"}<Icon name="arrow" size={20}/></button>
-            <p className="text-center text-sm text-muted">{login ? "Nog geen account?" : "Al een account?"} <button type="button" onClick={() => changeMode(login ? "register" : "login")} className="font-bold text-brand hover:underline">{login ? "Account aanmaken" : "Inloggen"}</button></p>
-          </form>
-          <p className="mt-6 border-t border-blue-50 pt-4 text-center text-xs leading-relaxed text-muted">Demo-omgeving · Gebruik een voorbeeldadres en een fictief wachtwoord van 8 tekens. Je wachtwoord wordt niet opgeslagen.</p>
-        </div>
-        <aside className="space-y-5">
-          <div className="account-benefits relative overflow-hidden rounded-3xl border border-white p-6 sm:p-9">
-            <span className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-brand"><Icon name="check" size={14}/> Gratis en eenvoudig</span>
-            <h2 className="text-3xl font-extrabold tracking-tight text-navy">In <span className="text-brand">2 minuten</span> gestart</h2>
-            <p className="mt-3 max-w-sm leading-relaxed text-muted">{role === "merchant" ? "Geef je webshop een vliegende start. Bereik nieuwe klanten met aanbiedingen die jij bepaalt." : "Shop bij je favoriete webshops en haal meer uit iedere aankoop."}</p>
-            <ul className="my-7 space-y-4">{(role === "merchant" ? ["Maak je gratis account aan", "Vul je webshopgegevens in", "Activeer je eerste aanbieding"] : ["Maak je gratis account aan", "Ontdek jouw favoriete webshops", "Ontgrendel exclusieve vouchers"]).map(t => <li key={t} className="flex items-center gap-3 text-sm font-semibold text-navy"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-100 text-brand"><Icon name="check" size={16}/></span>{t}</li>)}</ul>
-            <div aria-hidden="true" className="relative mx-auto my-8 flex h-40 max-w-xs items-center justify-center"><div className="absolute h-40 w-40 rounded-full bg-white/60"/><div className="relative -rotate-6 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 px-8 py-6 text-white shadow-xl shadow-blue-500/20"><Icon name="wallet" size={36}/><p className="mt-4 text-xs text-blue-100">Jouw ShopBonus-tegoed</p><p className="mt-1 text-3xl font-extrabold">Meer voordeel.</p></div><span className="absolute -right-1 top-0 rotate-12 rounded-2xl border-4 border-white bg-blue-500 p-4 text-3xl font-extrabold text-white shadow-lg">%</span></div>
-            <ol className="mt-9 grid grid-cols-3 gap-2 border-t border-blue-200/60 pt-5">{["Account",role === "merchant" ? "Webshop" : "Ontdekken",role === "merchant" ? "Aanbieding" : "Voordeel"].map((label,i) => <li key={label} className="flex flex-col items-center gap-2 text-xs font-semibold text-muted"><span className={`grid h-9 w-9 place-items-center rounded-full ${i === 0 ? "bg-brand text-white ring-4 ring-blue-200" : "bg-white/70 text-muted"}`}>{i+1}</span>{label}</li>)}</ol>
-          </div>
-          <Link href="/webshops" className="flex items-center justify-center gap-2 py-2 text-sm font-semibold text-muted hover:text-brand">Liever eerst rondkijken? Ontdek de webshops <Icon name="arrow" size={16}/></Link>
-        </aside>
-      </div>
-    </section>
-  );
+    const params = useSearchParams(), router = useRouter();
+    const { session, refresh } = useSession();
+    const { pushToast } = useShopBonus();
+    const [mode, setMode] = useState(params.get("mode") === "login" ? "login" : "register");
+    const [form, setForm] = useState({ first_name: "", email: "", password: "", password_confirmation: "", account_type: "consumer", code: "", accept_terms: false });
+    const [error, setError] = useState(""), [busy, setBusy] = useState(false), [twoFactor, setTwoFactor] = useState(false);
+    const [legal, setLegal] = useState<Legal | null>(null), [legalError, setLegalError] = useState("");
+    const verify = !!session && !session.email_verified;
+    useEffect(() => {
+        if (mode !== "register")
+            return;
+        let active = true;
+        (async () => {
+            try {
+                const index = await api<{
+                    data: {
+                        key: string;
+                        type: string;
+                        slug: string;
+                    }[];
+                }>("public/pages?locale=nl");
+                const terms = index.data.find(p => p.type === "terms"), privacy = index.data.find(p => p.type === "privacy");
+                if (!terms || !privacy)
+                    throw new Error("Registratie is nog niet beschikbaar: de voorwaarden en privacyverklaring zijn niet gepubliceerd.");
+                const [t, p] = await Promise.all([api<{
+                        data: {
+                            legal: {
+                                version: string;
+                            } | null;
+                        };
+                    }>("public/pages/nl/" + terms.slug), api<{
+                        data: {
+                            legal: {
+                                version: string;
+                            } | null;
+                        };
+                    }>("public/pages/nl/" + privacy.slug)]);
+                if (!t.data.legal?.version || !p.data.legal?.version)
+                    throw new Error("De juridische documentversies zijn niet beschikbaar.");
+                if (active)
+                    setLegal({ terms: { version: t.data.legal.version, slug: terms.slug }, privacy: { version: p.data.legal.version, slug: privacy.slug } });
+            }
+            catch (e) {
+                if (active)
+                    setLegalError(e instanceof Error ? e.message : "Voorwaarden laden mislukt.");
+            }
+        })();
+        return () => { active = false; };
+    }, [mode]);
+    async function submit(event: FormEvent) {
+        event.preventDefault();
+        if (busy)
+            return;
+        setBusy(true);
+        setError("");
+        try {
+            if (verify)
+                await mutate("auth/email/verify-code", { code: form.code });
+            else if (twoFactor)
+                await mutate("/two-factor-challenge", { code: form.code });
+            else if (mode === "forgot") {
+                await mutate("/forgot-password", { email: form.email });
+                pushToast({ title: "Aanvraag ontvangen", message: "Controleer je e-mail voor verdere instructies.", kind: "info" });
+                return;
+            }
+            else if (mode === "login") {
+                const result = await mutate<{
+                    two_factor?: boolean;
+                }>("/login", { email: form.email, password: form.password });
+                if (result.two_factor) {
+                    setTwoFactor(true);
+                    return;
+                }
+            }
+            else {
+                if (!legal)
+                    throw new Error(legalError || "De voorwaarden worden geladen.");
+                await mutate("/register", { ...form, terms_version: legal.terms.version, privacy_version: legal.privacy.version, locale: "nl" });
+            }
+            const identity = await refresh();
+            if (!identity)
+                throw new Error("Je sessie kon niet worden geladen.");
+            if (!identity.email_verified)
+                return;
+            const next = params.get("next");
+            if (next && /^\/(claim|checkout)\/[A-Za-z0-9-]+$/.test(next)) {
+                router.push(next);
+                return;
+            }
+            router.push(identity.roles.includes("super_admin") ? "/admin" : identity.workspaces.length ? "/dashboard" : identity.onboarding_intent === "merchant" ? "/voor-webshops" : "/mijn-voordelen");
+        }
+        catch (e) {
+            setError(e instanceof Error ? e.message : "Aanvraag mislukt.");
+        }
+        finally {
+            setBusy(false);
+        }
+    }
+    return <div className="mx-auto max-w-xl px-4 py-12"><h1 className="mb-7 text-4xl font-black text-navy">{verify ? "Bevestig je e-mail" : twoFactor ? "Tweestapsverificatie" : mode === "login" ? "Welkom terug" : mode === "forgot" ? "Wachtwoord vergeten" : "Maak je account aan"}</h1><Panel>
+ <form onSubmit={submit} className="space-y-5">
+ {verify || twoFactor ? <><p>{verify ? "Vul de code in die naar je e-mailadres is verstuurd." : "Vul de code uit je authenticator-app in."}</p><Field label="Verificatiecode" name="code" value={form.code} onChange={v => setForm({ ...form, code: v })} required/>
+ {verify && <Button type="button" onClick={async () => { try {
+            await mutate("auth/email/resend-code");
+            pushToast({ title: "Code verstuurd", message: "Controleer je e-mail.", kind: "info" });
+        }
+        catch (e) {
+            setError(String(e instanceof Error ? e.message : e));
+        } }}>Nieuwe code versturen</Button>}</> : <>
+ {mode === "register" && <><Field label="Voornaam" name="first_name" value={form.first_name} onChange={v => setForm({ ...form, first_name: v })} required/><label className="field-label">Accounttype<select className="form-input" value={form.account_type} onChange={e => setForm({ ...form, account_type: e.target.value })}><option value="consumer">Consument</option><option value="merchant">Webshop eigenaar</option></select></label></>}
+ <Field label="E-mailadres" name="email" type="email" value={form.email} onChange={v => setForm({ ...form, email: v })} required/>
+ {mode !== "forgot" && <Field label="Wachtwoord" name="password" type="password" value={form.password} onChange={v => setForm({ ...form, password: v })} required/>}
+ {mode === "register" && <><Field label="Bevestig wachtwoord" name="password_confirmation" type="password" value={form.password_confirmation} onChange={v => setForm({ ...form, password_confirmation: v })} required/>{legal ? <label className="flex items-start gap-3 text-sm"><input type="checkbox" required checked={form.accept_terms} onChange={e => setForm({ ...form, accept_terms: e.target.checked })}/><span>Ik accepteer de <Link className="text-brand underline" href={"/informatie/" + legal.terms.slug} target="_blank">voorwaarden (versie {legal.terms.version})</Link> en de <Link className="text-brand underline" href={"/informatie/" + legal.privacy.slug} target="_blank">privacyverklaring (versie {legal.privacy.version})</Link>.</span></label> : <ErrorNotice message={legalError || "Voorwaarden laden…"}/>}</>}
+ </>}
+ <ErrorNotice message={error}/><Button disabled={busy || (!verify && !twoFactor && mode === "register" && !legal)}>{busy ? "Even geduld…" : verify || twoFactor ? "Bevestigen" : mode === "login" ? "Inloggen" : mode === "forgot" ? "Herstellink aanvragen" : "Account aanmaken"}</Button>
+ </form>{!verify && !twoFactor && <div className="mt-6 flex flex-wrap gap-5 text-sm text-brand">{["login", "register", "forgot"].filter(m => m !== mode).map(m => <button key={m} onClick={() => { setMode(m); setError(""); }}>{m === "login" ? "Inloggen" : m === "register" ? "Account aanmaken" : "Wachtwoord vergeten"}</button>)}</div>}
+ </Panel></div>;
 }
-
-export default function AccountPage() {
-  return <Suspense fallback={<div className="p-12 text-center text-muted">Account laden…</div>}><AccountForm/></Suspense>;
-}
+export default function AccountPage() { return <Suspense fallback={<p className="p-10">Laden…</p>}><AccountForm /></Suspense>; }

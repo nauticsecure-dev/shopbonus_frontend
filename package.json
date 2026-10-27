@@ -7,7 +7,9 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:security": "node scripts/security-smoke.mjs"
+    "test:security": "node scripts/security-smoke.mjs",
+    "test:integration": "node scripts/integration-smoke.mjs",
+    "test:api": "node scripts/backend-audit.mjs"
   },
   "dependencies": {
     "dotenv": "17.3.1",

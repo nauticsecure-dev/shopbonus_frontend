@@ -24,13 +24,13 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { session, signOut } = useSession();
-  const { balance, profile } = useShopBonus();
+  const { balance, profile, pushToast } = useShopBonus();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const links = session ? memberLinks : publicLinks;
   if (pathname.startsWith("/dashboard") || pathname === "/admin") return null;
 
-  function logout() { signOut(); setProfileOpen(false); setOpen(false); router.push("/account?mode=login"); }
+  async function logout() { try { await signOut(); setProfileOpen(false); setOpen(false); router.push("/account?mode=login"); } catch (error) { pushToast({ title: "Uitloggen mislukt", message: error instanceof Error ? error.message : "Probeer opnieuw.", kind: "error" }); } }
   return <header className="sticky top-0 z-40 border-b border-blue-100/70 bg-white/95 backdrop-blur-md">
     <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
       <Logo/>
@@ -39,7 +39,7 @@ export default function Header() {
       </nav>
       <div className="hidden items-center gap-4 md:flex">
         {session ? <>
-          <Link href="/mijn-voordelen" className="flex items-center gap-3 rounded-full bg-blue-50 px-4 py-2 text-navy"><Icon name="wallet" size={23} className="text-brand"/><span><span className="hidden text-[10px] text-muted lg:block">Mijn ShopBonus-tegoed</span><strong className="text-sm">{formatEuro(balance)}</strong></span></Link>
+          <Link href="/mijn-voordelen" className="flex items-center gap-3 rounded-full bg-blue-50 px-4 py-2 text-navy"><Icon name="wallet" size={23} className="text-brand"/><span><span className="hidden text-[10px] text-muted lg:block">Mijn ShopBonus-tegoed</span><strong className="text-sm">{balance===null?"—":formatEuro(balance)}</strong></span></Link>
           <div className="relative">
             <button aria-label="Accountmenu" aria-expanded={profileOpen} onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2"><span className="grid h-10 w-10 place-items-center rounded-full bg-blue-100 font-extrabold text-navy">{profile.firstName.charAt(0).toUpperCase()}</span><Icon name="chevron" size={15} className="rotate-90"/></button>
             {profileOpen && <><button className="fixed inset-0 cursor-default" aria-label="Accountmenu sluiten" onClick={() => setProfileOpen(false)}/><div className="absolute right-0 z-10 mt-3 w-56 rounded-2xl border border-blue-100 bg-white p-2 shadow-xl"><p className="truncate px-3 py-2 text-xs text-muted">{session.email}</p>{session.role === "merchant" && <Link href="/dashboard" onClick={() => setProfileOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-bold text-brand hover:bg-blue-50">Webshop dashboard</Link>}<Link href="/profiel" onClick={() => setProfileOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50">Mijn profiel</Link><button onClick={logout} className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">Uitloggen</button></div></>}

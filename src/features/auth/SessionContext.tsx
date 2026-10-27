@@ -1,48 +1,32 @@
 "use client";
-
-import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
-
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { api, ApiError, mutate } from "@/lib/api";
 export type AccountRole = "consumer" | "merchant";
-type Session = { role: AccountRole; email: string };
-const SessionContext = createContext<{
-  session: Session | null;
-  ready: boolean;
-  signIn: (session: Session) => void;
-  signOut: () => void;
-} | null>(null);
-
-// Browser-only demo session. Never store passwords or use this as server authorization.
-let current: Session | null = null;
-let initialized = false;
-const listeners = new Set<() => void>();
-function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
-function snapshot() {
-  if (!initialized) {
-    initialized = true;
-    try {
-      const saved = JSON.parse(localStorage.getItem("shopbonus-session") || "null");
-      if (saved && ["consumer", "merchant"].includes(saved.role) && typeof saved.email === "string") current = saved;
-    } catch { /* Unavailable storage uses an in-memory session. */ }
-  }
-  return current;
-}
-
+export type Identity = { id: string; first_name: string; email: string; email_verified: boolean; onboarding_intent: AccountRole; roles: string[]; destination: string; workspaces: { id: string; name: string; role: string; status: string; is_current: boolean }[] };
+type Session = Identity & { role: AccountRole };
+const SessionContext = createContext<{session: Session | null; ready: boolean; error: string; refresh: () => Promise<Session | null>; signIn: () => Promise<Session | null>; signOut: () => Promise<void>} | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const session = useSyncExternalStore(subscribe, snapshot, () => null);
-  const ready = useSyncExternalStore(subscribe, () => true, () => false);
-  function setSession(value: Session | null) { current = value; listeners.forEach(listener => listener()); }
-
-  function signIn(value: Session) {
-    setSession(value);
-    try { localStorage.setItem("shopbonus-session", JSON.stringify(value)); } catch { /* Session still works in memory. */ }
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+  const refresh = useCallback(async () => {
+    try {
+      const { data } = await api<{ data: Identity }>("me");
+      const value: Session = { ...data, role: data.workspaces.length || data.onboarding_intent === "merchant" ? "merchant" : "consumer" };
+      setSession(value); setError(""); return value;
+    } catch (cause) {
+      setSession(null);
+      setError(cause instanceof ApiError && cause.status === 401 ? "" : cause instanceof Error ? cause.message : "Sessie laden mislukt.");
+      return null;
+    } finally { setReady(true); }
+  }, []);
+  useEffect(() => { queueMicrotask(() => { void refresh(); }); }, [refresh]);
+  async function signOut() {
+    try { await mutate("/logout"); setSession(null); setError(""); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Uitloggen mislukt."); throw cause; }
   }
-  function signOut() {
-    setSession(null);
-    try { localStorage.removeItem("shopbonus-session"); } catch { /* Session still clears in memory. */ }
-  }
-  return <SessionContext.Provider value={{ session, ready, signIn, signOut }}>{children}</SessionContext.Provider>;
+  return <SessionContext.Provider value={{ session, ready, error, refresh, signIn: refresh, signOut }}>{children}</SessionContext.Provider>;
 }
-
 export function useSession() {
   const value = useContext(SessionContext);
   if (!value) throw new Error("useSession requires SessionProvider");
