@@ -1,2 +1,3 @@
-import {BenefitsPage} from "@/features/live/LivePages";
+import BenefitsPage from "@/features/benefits/BenefitsPage";
+
 export default BenefitsPage;

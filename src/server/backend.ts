@@ -8,7 +8,7 @@ export async function forward(request: NextRequest, context: { params: Promise<{
   const { path } = await context.params;
   if (path.some(part => !part || part === "." || part === ".." || /[/\\?#\x00-\x20]/.test(part))) return NextResponse.json({ message: "Invalid API path." }, { status: 400 });
   const route = path.join("/");
-  if (!route.startsWith("api/v1/") && !authPaths.has(route)) return NextResponse.json({ message: "Not found." }, { status: 404 });
+  if (!route.startsWith("api/v1/") && route !== "api/broadcasting/auth" && !authPaths.has(route)) return NextResponse.json({ message: "Not found." }, { status: 404 });
   const mutating = !["GET", "HEAD"].includes(request.method);
   // Next.js normalizes localhost aliases in nextUrl; Host retains the browser origin.
   const frontendOrigin = request.nextUrl.protocol + "//" + request.headers.get("host");

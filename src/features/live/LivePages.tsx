@@ -260,20 +260,7 @@ export function OfferDetail({ slug }: {
         setBusy(false);
     } }}>Betalingsstatus vernieuwen</button>}</div>}</Panel> : <Panel><p>{r.payload.data.how_to_obtain === "earn_with_purchase" ? "Deze voucher verdien je na een in aanmerking komende aankoop bij de webshop." : "Deze aanbieding wordt via een persoonlijke claimlink beschikbaar gesteld."}</p><Link className="mt-4 inline-block text-brand" href={"/webshops/" + r.payload.data.webshop.slug}>Naar de webshop →</Link></Panel>}</>}</Page>;
 }
-export function BenefitsPage() { return <SessionGate><Benefits /></SessionGate>; }
-function Benefits() {
-    const [filter, setFilter] = useState("all"), [page, setPage] = useState(1);
-    const r = useResource<Row[]>("consumer/vouchers?filter=" + filter), tx = useResource<Row[]>("consumer/wallet/transactions?page=" + page);
-    const [detail, setDetail] = useState<Row | null>(null), [error, setError] = useState("");
-    const { copyCode } = useShopBonus();
-    return <Page title="Mijn voordelen"><ResourcePanel path="consumer/wallet" title="Mijn ShopBonus-tegoed"/><Panel title="Mijn vouchers"><select className="form-input max-w-xs" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Alle vouchers</option><option value="active">Actief</option><option value="used">Gebruikt</option><option value="expired">Verlopen</option></select><ErrorNotice message={r.error || error}/>{r.payload?.data.length === 0 && <p className="my-5">Je hebt nog geen vouchers.</p>}{r.payload?.data.map(v => <div key={String(v.id)} className="my-4 rounded-xl border border-blue-100 p-4"><h3 className="font-bold">{String(v.title || "Voucher")}</h3><p className="my-3">{String(v.summary || "")} · {String(v.status)}</p><button className="font-bold text-brand" onClick={async () => { try {
-        setDetail((await api<Envelope<Row>>("consumer/vouchers/" + v.id)).data);
-        setError("");
-    }
-    catch (e) {
-        setError(message(e));
-    } }}>Bekijk voucher en code →</button></div>)}</Panel>{detail && <Panel title="Voucherdetails"><DataView value={detail}/>{typeof detail.code === "string" && <Button type="button" onClick={() => void copyCode(detail.code as string)}>Code kopiëren</Button>}<ActionForm title="Probleem met deze voucher" fields={[{ name: "reason", label: "Reden", options: [["code_invalid", "Code ongeldig"], ["code_already_used", "Code al gebruikt"], ["other", "Anders"]] }, { name: "description", label: "Omschrijving", type: "textarea" }]} submitLabel="Meld probleem" submit={v => mutate("consumer/disputes", { ...v, voucher_id: detail.id })}/></Panel>}<Panel title="Transacties"><ErrorNotice message={tx.error}/><DataView value={tx.payload?.data}/>{tx.payload?.meta && <Pager page={page} last={tx.payload.meta.last_page} onChange={setPage}/>}</Panel><ResourcePanel path="consumer/disputes" title="Mijn meldingen"/><ResourcePanel path="consumer/favorites" title="Mijn favoriete webshops"/></Page>;
-}
+export { default as BenefitsPage } from "@/features/benefits/BenefitsPage";
 export function ProfilePage() { return <SessionGate><Profile /></SessionGate>; }
 function Profile() {
     const r = useResource<Row>("consumer/profile"), prefs = useResource<Row>("consumer/preferences");
