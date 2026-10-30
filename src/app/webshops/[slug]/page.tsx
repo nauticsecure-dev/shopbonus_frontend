@@ -110,6 +110,12 @@ export default function WebshopDetailPage() {
   const [loading, setLoading] = useState(true);
   const [coverFailed, setCoverFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
+  /** Read after mount only — localStorage during render mismatches SSR hrefs. */
+  const [consentId, setConsentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConsentId(readStoredConsentId());
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -165,7 +171,6 @@ export default function WebshopDetailPage() {
   const cover = resolveCoverUrl(shop);
   const cats = shop.categories.map(categoryLabelNl);
   const visitBase = apiUrl(`/api/v1/public/webshops/${encodeURIComponent(shop.slug)}/visit`);
-  const consentId = typeof window !== "undefined" ? readStoredConsentId() : null;
   const visitUrl =
     consentId == null
       ? visitBase

@@ -10,8 +10,10 @@ import { openCookieSettings } from "@/lib/cookies";
 export default function Footer() {
   const pathname = usePathname();
   const { dictionary: t, locale } = useLocale();
-  const { session } = useSession();
+  const { session, ready } = useSession();
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname === "/account") return null;
+  // Guest footer until /me is ready — avoids SSR vs client link-list mismatch.
+  const authed = ready && !!session;
 
   const legalSlug = (nl: string, en: string) => (locale === "en" ? en : nl);
 
@@ -34,7 +36,7 @@ export default function Footer() {
                 {t.footerAllShops}
               </Link>
             </li>
-            {session && (
+            {authed && (
               <li>
                 <Link href="/mijn-voordelen" className="hover:text-white">
                   {t.footerMyBenefits}
