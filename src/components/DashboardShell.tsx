@@ -9,7 +9,6 @@ import Logo from "@/components/Logo";
 import DashboardIcon, { type DashboardIconName } from "@/components/DashboardIcon";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { shopInitials } from "@/lib/merchantDashboard";
-import { canAccessAppStore } from "@/lib/integrations";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -59,12 +58,8 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
   const [search, setSearch] = useState("");
   const [workspaceFilter, setWorkspaceFilter] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
-  const links = admin
-    ? adminLinks
-    : merchantLinks.filter((link) => {
-        if (link.href === "/dashboard/app-store") return canAccessAppStore(current);
-        return true;
-      });
+  // Always render the same nav on SSR + first paint; App Store page enforces role access.
+  const links = admin ? adminLinks : merchantLinks;
 
   async function handleLogout() {
     if (loggingOut) return;

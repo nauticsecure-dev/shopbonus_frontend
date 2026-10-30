@@ -46,7 +46,22 @@ function focusHomeSearch() {
 const HEADER_BAR =
   "sticky top-0 z-40 bg-[#0b74ff] text-white shadow-[0_8px_24px_-12px_rgba(11,116,255,0.65)]";
 
+function isShellRoute(pathname: string) {
+  return (
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/app/platform")
+  );
+}
+
+/**
+ * Bail out before Suspense on merchant/admin shells. A Suspense fallback header
+ * here mismatched client `null` and triggered hydration warnings on /dashboard/*.
+ */
 export default function Header() {
+  const pathname = usePathname();
+  if (isShellRoute(pathname)) return null;
+
   return (
     <Suspense fallback={<header className={`${HEADER_BAR} h-[72px]`} aria-hidden />}>
       <HeaderInner />
@@ -58,17 +73,18 @@ function HeaderInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { session, signOut } = useSession();
+  const { session, ready, signOut } = useSession();
   const { availableMinor, pendingCashbackMinor, profile } = useShopBonus();
   const { locale, setLocale, dictionary: t } = useLocale();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
-  // Public pages always; login-only pages only when signed in.
+  // Keep guest nav until session is ready so SSR HTML matches the first client paint.
+  const authed = ready && !!session;
   const links = [
     { href: "/webshops", label: t.navWebshops },
-    ...(session ? [{ href: "/mijn-voordelen", label: t.navCashback }] : []),
+    ...(authed ? [{ href: "/mijn-voordelen", label: t.navCashback }] : []),
     { href: "/kortingscodes", label: t.navDiscountCodes },
     { href: "/hoe-werkt-het", label: t.navHowItWorks },
     { href: "/over-ons", label: t.navAbout },
@@ -90,11 +106,6 @@ function HeaderInner() {
     if (session?.user) {
       void updateConsumerProfile({ locale: next }, next).catch(() => undefined);
     }
-  }
-
-  // Merchant/admin shells use DashboardShell; keep the site header everywhere else.
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/app/platform")) {
-    return null;
   }
 
   async function logout() {
@@ -197,7 +208,7 @@ function HeaderInner() {
             ))}
           </div>
 
-          {session ? (
+          {authed ? (
             <>
               <Link
                 href="/mijn-voordelen"
@@ -323,7 +334,7 @@ function HeaderInner() {
 
       {open && (
         <nav aria-label={t.mobileNav} className="space-y-1 border-t border-white/15 bg-[#0b74ff] p-4 lg:hidden">
-          {session && (
+          {authed && (
             <Link
               href="/mijn-voordelen"
               onClick={() => setOpen(false)}
@@ -333,7 +344,7 @@ function HeaderInner() {
               <strong>{formatMinor(availableMinor)}</strong>
             </Link>
           )}
-          {session && (
+          {authed && (
             <Link
               href="/app/notifications"
               onClick={() => setOpen(false)}
@@ -371,7 +382,7 @@ function HeaderInner() {
               Webshop dashboard
             </Link>
           )}
-          {session ? (
+          {authed ? (
             <button
               type="button"
               disabled={loggingOut}

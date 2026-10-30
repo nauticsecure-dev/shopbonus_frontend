@@ -8,6 +8,7 @@ import PlatformIcon, { platformIconTone } from "@/components/PlatformIcon";
 import CapabilityBadge from "@/components/app-store/CapabilityBadge";
 import { DashboardHeading, Panel, StatusPill } from "@/components/DashboardPrimitives";
 import { useWorkspace } from "@/store/WorkspaceContext";
+import { useSession } from "@/store/SessionContext";
 import { formatMinor } from "@/lib/money";
 import { subscribeOrderSheet } from "@/lib/echo";
 import {
@@ -66,9 +67,12 @@ function normalizeShopifyDomain(raw: string): string {
 }
 
 export default function AppStorePage() {
+  const { ready: sessionReady } = useSession();
   const { workspaceId, revision, current } = useWorkspace();
-  const allowed = canAccessAppStore(current);
-  const canManage = canManageIntegrations(current);
+  // Wait for /me before role-gating so SSR and the first client paint stay identical.
+  const accessKnown = sessionReady && !!current;
+  const allowed = accessKnown && canAccessAppStore(current);
+  const canManage = accessKnown && canManageIntegrations(current);
 
   const [mainTab, setMainTab] = useState<MainTab>("discover");
   const [platforms, setPlatforms] = useState<PlatformCatalogueItem[]>([]);
@@ -460,6 +464,22 @@ export default function AppStorePage() {
       setCopied(false);
     }
   };
+
+  if (!accessKnown) {
+    return (
+      <DashboardShell>
+        <DashboardHeading
+          title="App Store"
+          subtitle="Webshop platforms and service connections for this shop."
+        />
+        <Panel>
+          <p className="py-8 text-center text-sm font-semibold text-muted" role="status">
+            App Store laden…
+          </p>
+        </Panel>
+      </DashboardShell>
+    );
+  }
 
   if (!allowed) {
     return (
