@@ -9,6 +9,7 @@ import Logo from "@/components/Logo";
 import DashboardIcon, { type DashboardIconName } from "@/components/DashboardIcon";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { shopInitials } from "@/lib/merchantDashboard";
+import { canAccessAppStore } from "@/lib/integrations";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -17,7 +18,7 @@ interface DashboardShellProps {
 
 const merchantLinks: { href: string; label: string; icon: DashboardIconName }[] = [
   { href: "/dashboard", label: "Overzicht", icon: "grid" },
-  { href: "/dashboard/webshops", label: "Webshops", icon: "store" },
+  { href: "/dashboard/app-store", label: "App Store", icon: "store" },
   { href: "/dashboard/orders", label: "Orders", icon: "list" },
   { href: "/dashboard/offers", label: "Aanbiedingen", icon: "tag" },
   { href: "/dashboard/vouchers", label: "Vouchers", icon: "ticket" },
@@ -58,7 +59,12 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
   const [search, setSearch] = useState("");
   const [workspaceFilter, setWorkspaceFilter] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
-  const links = admin ? adminLinks : merchantLinks;
+  const links = admin
+    ? adminLinks
+    : merchantLinks.filter((link) => {
+        if (link.href === "/dashboard/app-store") return canAccessAppStore(current);
+        return true;
+      });
 
   async function handleLogout() {
     if (loggingOut) return;

@@ -1,4 +1,5 @@
 import { apiRequest, ApiError } from "@/lib/api";
+import type { MeWorkspace } from "@/lib/auth";
 
 export { ApiError };
 
@@ -25,7 +26,7 @@ export type PlatformCatalogueItem = {
   profile: Record<string, unknown> | null;
   blocked_reason: string | null;
   capabilities?: Record<string, PlatformCapability>;
-  category?: "webshop" | "marketplace";
+  category?: "webshop" | "coming_soon";
 };
 
 export type ConnectionStatus =
@@ -106,10 +107,85 @@ export type OrdersPage = {
   };
 };
 
-const MARKETPLACE_PLATFORMS = new Set(["lightspeed_c", "lightspeed_e"]);
+export type ConnectionHealth = {
+  status: string;
+  capabilities: Record<string, PlatformCapability>;
+  sync: {
+    healthy: boolean;
+    last_success_at: string | null;
+    lag_seconds: number | null;
+    error: string | null;
+  };
+  products_synced: number;
+  coupons_synced: number;
+  eligible_coupons: number;
+};
 
-export function platformCategory(platform: string): "webshop" | "marketplace" {
-  return MARKETPLACE_PLATFORMS.has(platform) ? "marketplace" : "webshop";
+export type WebhookEventRow = {
+  id: string;
+  topic: string;
+  status: string;
+  delivery_count: number;
+  result: string | null;
+  error_code: string | null;
+  received_at: string;
+  processed_at: string | null;
+};
+
+export type CatalogProductRow = {
+  id: string;
+  external_product_id: string;
+  sku: string | null;
+  name: string | null;
+  price_minor: number | null;
+  currency: string | null;
+  availability: string | null;
+  synced_at: string;
+};
+
+export type CatalogCouponRow = {
+  id: string;
+  external_coupon_id: string;
+  code: string | null;
+  discount_type: string | null;
+  discount_value: string | number | null;
+  status: string | null;
+  eligible_public: boolean;
+  synced_at: string;
+};
+
+export type ShopifyOAuthStart = {
+  connection: string;
+  authorization_url: string;
+  expires_in: number;
+};
+
+/** Merchant-facing capability badge — never invents VERIFIED without server evidence. */
+export type CapabilityBadgeKind =
+  | "VERIFIED"
+  | "LIMITED"
+  | "SETUP REQUIRED"
+  | "BLOCKED"
+  | "UNSUPPORTED"
+  | "DISCONNECTED"
+  | "ERROR"
+  | "COMING SOON";
+
+const COMING_SOON = new Set(["lightspeed_e", "squarespace", "mijnwebwinkel", "ccv"]);
+
+export function platformCategory(platform: string, available?: boolean): "webshop" | "coming_soon" {
+  if (COMING_SOON.has(platform) || available === false) return "coming_soon";
+  return "webshop";
+}
+
+/** Employees have no integrations.* by default; sales agents have no App Store access. */
+export function canAccessAppStore(workspace: Pick<MeWorkspace, "role"> | null | undefined): boolean {
+  if (!workspace?.role) return false;
+  return workspace.role === "owner" || workspace.role === "manager";
+}
+
+export function canManageIntegrations(workspace: Pick<MeWorkspace, "role"> | null | undefined): boolean {
+  return canAccessAppStore(workspace);
 }
 
 /** Merchant-facing lifecycle label; never upgrades to CONNECTED without server status. */
@@ -143,6 +219,86 @@ export function connectionStatusLabel(status: string): string {
   return map[status] ?? status;
 }
 
+export function connectionBadge(
+  platform: PlatformCatalogueItem | null | undefined,
+  connection: WebshopConnection | null | undefined,
+  checklist?: ConnectionChecklist | null
+): { kind: CapabilityBadgeKind; detail: string } {
+  if (!platform?.available) {
+    return {
+      kind: "COMING SOON",
+      detail: platform?.blocked_reason ?? "Platform not available for connection.",
+    };
+  }
+  if (!connection || connection.status === "disconnected") {
+    return { kind: "DISCONNECTED", detail: "No active connection for this shop." };
+  }
+  const life = connectionLifecycle(connection, checklist);
+  if (life === "error") {
+    return {
+      kind: "ERROR",
+      detail: connection.last_error?.code ?? "Connection reported an error.",
+    };
+  }
+  if (life === "connected") {
+    const unverified = platform.verification !== "verified";
+    return {
+      kind: unverified ? "LIMITED" : "VERIFIED",
+      detail: unverified
+        ? "Orders path implemented; live provider acceptance still unverified."
+        : "Live provider verification recorded.",
+    };
+  }
+  if (life === "limited") {
+    return {
+      kind: "LIMITED",
+      detail: connection.limitations[0] ?? platform.limitations[0] ?? "Some capabilities are limited.",
+    };
+  }
+  return {
+    kind: "SETUP REQUIRED",
+    detail: checklist?.next_action?.replaceAll("_", " ") ?? "Complete setup and verify a paid order.",
+  };
+}
+
+export function capabilityBadgeFromState(
+  key: string,
+  cap: PlatformCapability | undefined
+): { kind: CapabilityBadgeKind; label: string; detail: string } {
+  const label = key.replaceAll("_", " ");
+  if (!cap) {
+    return { kind: "UNSUPPORTED", label, detail: "Not reported by catalogue." };
+  }
+  if (cap.state === "AVAILABLE") {
+    return {
+      kind: cap.last_verified_at ? "VERIFIED" : "LIMITED",
+      label,
+      detail: cap.reason ?? (cap.last_verified_at ? "Verified" : "Implemented; live verification pending."),
+    };
+  }
+  if (cap.state === "LIMITED") {
+    return { kind: "LIMITED", label, detail: cap.reason ?? "Limited support." };
+  }
+  return { kind: "UNSUPPORTED", label, detail: cap.reason ?? "Unsupported in this boundary." };
+}
+
+export function summarizeCapabilities(caps: Record<string, PlatformCapability> | undefined): string {
+  if (!caps) return "Capability matrix not loaded.";
+  const parts: string[] = [];
+  const order = caps.orders;
+  const coupons = caps.coupons_read;
+  const banner = caps.banner_embed;
+  if (order?.state === "AVAILABLE") parts.push("Orders available");
+  else if (order?.state === "LIMITED") parts.push("Orders limited");
+  else parts.push("Orders unsupported");
+  if (coupons?.state === "UNSUPPORTED") parts.push("coupon reading unsupported");
+  else if (coupons?.state === "LIMITED") parts.push("coupon reading limited");
+  else parts.push("coupons readable");
+  if (banner?.state === "UNSUPPORTED") parts.push("banner unsupported");
+  else parts.push("banner requires manual/native install");
+  return parts.join("; ") + ".";
+}
+
 export async function fetchPlatforms(signal?: AbortSignal): Promise<PlatformCatalogueItem[]> {
   const res = await apiRequest<Data<PlatformCatalogueItem[]>>({
     path: "/api/v1/integrations/platforms",
@@ -150,7 +306,7 @@ export async function fetchPlatforms(signal?: AbortSignal): Promise<PlatformCata
   });
   return (res.data ?? []).map((p) => ({
     ...p,
-    category: platformCategory(p.platform),
+    category: platformCategory(p.platform, p.available),
   }));
 }
 
@@ -224,6 +380,121 @@ export async function disconnectConnection(workspaceId: string, connectionId: st
   return res.data;
 }
 
+export async function startShopifyOAuth(
+  workspaceId: string,
+  shopDomain: string
+): Promise<ShopifyOAuthStart> {
+  const res = await apiRequest<Data<ShopifyOAuthStart>>({
+    path: `/api/v1/workspaces/${workspaceId}/integrations/shopify/oauth`,
+    method: "POST",
+    body: { shop_domain: shopDomain },
+  });
+  return res.data;
+}
+
+export async function fetchConnectionHealth(
+  workspaceId: string,
+  connectionId: string,
+  signal?: AbortSignal
+): Promise<ConnectionHealth> {
+  const res = await apiRequest<Data<ConnectionHealth>>({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/health`,
+    signal,
+  });
+  return res.data;
+}
+
+export async function fetchConnectionCapabilities(
+  workspaceId: string,
+  connectionId: string,
+  signal?: AbortSignal
+): Promise<{ platform: string; status: string; capabilities: Record<string, PlatformCapability> }> {
+  const res = await apiRequest<
+    Data<{ platform: string; status: string; capabilities: Record<string, PlatformCapability> }>
+  >({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/capabilities`,
+    signal,
+  });
+  return res.data;
+}
+
+export async function fetchConnectionEvents(
+  workspaceId: string,
+  connectionId: string,
+  signal?: AbortSignal
+): Promise<WebhookEventRow[]> {
+  const res = await apiRequest<Data<WebhookEventRow[]>>({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/events`,
+    signal,
+  });
+  return res.data ?? [];
+}
+
+export async function retryConnectionEvent(
+  workspaceId: string,
+  connectionId: string,
+  eventId: string
+): Promise<unknown> {
+  return apiRequest({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/events/${eventId}/retry`,
+    method: "POST",
+  });
+}
+
+export async function fetchConnectionProducts(
+  workspaceId: string,
+  connectionId: string,
+  signal?: AbortSignal
+): Promise<CatalogProductRow[]> {
+  const res = await apiRequest<Data<CatalogProductRow[]>>({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/products`,
+    signal,
+  });
+  return res.data ?? [];
+}
+
+export async function fetchConnectionCoupons(
+  workspaceId: string,
+  connectionId: string,
+  signal?: AbortSignal
+): Promise<CatalogCouponRow[]> {
+  const res = await apiRequest<Data<CatalogCouponRow[]>>({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/coupons`,
+    signal,
+  });
+  return res.data ?? [];
+}
+
+export async function syncConnectionProducts(
+  workspaceId: string,
+  connectionId: string,
+  cursor?: string | null
+): Promise<{ run_id: string; imported: number; exhausted: boolean; cursor: string | null }> {
+  const res = await apiRequest<
+    Data<{ run_id: string; imported: number; exhausted: boolean; cursor: string | null }>
+  >({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/sync/products`,
+    method: "POST",
+    body: cursor ? { cursor } : {},
+  });
+  return res.data;
+}
+
+export async function syncConnectionCoupons(
+  workspaceId: string,
+  connectionId: string,
+  cursor?: string | null
+): Promise<{ run_id: string; imported: number; exhausted: boolean; cursor: string | null }> {
+  const res = await apiRequest<
+    Data<{ run_id: string; imported: number; exhausted: boolean; cursor: string | null }>
+  >({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/sync/coupons`,
+    method: "POST",
+    body: cursor ? { cursor } : {},
+  });
+  return res.data;
+}
+
 export async function fetchOrders(
   workspaceId: string,
   params: {
@@ -263,3 +534,66 @@ export function paymentStatusLabel(status: string): string {
 export function isVerifiedPayment(status: string): boolean {
   return status === "paid";
 }
+
+export type ServiceAppStatus = "AVAILABLE" | "ADMIN_ONLY" | "NOT_IMPLEMENTED" | "SETUP_REQUIRED";
+
+export type ServiceAppCard = {
+  id: string;
+  name: string;
+  purpose: string;
+  status: ServiceAppStatus;
+  href: string | null;
+  note: string;
+};
+
+/** Service apps are not extra webshop engines — honest status only. */
+export const SERVICE_APPS: ServiceAppCard[] = [
+  {
+    id: "mollie",
+    name: "Mollie",
+    purpose: "Voucher top-ups / checkout payments",
+    status: "SETUP_REQUIRED",
+    href: null,
+    note: "Used on consumer checkout when configured; not a merchant webshop connector.",
+  },
+  {
+    id: "moneybird",
+    name: "Moneybird",
+    purpose: "Invoices",
+    status: "NOT_IMPLEMENTED",
+    href: null,
+    note: "Billing invoices are not implemented yet.",
+  },
+  {
+    id: "daisycon",
+    name: "Daisycon",
+    purpose: "Affiliate network commissions",
+    status: "ADMIN_ONLY",
+    href: "/admin/affiliate",
+    note: "Verified affiliate flow — Super Admin only; never double-credits a direct shop order.",
+  },
+  {
+    id: "tradetracker",
+    name: "TradeTracker",
+    purpose: "Affiliate network commissions",
+    status: "ADMIN_ONLY",
+    href: "/admin/affiliate",
+    note: "Independent of Daisycon; Super Admin configures network connections.",
+  },
+  {
+    id: "answer24",
+    name: "Answer24",
+    purpose: "Permitted customer contact calls",
+    status: "ADMIN_ONLY",
+    href: "/admin/answer24",
+    note: "Requires consent, usable phone, campaign link and schedule. No phone/consent = no call.",
+  },
+  {
+    id: "google_places",
+    name: "Google Places",
+    purpose: "Merchant business directory data",
+    status: "AVAILABLE",
+    href: "/dashboard/settings",
+    note: "Used during onboarding / business profile enrichment — not a webshop sync engine.",
+  },
+];

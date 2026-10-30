@@ -213,7 +213,7 @@ export function quickActionHref(key: string): string {
     case "import_codes":
       return "/dashboard/offers?inventory=upload";
     case "connect_store":
-      return "/dashboard/webshops";
+      return "/dashboard/app-store";
     case "top_up_funding":
       return "/dashboard/settings";
     case "review_vouchers":
@@ -346,7 +346,7 @@ export function notificationHref(notice: MerchantNotificationItem): string {
     case "new_claims":
       return "/dashboard/offers?focus=claims";
     case "connector_error":
-      return "/dashboard/webshops";
+      return "/dashboard/app-store";
     case "low_funding":
       return "/dashboard/settings";
     default:

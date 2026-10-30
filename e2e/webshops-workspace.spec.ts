@@ -1,8 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * Smoke: merchant Webshops workspace route renders the connection UX shell.
- * Full connector E2E requires an authenticated approved workspace + Laravel.
+ * Legacy Webshops path redirects to App Store (auth required either way).
  */
 test.describe("Webshops workspace UI", () => {
   test("unauthenticated visit redirects away from dashboard webshops", async ({ page }) => {

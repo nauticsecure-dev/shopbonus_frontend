@@ -299,8 +299,8 @@ export default function MerchantDashboardPage() {
               </p>
             )}
           </div>
-          <Link href="/dashboard/webshops" className="text-sm font-extrabold text-brand hover:underline">
-            Webshops
+          <Link href="/dashboard/app-store" className="text-sm font-extrabold text-brand hover:underline">
+            App Store
           </Link>
         </div>
       )}
