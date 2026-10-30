@@ -1,6 +1,6 @@
 "use client";
 
-import { useShopBonus } from "@/features/shopper/ShopBonusContext";
+import { useShopBonus } from "@/store/ShopBonusContext";
 
 export default function Toasts() {
   const { toasts, dismissToast } = useShopBonus();

@@ -1,3 +1,18 @@
-import {NextRequest} from "next/server";
-import {forward} from "@/server/backend";
-export async function GET(request:NextRequest){return forward(request,{params:Promise.resolve({path:["api","v1","owner","dashboard"]})});}
+import { NextResponse } from "next/server";
+
+/**
+ * Deprecated fixture BFF. The merchant overview loads Laravel
+ * `GET /api/v1/workspaces/{id}/dashboard` directly (cookie Sanctum).
+ */
+export async function GET() {
+  return NextResponse.json(
+    {
+      error: {
+        code: "gone",
+        message:
+          "Use GET /api/v1/workspaces/{workspace}/dashboard. Fixture merchant metrics were removed.",
+      },
+    },
+    { status: 410 }
+  );
+}

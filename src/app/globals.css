@@ -102,4 +102,16 @@ input[type="number"]::-webkit-inner-spin-button {
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid #0b74ff; outline-offset: 4px; }
+/* Merchant landing promotional floats */
+@keyframes merchant-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.merchant-float {
+  animation: merchant-float 4.5s ease-in-out infinite;
+}
+.merchant-float-delay {
+  animation: merchant-float 5.2s ease-in-out 0.6s infinite;
+}
+
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }

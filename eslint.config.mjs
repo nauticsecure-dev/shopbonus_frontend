@@ -5,4 +5,10 @@ export default defineConfig([
   // Keep the starter on the flat config export that actually runs under the pinned ESLint/Next toolchain.
   ...nextCoreWebVitals,
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  {
+    // Demo fixture images use remote URLs; next/image domains are not configured for them.
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
 ]);

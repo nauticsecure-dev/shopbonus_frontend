@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import "./globals.css";
-import { connection } from "next/server";
-import AppProviders from "@/providers/AppProviders";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
+import { SessionProvider } from "@/store/SessionContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Toasts from "@/components/Toasts";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
+import { ShopBonusProvider } from "@/store/ShopBonusContext";
+import { LocaleProvider } from "@/i18n/LocaleContext";
+import { DEFAULT_LOCALE } from "@/types/locale";
 
 const jakarta = localFont({
   src: "./fonts/plus-jakarta-sans-latin.woff2",
@@ -20,18 +24,22 @@ export const metadata: Metadata = {
     "Gebruik je ShopBonus-tegoed voor exclusieve kortingsvouchers bij honderden webshops. Eenvoudig, transparant en voor beide kanten waardevol.",
 };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  // Nonces require a fresh render for each request.
-  await connection();
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="nl">
+    <html lang={DEFAULT_LOCALE}>
       <body className={`${jakarta.className} min-h-screen bg-mist text-ink antialiased`}>
-        <AppProviders>
-          <Header />
-          <main className="min-h-[60vh]">{children}</main>
-          <Footer />
-          <Toasts />
-        </AppProviders>
+        <LocaleProvider>
+          <SessionProvider>
+            <ShopBonusProvider>
+              <ImpersonationBanner />
+              <Header />
+              <main className="min-h-[60vh]">{children}</main>
+              <Footer />
+              <CookieConsentBanner />
+              <Toasts />
+            </ShopBonusProvider>
+          </SessionProvider>
+        </LocaleProvider>
       </body>
     </html>
   );
