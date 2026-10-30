@@ -8,6 +8,8 @@ export default function Logo({ light = false }: { light?: boolean }) {
       <path d="M10 20h15v13H10V20Z" fill={light ? "#0b74ff" : "white"}/>
       <path d="m10 20 7.5 5L25 20" stroke="currentColor" strokeWidth="2.5"/>
     </svg>
-    <span className={`text-[25px] font-extrabold tracking-[-1.2px] sm:text-[28px] ${light ? "text-white" : "text-navy"}`}>Shop<span className={light ? "" : "text-brand"}>Bonus</span></span>
+    <span className={`text-[25px] font-extrabold tracking-[-1.2px] sm:text-[28px] ${light ? "text-white" : "text-navy"}`}>
+      Shop<span className={light ? "text-white" : "text-brand"}>Bonus</span>
+    </span>
   </Link>;
 }

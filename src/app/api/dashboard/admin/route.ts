@@ -1,3 +1,18 @@
-import {NextRequest} from "next/server";
-import {forward} from "@/server/backend";
-export async function GET(request:NextRequest){return forward(request,{params:Promise.resolve({path:["api","v1","admin","cockpit"]})});}
+import { NextResponse } from "next/server";
+
+/**
+ * Deprecated fixture BFF. The Super Admin Cockpit loads Laravel
+ * `GET /api/v1/admin/cockpit` directly (cookie Sanctum).
+ */
+export async function GET() {
+  return NextResponse.json(
+    {
+      error: {
+        code: "gone",
+        message:
+          "Use GET /api/v1/admin/cockpit (and /activity, /search, /vouchers). Fixture admin metrics were removed.",
+      },
+    },
+    { status: 410 }
+  );
+}
