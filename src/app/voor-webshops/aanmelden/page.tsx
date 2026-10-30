@@ -327,14 +327,17 @@ export default function VoorWebshopsPage() {
         await refresh();
       }
 
-      // Seed draft profile, then continue compliance (#16) before voucher setup.
+      // Seed draft profile (confirm happens on /onboarding with full address/KvK).
       await saveBusinessProfile(
         {
+          legal_name: shop.name.trim(),
           trading_name: shop.name.trim(),
           website_url: shop.website.trim(),
           business_category: categoryKeys[0] || "home_living",
           contact_email: session.user.email,
           main_contact_name: session.user.first_name,
+          country_code: "NL",
+          preferred_language: "nl",
           source: "manual",
         },
         wsId
