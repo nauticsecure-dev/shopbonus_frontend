@@ -54,6 +54,17 @@ type ProfileForm = {
   source: "manual" | "google";
 };
 
+/** Mirrors BusinessProfile::REQUIRED (+ NL KvK) so the form marks what confirm needs. */
+const REQUIRED_FIELDS = [
+  "legal_name",
+  "website_url",
+  "contact_email",
+  "address_line",
+  "postal_code",
+  "city",
+  "country_code",
+] as const;
+
 const EMPTY_FORM: ProfileForm = {
   legal_name: "",
   trading_name: "",
@@ -72,6 +83,27 @@ const EMPTY_FORM: ProfileForm = {
   google_place_id: "",
   source: "manual",
 };
+
+const STEP_ORDER = ["business_details", "ownership", "agreement", "activation"] as const;
+
+function clampComplianceStep(requested: string | null, nextStep: string | null): (typeof STEP_ORDER)[number] {
+  const server = (nextStep && STEP_ORDER.includes(nextStep as (typeof STEP_ORDER)[number])
+    ? nextStep
+    : "business_details") as (typeof STEP_ORDER)[number];
+  if (!requested || !STEP_ORDER.includes(requested as (typeof STEP_ORDER)[number])) {
+    return server;
+  }
+  const want = requested as (typeof STEP_ORDER)[number];
+  // Never show a step ahead of what the server still requires.
+  return STEP_ORDER.indexOf(want) <= STEP_ORDER.indexOf(server) ? want : server;
+}
+
+function missingFieldsFromError(err: unknown): string[] {
+  if (!(err instanceof ApiError) || !err.body || typeof err.body !== "object") return [];
+  const details = (err.body as { error?: { details?: { missing_fields?: unknown } } }).error?.details;
+  const fields = details?.missing_fields;
+  return Array.isArray(fields) ? fields.filter((f): f is string => typeof f === "string") : [];
+}
 
 function profileToForm(p: FullBusinessProfile): ProfileForm {
   return {
@@ -140,12 +172,19 @@ function ComplianceOnboardingInner() {
     user?.workspaces.find((w) => w.is_current)?.id ?? user?.workspaces[0]?.id ?? "current";
 
   const stepParam = searchParams.get("step");
-  const currentKey = useMemo(() => {
-    if (stepParam && ["business_details", "ownership", "agreement", "activation"].includes(stepParam)) {
-      return stepParam;
+  const currentKey = useMemo(
+    () => clampComplianceStep(stepParam, onboarding?.next_step ?? null),
+    [stepParam, onboarding?.next_step]
+  );
+
+  // Keep the URL honest when ?step= tries to skip ahead of server progress.
+  useEffect(() => {
+    if (!onboarding) return;
+    const clamped = clampComplianceStep(stepParam, onboarding.next_step);
+    if (stepParam !== clamped) {
+      router.replace(`/onboarding?step=${clamped}`);
     }
-    return onboarding?.next_step ?? "business_details";
-  }, [stepParam, onboarding?.next_step]);
+  }, [onboarding, stepParam, router]);
 
   const setField = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -164,10 +203,13 @@ function ComplianceOnboardingInner() {
     try {
       const profile = await fetchFullBusinessProfile(workspaceId);
       setForm(profileToForm(profile));
-      setMissing(profile.missing_fields ?? []);
-      if (!profile.google_place_id) setManualMode(true);
+      const stillMissing = profile.missing_fields ?? [];
+      setMissing(stillMissing);
+      // Incomplete profiles need manual entry; Google Places is optional autofill only.
+      if (!profile.google_place_id || stillMissing.length > 0) setManualMode(true);
     } catch {
       /* draft without profile yet */
+      setManualMode(true);
     }
 
     if (data.steps.find((s) => s.key === "ownership")?.status !== "complete") {
@@ -305,6 +347,8 @@ function ComplianceOnboardingInner() {
       const id = await ensureWorkspace();
       const body: Record<string, unknown> = {
         ...form,
+        // Always send a country so NL KvK rules apply consistently.
+        country_code: (form.country_code || "NL").toUpperCase(),
         confirm,
       };
       const saved = await saveFullBusinessProfile(body, id);
@@ -329,7 +373,18 @@ function ComplianceOnboardingInner() {
         await reload();
       }
     } catch (err) {
-      pushToast({ title: "Opslaan mislukt", message: formatApiError(err, "Controleer de velden."), kind: "error" });
+      const incomplete = missingFieldsFromError(err);
+      if (incomplete.length > 0) {
+        setMissing(incomplete);
+        setManualMode(true);
+        pushToast({
+          title: "Gegevens incompleet",
+          message: `Vul nog in: ${incomplete.join(", ")}`,
+          kind: "error",
+        });
+      } else {
+        pushToast({ title: "Opslaan mislukt", message: formatApiError(err, "Controleer de velden."), kind: "error" });
+      }
     } finally {
       setSaving(false);
     }
@@ -544,19 +599,29 @@ function ComplianceOnboardingInner() {
                     ["country_code", "Landcode"],
                     ["business_category", "Categorie"],
                   ] as const
-                ).map(([key, label]) => (
+                ).map(([key, label]) => {
+                  const required =
+                    (REQUIRED_FIELDS as readonly string[]).includes(key) ||
+                    (key === "kvk_number" && (form.country_code || "NL").toUpperCase() === "NL");
+                  const highlighted = missing.includes(key);
+                  return (
                   <label key={key} className="block">
                     <span className="mb-1.5 block text-sm font-bold text-navy">
                       {label}
-                      {missing.includes(key) && <span className="ml-1 text-amber-600">*</span>}
+                      {required && <span className={`ml-1 ${highlighted ? "text-amber-600" : "text-brand"}`}>*</span>}
                     </span>
                     <input
                       value={form[key]}
-                      onChange={(e) => setField(key, e.target.value)}
-                      className="w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm font-medium text-navy outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                      onChange={(e) => setField(key, key === "country_code" ? e.target.value.toUpperCase() : e.target.value)}
+                      className={`w-full rounded-xl border bg-white px-4 py-3 text-sm font-medium text-navy outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 ${
+                        highlighted ? "border-amber-300 ring-1 ring-amber-200" : "border-blue-100"
+                      }`}
+                      aria-invalid={highlighted}
+                      aria-required={required}
                     />
                   </label>
-                ))}
+                  );
+                })}
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-bold text-navy">Voorkeurstaal</span>
                   <select
@@ -571,8 +636,12 @@ function ComplianceOnboardingInner() {
               </div>
 
               {missing.length > 0 && (
-                <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Ontbrekende velden voor bevestiging: {missing.join(", ")}
+                <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
+                  Vul de gemarkeerde verplichte velden in vóór bevestiging
+                  {form.country_code?.toUpperCase() === "NL" || !form.country_code
+                    ? " (voor NL is ook KvK verplicht)"
+                    : ""}
+                  : <strong>{missing.join(", ")}</strong>
                 </p>
               )}
 

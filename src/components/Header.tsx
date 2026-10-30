@@ -44,7 +44,7 @@ function focusHomeSearch() {
 }
 
 const HEADER_BAR =
-  "sticky top-0 z-40 bg-[#0b74ff] text-white shadow-[0_8px_24px_-12px_rgba(11,116,255,0.65)]";
+  "sticky top-0 z-40 border-b border-blue-100/80 bg-white text-navy shadow-[0_4px_20px_-16px_rgba(10,27,63,0.35)]";
 
 function isShellRoute(pathname: string) {
   return (
@@ -130,9 +130,9 @@ function HeaderInner() {
 
   const avatar = avatarUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-white/40" />
+    <img src={avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-blue-100" />
   ) : (
-    <span className="grid h-9 w-9 place-items-center rounded-full bg-white/20 font-extrabold text-white">
+    <span className="grid h-9 w-9 place-items-center rounded-full bg-brand font-extrabold text-white">
       {displayName.charAt(0).toUpperCase()}
     </span>
   );
@@ -144,12 +144,12 @@ function HeaderInner() {
           aria-label={t.menu}
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 text-white lg:hidden"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-blue-100 text-navy lg:hidden"
         >
           <Icon name={open ? "close" : "menu"} size={22} />
         </button>
 
-        <Logo light />
+        <Logo />
 
         <nav
           aria-label={t.mainNav}
@@ -164,8 +164,8 @@ function HeaderInner() {
                 aria-current={active ? "page" : undefined}
                 className={`relative flex h-full shrink-0 items-center whitespace-nowrap px-1.5 text-[13px] font-semibold transition xl:px-2 xl:text-sm ${
                   active
-                    ? "text-white after:absolute after:inset-x-1 after:bottom-0 after:h-[3px] after:rounded-full after:bg-white"
-                    : "text-white/90 hover:text-white"
+                    ? "text-brand after:absolute after:inset-x-1 after:bottom-0 after:h-[3px] after:rounded-full after:bg-brand"
+                    : "text-navy/75 hover:text-brand"
                 }`}
               >
                 {link.label}
@@ -179,7 +179,7 @@ function HeaderInner() {
             type="button"
             aria-label={t.search}
             onClick={onSearchClick}
-            className="hidden h-10 w-10 place-items-center rounded-full text-white/95 transition hover:bg-white/15 hover:text-white sm:grid"
+            className="hidden h-10 w-10 place-items-center rounded-full text-navy/70 transition hover:bg-blue-50 hover:text-brand sm:grid"
             data-testid="header-search"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -189,7 +189,7 @@ function HeaderInner() {
           </button>
 
           <div
-            className="hidden items-center rounded-full bg-white/15 p-0.5 text-xs font-extrabold sm:flex"
+            className="hidden items-center rounded-full border border-blue-100 bg-slate-50 p-0.5 text-xs font-extrabold sm:flex"
             role="group"
             aria-label={t.language}
           >
@@ -200,7 +200,7 @@ function HeaderInner() {
                 aria-pressed={locale === code}
                 onClick={() => switchLocale(code)}
                 className={`rounded-full px-2.5 py-1.5 uppercase transition ${
-                  locale === code ? "bg-white text-brand" : "text-white/90 hover:text-white"
+                  locale === code ? "bg-brand text-white" : "text-navy/70 hover:text-brand"
                 }`}
               >
                 {code}
@@ -212,7 +212,7 @@ function HeaderInner() {
             <>
               <Link
                 href="/mijn-voordelen"
-                className="hidden items-center gap-2 rounded-full bg-white px-3.5 py-2 text-sm font-bold text-navy shadow-sm transition hover:bg-blue-50 md:flex"
+                className="hidden items-center gap-2 rounded-full border border-blue-100 bg-blue-50/70 px-3.5 py-2 text-sm font-bold text-navy transition hover:bg-blue-50 md:flex"
                 title={
                   pendingCashbackMinor > 0
                     ? `${formatMinor(availableMinor)} beschikbaar · ${formatMinor(pendingCashbackMinor)} cashback in behandeling`
@@ -230,7 +230,7 @@ function HeaderInner() {
                 <Icon name="chevron" size={14} className="text-muted" />
               </Link>
               <div className="hidden sm:block">
-                <NotificationBell viewAllHref="/app/notifications" variant="brand" />
+                <NotificationBell viewAllHref="/app/notifications" variant="light" />
               </div>
               <div className="relative">
                 <button
@@ -241,7 +241,7 @@ function HeaderInner() {
                   data-testid="header-profile"
                 >
                   {avatar}
-                  <Icon name="chevron" size={15} className="hidden rotate-90 text-white/80 sm:block" />
+                  <Icon name="chevron" size={15} className="hidden rotate-90 text-navy/50 sm:block" />
                 </button>
                 {profileOpen && (
                   <>
@@ -313,7 +313,7 @@ function HeaderInner() {
             <>
               <Link
                 href="/account?mode=login"
-                className="hidden text-sm font-semibold text-white/95 hover:text-white sm:inline"
+                className="hidden text-sm font-semibold text-navy/80 hover:text-brand sm:inline"
                 data-testid="header-login"
               >
                 {t.login}
@@ -321,7 +321,7 @@ function HeaderInner() {
               {pathname !== "/account" && (
                 <Link
                   href="/account"
-                  className="hidden rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-brand shadow-sm transition hover:bg-blue-50 sm:inline-flex"
+                  className="hidden rounded-full bg-brand px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-brand-dark sm:inline-flex"
                   data-testid="header-register"
                 >
                   {t.register}
@@ -333,12 +333,12 @@ function HeaderInner() {
       </div>
 
       {open && (
-        <nav aria-label={t.mobileNav} className="space-y-1 border-t border-white/15 bg-[#0b74ff] p-4 lg:hidden">
+        <nav aria-label={t.mobileNav} className="space-y-1 border-t border-blue-100 bg-white p-4 lg:hidden">
           {authed && (
             <Link
               href="/mijn-voordelen"
               onClick={() => setOpen(false)}
-              className="mb-2 flex items-center justify-between rounded-xl bg-white/15 px-3 py-3 text-sm font-bold text-white"
+              className="mb-2 flex items-center justify-between rounded-xl bg-blue-50 px-3 py-3 text-sm font-bold text-navy"
             >
               <span>Mijn ShopBonus-tegoed</span>
               <strong>{formatMinor(availableMinor)}</strong>
@@ -348,7 +348,7 @@ function HeaderInner() {
             <Link
               href="/app/notifications"
               onClick={() => setOpen(false)}
-              className="block rounded-xl px-3 py-3 text-sm font-bold text-white hover:bg-white/10"
+              className="block rounded-xl px-3 py-3 text-sm font-bold text-navy hover:bg-blue-50"
             >
               {t.notifications}
             </Link>
@@ -358,7 +358,7 @@ function HeaderInner() {
               key={link.href + link.label}
               href={link.href}
               onClick={() => setOpen(false)}
-              className="block rounded-xl px-3 py-3 text-sm font-bold text-white hover:bg-white/10"
+              className="block rounded-xl px-3 py-3 text-sm font-bold text-navy hover:bg-blue-50"
             >
               {link.label}
             </Link>
@@ -369,7 +369,7 @@ function HeaderInner() {
               setOpen(false);
               onSearchClick();
             }}
-            className="block w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-white hover:bg-white/10"
+            className="block w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-navy hover:bg-blue-50"
           >
             Zoeken
           </button>
@@ -377,7 +377,7 @@ function HeaderInner() {
             <Link
               href="/dashboard"
               onClick={() => setOpen(false)}
-              className="block rounded-xl px-3 py-3 font-bold text-white hover:bg-white/10"
+              className="block rounded-xl px-3 py-3 font-bold text-brand hover:bg-blue-50"
             >
               Webshop dashboard
             </Link>
@@ -387,7 +387,7 @@ function HeaderInner() {
               type="button"
               disabled={loggingOut}
               onClick={() => void logout()}
-              className="px-3 py-3 text-sm text-red-100 disabled:opacity-60"
+              className="px-3 py-3 text-sm text-red-600 disabled:opacity-60"
             >
               {loggingOut ? `${t.logout}…` : t.logout}
             </button>
@@ -396,14 +396,14 @@ function HeaderInner() {
               <Link
                 href="/account?mode=login"
                 onClick={() => setOpen(false)}
-                className="block rounded-xl bg-white/15 px-3 py-3 text-center font-bold text-white"
+                className="block rounded-xl border border-blue-100 px-3 py-3 text-center font-bold text-navy"
               >
                 {t.login}
               </Link>
               <Link
                 href="/account"
                 onClick={() => setOpen(false)}
-                className="block rounded-xl bg-white px-3 py-3 text-center font-extrabold text-brand"
+                className="block rounded-xl bg-brand px-3 py-3 text-center font-extrabold text-white"
               >
                 {t.register}
               </Link>

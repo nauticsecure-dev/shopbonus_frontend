@@ -1,15 +1,59 @@
+import Image from "next/image";
 import Link from "next/link";
 
-export default function Logo({ light = false }: { light?: boolean }) {
-  return <Link href="/" aria-label="ShopBonus startpagina" className="flex shrink-0 select-none items-center gap-2.5">
-    <svg aria-hidden="true" width="35" height="42" viewBox="0 0 35 42" fill="none" className={light ? "text-white" : "text-brand"}>
-      <path d="M10 14V10a7.5 7.5 0 0 1 15 0v4" stroke="currentColor" strokeWidth="3.3"/>
-      <path d="M6 13h23l3 25H3l3-25Z" fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
-      <path d="M10 20h15v13H10V20Z" fill={light ? "#0b74ff" : "white"}/>
-      <path d="m10 20 7.5 5L25 20" stroke="currentColor" strokeWidth="2.5"/>
-    </svg>
-    <span className={`text-[25px] font-extrabold tracking-[-1.2px] sm:text-[28px] ${light ? "text-white" : "text-navy"}`}>
-      Shop<span className={light ? "text-white" : "text-brand"}>Bonus</span>
+type LogoProps = {
+  /** White wordmark for blue/navy bars; full colour lockup on light backgrounds. */
+  light?: boolean;
+  /** Hide the text and show only the ribbon mark (favicon-style). */
+  markOnly?: boolean;
+  className?: string;
+  href?: string;
+};
+
+export default function Logo({
+  light = false,
+  markOnly = false,
+  className = "",
+  href = "/",
+}: LogoProps) {
+  const content = light || markOnly ? (
+    <span className="flex items-center gap-2.5">
+      <Image
+        src="/brand/logo-mark.png"
+        alt=""
+        width={40}
+        height={41}
+        className="h-9 w-auto sm:h-10"
+        priority
+      />
+      {!markOnly && (
+        <span
+          className={`text-[25px] font-extrabold tracking-[-1.2px] sm:text-[28px] ${
+            light ? "text-white" : "text-navy"
+          }`}
+        >
+          Shop<span className={light ? "text-white" : "text-brand"}>Bonus</span>
+        </span>
+      )}
     </span>
-  </Link>;
+  ) : (
+    <Image
+      src="/brand/logo-full.png"
+      alt="ShopBonus"
+      width={180}
+      height={44}
+      className="h-9 w-auto sm:h-10"
+      priority
+    />
+  );
+
+  return (
+    <Link
+      href={href}
+      aria-label="ShopBonus startpagina"
+      className={`flex shrink-0 select-none items-center ${className}`}
+    >
+      {content}
+    </Link>
+  );
 }
