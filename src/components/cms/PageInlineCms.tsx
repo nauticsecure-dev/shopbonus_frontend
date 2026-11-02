@@ -36,6 +36,10 @@ export default function PageInlineCms({
   const [mode, setMode] = useState<Mode>("live");
   const [pageMeta, setPageMeta] = useState<CmsPageSummary | null>(null);
   const [content, setContent] = useState<CmsPageContent>(published.content);
+  const [savedContent, setSavedContent] = useState<CmsPageContent>(published.content);
+  const [legalVersion, setLegalVersion] = useState("");
+  const [effectiveDate, setEffectiveDate] = useState("");
+  const dirty = JSON.stringify(content) !== JSON.stringify(savedContent);
   const [revision, setRevision] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -56,7 +60,8 @@ export default function PageInlineCms({
       setPageMeta(match);
       const draft = await previewCmsDraft(match.id, locale);
       setContent(draft.content ?? emptyPageContent());
-      setRevision(match.locales[locale]?.draft_revision ?? 1);
+      setSavedContent(draft.content ?? emptyPageContent());
+      setRevision(draft.draft_revision);
       setMode("edit");
     } catch (err) {
       setMessage(err instanceof ApiError ? err.message : t.errorGeneric);
@@ -75,6 +80,7 @@ export default function PageInlineCms({
         content,
       });
       setRevision(res.draft_revision);
+      setSavedContent(content);
       setMessage(t.cmsDraftSaved);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) setMessage(t.cmsConflict);
@@ -85,7 +91,7 @@ export default function PageInlineCms({
   }
 
   async function onPublish() {
-    if (!pageMeta || busy) return;
+    if (!pageMeta || busy || revision == null || dirty) return;
     setBusy(true);
     setMessage(null);
     try {
@@ -93,6 +99,9 @@ export default function PageInlineCms({
       await publishCmsLocale({
         pageId: pageMeta.id,
         locale,
+        revision,
+        legal_version: legal ? legalVersion : undefined,
+        effective_date: legal ? effectiveDate : undefined,
         approve: legal ? true : undefined,
       });
       setMessage(t.cmsPublished);
@@ -143,7 +152,7 @@ export default function PageInlineCms({
               </button>
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || dirty}
                 onClick={() => void onPublish()}
                 className="rounded-xl bg-brand px-3 py-2 text-sm font-extrabold text-white"
                 data-testid="cms-publish"
@@ -186,6 +195,10 @@ export default function PageInlineCms({
 
       {mode === "edit" ? (
         <div className="mx-auto max-w-3xl space-y-4 px-4 py-8 sm:px-6">
+          {pageMeta && ["privacy", "terms", "cookie_policy"].includes(pageMeta.type) && <>
+            <label className="block text-sm font-bold">{locale === "en" ? "Legal version" : "Juridische versie"}<input className="block rounded-xl border p-2" value={legalVersion} onChange={(e) => setLegalVersion(e.target.value)} /></label>
+            <label className="block text-sm font-bold">{locale === "en" ? "Effective date" : "Ingangsdatum"}<input className="block rounded-xl border p-2" type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} /></label>
+          </>}
           <input
             value={content.title}
             onChange={(e) => setContent((c) => ({ ...c, title: e.target.value }))}

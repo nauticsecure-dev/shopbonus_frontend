@@ -107,6 +107,21 @@ export default function StudioPanel({
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {tab === "design" && (
           <div className="space-y-3" data-testid="design-tab">
+            <fieldset className="space-y-2 rounded-xl border border-blue-100 p-3">
+              <legend className="text-xs font-bold">Editable layers</legend>
+              {(config.layers || (["text", "image", "cta"] as const).map((type) => ({ type, visible: true, align: "left" as const, font_size: 16, width_pct: 100 }))).map((layer, index, layers) => {
+                const update = (patch: Partial<typeof layer>) => onChange({ ...config, layers: layers.map((l, i) => i === index ? { ...l, ...patch } : l) });
+                return <div key={layer.type} className="space-y-1 border-b border-blue-50 pb-2 text-xs">
+                  <label><input type="checkbox" checked={layer.visible} onChange={(e) => update({ visible: e.target.checked })} /> {layer.type}</label>
+                  <button type="button" disabled={index === 0} className="ml-3 underline disabled:opacity-40" onClick={() => { const next = [...layers]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; onChange({ ...config, layers: next }); }}>Move up</button>
+                  <div className="flex gap-2">
+                    <label>Align<select aria-label={layer.type + " alignment"} value={layer.align} onChange={(e) => update({ align: e.target.value as typeof layer.align })}>{["left", "center", "right"].map((a) => <option key={a}>{a}</option>)}</select></label>
+                    <label>Size<input className="w-12 border" aria-label={layer.type + " font size"} type="number" min={10} max={40} value={layer.font_size} onChange={(e) => update({ font_size: Math.max(10, Math.min(40, Number(e.target.value))) })} /></label>
+                    <label>Width %<input className="w-12 border" aria-label={layer.type + " width"} type="number" min={20} max={100} value={layer.width_pct} onChange={(e) => update({ width_pct: Math.max(20, Math.min(100, Number(e.target.value))) })} /></label>
+                  </div>
+                </div>;
+              })}
+            </fieldset>
             <Field label="Widget Type">
               <select
                 className="w-full rounded-xl border border-blue-100 px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand/30"
@@ -122,6 +137,7 @@ export default function StudioPanel({
             </Field>
             <Field label="Position">
               <select
+                aria-label="Position"
                 className="w-full rounded-xl border border-blue-100 px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand/30"
                 value={config.placement.anchor}
                 onChange={(e) => setPlacement({ anchor: e.target.value as BannerConfig["placement"]["anchor"] })}
@@ -133,6 +149,13 @@ export default function StudioPanel({
                 ))}
               </select>
             </Field>
+            <Field label="Inline target selector">
+              <input className="w-full rounded-xl border border-blue-100 px-3 py-2 text-xs" value={config.placement.selector_hint || ""} placeholder="#rewards-slot" onChange={(e) => setPlacement({ selector_hint: e.target.value || null })} />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Width"><input type="number" min={160} max={720} value={config.placement.width || 360} onChange={(e) => setPlacement({ width: Math.max(160, Math.min(720, Number(e.target.value))) })} className="w-full rounded border p-2 text-xs" /></Field>
+              <Field label="Min height"><input type="number" min={80} max={800} value={config.placement.height || 80} onChange={(e) => setPlacement({ height: Math.max(80, Math.min(800, Number(e.target.value))) })} className="w-full rounded border p-2 text-xs" /></Field>
+            </div>
             <Field label="Heading">
               <input className="w-full rounded-xl border border-blue-100 px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand/30" value={config.content.heading} onChange={(e) => setContent({ heading: e.target.value })} />
             </Field>

@@ -31,6 +31,7 @@ type SessionContextValue = {
   ready: boolean;
   refresh: () => Promise<MeUser | null>;
   setUser: (user: MeUser | null) => void;
+  /** Resolves only after the server confirms logout (or the session was already gone). */
   signOut: () => Promise<void>;
 };
 
@@ -72,13 +73,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const signOut = useCallback(async () => {
-    try {
-      await logoutAccount(locale);
-    } catch {
-      // Still drop local session so protected shells cannot keep the user in.
-    } finally {
-      setUser(null);
-    }
+    await logoutAccount(locale);
+    setUser(null);
   }, [locale, setUser]);
 
   const value = useMemo(

@@ -18,6 +18,7 @@ export type TeamProfile = {
 };
 
 export type AboutUsContent = {
+  media?: Partial<Record<"hero" | "story" | "team", { desktop_asset_id?: string | null; mobile_asset_id?: string | null; desktop_url?: string | null; mobile_url?: string | null; alt: string }>>;
   title: string;
   seo_title: string;
   seo_description: string;
@@ -390,9 +391,15 @@ function mergeDeep<T extends Record<string, unknown>>(base: T, partial: unknown)
 
 export function mergeAboutUsContent(
   partial: Partial<AboutUsContent> | null | undefined,
-  locale: "nl" | "en" = "nl"
+  locale: "nl" | "en" = "nl",
+  published = false
 ): AboutUsContent {
-  const base = locale === "en" ? defaultsEn() : defaultsNl();
+  const defaults = locale === "en" ? defaultsEn() : defaultsNl();
+  // Public omissions must not manufacture unapproved marketing copy.
+  const blank = (value: unknown): unknown => Array.isArray(value) ? [] : value && typeof value === "object"
+    ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, blank(item)]))
+    : typeof value === "string" ? "" : typeof value === "boolean" ? false : undefined;
+  const base = published ? { ...blank(defaults) as AboutUsContent, section_order: [...SECTION_KEYS] } : defaults;
   if (!partial) return base;
   const merged = mergeDeep(base as unknown as Record<string, unknown>, partial) as unknown as AboutUsContent;
   if (!merged.section_order?.length) merged.section_order = [...SECTION_KEYS];
@@ -405,9 +412,6 @@ export function mergeAboutUsContent(
   }
   if (typeof merged.revenue_model.platform_percent !== "number") {
     merged.revenue_model.platform_percent = 30;
-  }
-  if (!merged.team.show_profiles) {
-    merged.team.profiles = [];
   }
   return merged;
 }

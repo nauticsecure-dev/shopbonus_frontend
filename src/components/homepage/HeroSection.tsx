@@ -1,3 +1,5 @@
+"use client";
+import { useLocale } from "@/i18n/LocaleContext";
 import Link from "next/link";
 import type { HomepageContent } from "@/lib/homepageDefaults";
 
@@ -8,6 +10,7 @@ type Props = {
 };
 
 function HeroArtwork({ content }: { content: HomepageContent["hero"] }) {
+  const { locale } = useLocale();
   return (
     <div className="relative mx-auto h-[420px] w-full max-w-lg lg:mx-0" aria-hidden>
       <span className="absolute left-[8%] top-[12%] z-20 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-lg font-black text-amber-900 shadow-lg rotate-[-12deg]">
@@ -41,7 +44,7 @@ function HeroArtwork({ content }: { content: HomepageContent["hero"] }) {
             </svg>
           </span>
         </div>
-        <p className="mt-5 text-xs font-bold uppercase tracking-wider text-blue-100">Voorbeeld saldo</p>
+        <p className="mt-5 text-xs font-bold uppercase tracking-wider text-blue-100">{locale === "en" ? "Example balance" : "Voorbeeld saldo"}</p>
         <p className="mt-1 text-[42px] font-black leading-none tracking-tight">
           {content.promo_balance_example}
         </p>
@@ -49,7 +52,7 @@ function HeroArtwork({ content }: { content: HomepageContent["hero"] }) {
           href="/mijn-voordelen"
           className="pointer-events-auto mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#22c55e] py-3 text-sm font-extrabold text-white shadow-lg transition hover:bg-green-600"
         >
-          Voucher kiezen
+          {locale === "en" ? "Choose voucher" : "Voucher kiezen"}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path
               d="M5 12h14m-6-6 6 6-6 6"
@@ -65,7 +68,7 @@ function HeroArtwork({ content }: { content: HomepageContent["hero"] }) {
       <div className="absolute bottom-[8%] right-[0%] z-30 w-[200px] rotate-[8deg] rounded-[1.5rem] bg-white p-5 shadow-[0_28px_50px_-18px_rgba(10,27,63,0.35)] sm:w-[220px]">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">Cadeaubon</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted">{locale === "en" ? "Gift card" : "Cadeaubon"}</p>
             <p className="mt-1 text-3xl font-black text-navy">{content.promo_voucher_example}</p>
           </div>
           <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-light text-brand">

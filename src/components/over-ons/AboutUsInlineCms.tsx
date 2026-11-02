@@ -6,12 +6,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import {
   fetchAdminAboutUs,
-  fetchAboutUsVersions,
+  fetchAboutUsServer,
   isSuperAdmin,
   publishAboutUs,
   requestAboutUsAiSuggest,
@@ -21,7 +22,10 @@ import {
 import { mergeAboutUsContent, type AboutUsContent } from "@/lib/aboutUsDefaults";
 import { useLocale } from "@/i18n/LocaleContext";
 import { useSession } from "@/store/SessionContext";
-import { ApiError } from "@/lib/api";
+import { apiRequest, ApiError } from "@/lib/api";
+import type { Locale } from "@/types/locale";
+import { AboutUsCmsControls } from "./AboutUsCmsControls";
+import { useRouter } from "next/navigation";
 
 type CmsMode = "live" | "edit" | "preview";
 
@@ -29,17 +33,20 @@ type InlineCmsContextValue = {
   canEdit: boolean;
   mode: CmsMode;
   content: AboutUsContent;
+  available: boolean;
+  loading: boolean;
   setMode: (m: CmsMode) => void;
   draftRevision: number | null;
   dirty: boolean;
   saving: boolean;
   message: string | null;
   updateField: (path: string, value: unknown) => void;
-  saveDraft: () => Promise<void>;
+  saveDraft: () => Promise<number | null>;
   publish: () => Promise<void>;
   cancel: () => void;
   enterPreview: () => void;
-  restoreLatest: () => Promise<void>;
+  restoreVersion: (id: string) => Promise<void>;
+  schedulePublication: (dueAt: string) => Promise<void>;
   improveWithAi: (path: string, intent?: "stronger" | "shorter" | "cta" | "seo") => Promise<string | null>;
 };
 
@@ -72,34 +79,51 @@ function getByPath(obj: AboutUsContent, path: string): unknown {
 
 export function InlineCmsProvider({
   initialContent,
+  initialLocale,
   children,
 }: {
-  initialContent: AboutUsContent;
+  initialContent: AboutUsContent | null;
+  initialLocale: Locale;
   children: ReactNode;
 }) {
+  const { locale } = useLocale();
+  return <CmsSession key={locale} initialContent={locale === initialLocale ? initialContent : null}>{children}</CmsSession>;
+}
+
+function CmsSession({ initialContent, children }: { initialContent: AboutUsContent | null; children: ReactNode }) {
+  const router = useRouter();
   const { session, ready } = useSession();
   const { locale } = useLocale();
   const canEdit = ready && isSuperAdmin(session?.user.roles);
   const [mode, setMode] = useState<CmsMode>("live");
-  const [liveContent] = useState(initialContent);
-  const [content, setContent] = useState(initialContent);
+  const [liveContent, setLiveContent] = useState(initialContent);
+  const [content, setContent] = useState(initialContent ?? mergeAboutUsContent(null, locale));
   const [draftRevision, setDraftRevision] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [baseline, setBaseline] = useState(initialContent);
+  const [loaded, setLoaded] = useState(false);
+  const busy = useRef(false);
+  const mounted = useRef(true);
+  const editing = mode !== "live";
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAboutUsServer(locale).then((published) => { if (!cancelled) setLiveContent(published); });
+    return () => { cancelled = true; };
+  }, [locale]);
 
   useEffect(() => {
-    if (!canEdit || mode === "live") return;
+    if (!canEdit || !editing) return;
     let cancelled = false;
     void fetchAdminAboutUs(locale)
       .then((state) => {
         if (cancelled) return;
         const draft = mergeAboutUsContent(state.draft ?? state.published ?? null, locale as "nl" | "en");
         setContent(draft);
-        setBaseline(draft);
         setDraftRevision(state.draft_revision);
         setDirty(false);
+        setLoaded(true);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -108,82 +132,120 @@ export function InlineCmsProvider({
     return () => {
       cancelled = true;
     };
-  }, [canEdit, mode, locale]);
+  }, [canEdit, editing, locale]);
 
   const updateField = useCallback((path: string, value: unknown) => {
+    if (!canEdit || !loaded || busy.current || mode !== "edit") return;
     setContent((prev) => setByPath(prev, path, value));
     setDirty(true);
-  }, []);
+  }, [canEdit, loaded, mode]);
 
-  const saveDraft = useCallback(async () => {
-    if (draftRevision == null) return;
-    setSaving(true);
-    setMessage(null);
-    try {
+  const persist = useCallback(async () => {
+    if (!canEdit || !loaded || draftRevision == null) throw new Error("Laad het concept opnieuw voordat je opslaat.");
       // Never send authoritative commission percentages in draft payload
       const { consumer_percent: _c, platform_percent: _p, ...revenueRest } = content.revenue_model;
       const payload: AboutUsContent = {
         ...content,
         revenue_model: revenueRest as AboutUsContent["revenue_model"],
       };
-      const res = await saveAboutUsDraft({ locale, revision: draftRevision, content: payload });
+      // Resolved URLs are display-only; the backend accepts asset references.
+      const clean = JSON.parse(JSON.stringify(payload, (key, value) => key.endsWith("_url") ? undefined : value)) as AboutUsContent;
+      const res = await saveAboutUsDraft({ locale, revision: draftRevision, content: clean });
+      if (!mounted.current) throw new Error("Language changed; review the draft again.");
       setDraftRevision(res.draft_revision);
-      setBaseline(content);
       setDirty(false);
-      setMessage("Concept opgeslagen");
-    } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : "Opslaan mislukt");
-    } finally {
-      setSaving(false);
-    }
-  }, [content, draftRevision, locale]);
+      return res.draft_revision;
+  }, [canEdit, loaded, content, draftRevision, locale]);
 
-  const publish = useCallback(async () => {
+  const saveDraft = useCallback(async () => {
+    if (busy.current) return null;
+    busy.current = true;
     setSaving(true);
     setMessage(null);
     try {
-      if (dirty) await saveDraft();
-      await publishAboutUs(locale);
+      const revision = await persist();
+      setMessage("Concept opgeslagen");
+      return revision;
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "Opslaan mislukt");
+      return null;
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
+  }, [persist]);
+
+  const publish = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const revision = await persist();
+      await publishAboutUs(locale, revision);
+      const published = await fetchAboutUsServer(locale);
+      setLiveContent(published);
+      setLoaded(false);
       setMode("live");
-      setMessage("Gepubliceerd — live pagina bijgewerkt");
-      window.location.reload();
+      setMessage(published ? "Gepubliceerd — live pagina bijgewerkt" : "Publicatie opgeslagen; inhoud momenteel niet beschikbaar of buiten het publicatievenster.");
+      router.refresh();
     } catch (err) {
       setMessage(err instanceof ApiError ? err.message : "Publiceren mislukt");
     } finally {
+      busy.current = false;
       setSaving(false);
     }
-  }, [dirty, locale, saveDraft]);
+  }, [locale, persist, router]);
 
   const cancel = useCallback(() => {
-    setContent(baseline);
+    if (busy.current) return;
+    setContent(liveContent ?? mergeAboutUsContent(null, locale));
+    setLoaded(false);
     setDirty(false);
     setMode("live");
     setMessage(null);
-  }, [baseline]);
+  }, [liveContent, locale]);
 
   const enterPreview = useCallback(() => {
-    setMode("preview");
+    setMode((previous) => previous === "preview" ? "edit" : "preview");
     setMessage("Voorbeeld van concept (niet live)");
   }, []);
 
-  const restoreLatest = useCallback(async () => {
+  const restoreVersion = useCallback(async (id: string) => {
+    if (!canEdit || !loaded || busy.current) return;
+    busy.current = true;
     setSaving(true);
     try {
-      const versions = await fetchAboutUsVersions(locale);
-      const prev = versions.find((v) => v.locale === locale);
-      if (!prev) {
-        setMessage("Geen eerdere versie gevonden");
-        return;
-      }
-      await restoreAboutUsVersion(prev.id, locale);
-      setMessage(`Versie ${prev.number} hersteld als nieuwe publicatie`);
-      window.location.reload();
+      await restoreAboutUsVersion(id, locale);
+      setLiveContent(await fetchAboutUsServer(locale));
+      setLoaded(false);
+      setMode("live");
+      setMessage("Geselecteerde versie hersteld als nieuwe publicatie");
+      router.refresh();
     } catch (err) {
       setMessage(err instanceof ApiError ? err.message : "Herstellen mislukt");
     } finally {
+      busy.current = false;
       setSaving(false);
     }
-  }, [locale]);
+  }, [canEdit, loaded, locale, router]);
+
+  const schedulePublication = useCallback(async (dueAt: string) => {
+    if (busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    try {
+      const revision = await persist();
+      const state = await fetchAdminAboutUs(locale);
+      if (!mounted.current) throw new Error("Language changed; review the draft again.");
+      await apiRequest({ path: `/api/v1/admin/cms/pages/${encodeURIComponent(state.id)}/schedules`, method: "POST", locale,
+        body: { action: "publish", locale, revision, due_at: dueAt } });
+      setMode("live");
+      setMessage("Publicatie ingepland. De huidige publicatie blijft zichtbaar tot het geplande moment.");
+      setLoaded(false);
+    } catch (err) { setMessage(err instanceof Error ? err.message : "Inplannen mislukt"); }
+    finally { busy.current = false; setSaving(false); }
+  }, [persist, locale]);
 
   const improveWithAi = useCallback(
     async (path: string, intent: "stronger" | "shorter" | "cta" | "seo" = "stronger") => {
@@ -210,8 +272,10 @@ export function InlineCmsProvider({
   const value = useMemo<InlineCmsContextValue>(
     () => ({
       canEdit,
-      mode,
-      content: mode === "live" ? liveContent : content,
+      mode: canEdit ? mode : "live",
+      content: !canEdit || mode === "live" ? liveContent ?? mergeAboutUsContent(null, locale, true) : content,
+      available: (canEdit && mode !== "live") || liveContent !== null,
+      loading: editing && !loaded,
       setMode,
       draftRevision,
       dirty,
@@ -222,7 +286,8 @@ export function InlineCmsProvider({
       publish,
       cancel,
       enterPreview,
-      restoreLatest,
+      restoreVersion,
+      schedulePublication,
       improveWithAi,
     }),
     [
@@ -239,7 +304,11 @@ export function InlineCmsProvider({
       publish,
       cancel,
       enterPreview,
-      restoreLatest,
+      restoreVersion,
+      schedulePublication,
+      editing,
+      loaded,
+      locale,
       improveWithAi,
     ]
   );
@@ -268,21 +337,23 @@ export function CmsToolbar() {
         >
           Edit page
         </button>
+        {cms.message && <p role="status" className="max-w-sm bg-white p-2">{cms.message}</p>}
       </div>
     );
   }
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-blue-100 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_-12px_rgba(10,27,63,0.35)] backdrop-blur">
+      <AboutUsCmsControls />
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
         <div className="text-sm">
           <p className="font-extrabold text-navy">
             {cms.mode === "preview" ? "Voorbeeldmodus" : "Pagina bewerken"}
             {cms.dirty ? " · niet-opgeslagen wijzigingen" : ""}
           </p>
-          {cms.message && <p className="text-muted">{cms.message}</p>}
+          <p role="status">{cms.loading ? "Concept laden…" : cms.message}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <fieldset disabled={cms.saving || cms.loading} className="flex flex-wrap gap-2">
           <button
             type="button"
             disabled={cms.saving || !cms.dirty}
@@ -297,7 +368,7 @@ export function CmsToolbar() {
             onClick={() => cms.enterPreview()}
             className="rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-navy"
           >
-            Preview
+            {cms.mode === "preview" ? "Back to edit" : "Preview"}
           </button>
           <button
             type="button"
@@ -310,20 +381,13 @@ export function CmsToolbar() {
           <button
             type="button"
             disabled={cms.saving}
-            onClick={() => void cms.restoreLatest()}
-            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900"
-          >
-            Restore
-          </button>
-          <button
-            type="button"
-            disabled={cms.saving}
             onClick={() => cms.cancel()}
             className="rounded-xl px-4 py-2 text-sm font-bold text-muted hover:text-navy"
           >
             Cancel
           </button>
-        </div>
+        </fieldset>
+        {cms.loading && <button type="button" onClick={cms.cancel}>Leave editor</button>}
       </div>
     </div>
   );
@@ -352,8 +416,6 @@ export function EditableText({
   const [draft, setDraft] = useState(value);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
-  useEffect(() => setDraft(value), [value]);
-
   const display = (
     <>
       {value}
@@ -366,7 +428,7 @@ export function EditableText({
     </>
   );
 
-  if (!cms.canEdit || cms.mode === "live" || cms.mode === "preview") {
+  if (!cms.canEdit || cms.mode === "live" || cms.mode === "preview" || cms.loading || cms.saving) {
     return <Tag className={className}>{display}</Tag>;
   }
 

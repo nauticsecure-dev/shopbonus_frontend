@@ -67,10 +67,11 @@ export async function apiRequest<T = unknown>({
     await ensureCsrfCookie();
   }
   const xsrf = useCookies ? readCookie(csrfCookieName()) : null;
+  const multipart = typeof FormData !== "undefined" && body instanceof FormData;
   const requestHeaders: HeadersInit = {
     Accept: "application/json",
     "Accept-Language": resolvedLocale,
-    ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    ...(body !== undefined && !multipart ? { "Content-Type": "application/json" } : {}),
     ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}),
     ...(supportToken ? { Authorization: `Bearer ${supportToken}` } : {}),
     ...headers,
@@ -81,7 +82,7 @@ export async function apiRequest<T = unknown>({
       method: upper,
       credentials: supportToken ? "omit" : useCookies ? "include" : "same-origin",
       headers: headersForAttempt,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : multipart ? body as FormData : JSON.stringify(body),
       ...rest,
     });
 

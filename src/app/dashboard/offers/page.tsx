@@ -23,6 +23,7 @@ import {
   endOffer,
   exportCodesUrl,
   fetchCodeHistory,
+  fetchCodeImport,
   fetchOfferCodes,
   formatAddedAt,
   formatDiscount,
@@ -50,6 +51,11 @@ import {
 } from "@/lib/merchantOffers";
 
 const PAGE_SIZE = 7;
+function localDateTime(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+}
 
 function offerLife(offer: OfferPayload): string {
   return offer.lifecycle_status || offer.status;
@@ -95,7 +101,7 @@ function MerchantOffersPage() {
   const [loadingCodes, setLoadingCodes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState(inventoryParam === "available" ? "available" : "all");
+  const [statusFilter, setStatusFilter] = useState(["available", "reserved"].includes(inventoryParam ?? "") ? inventoryParam! : "all");
   const [batchFilter, setBatchFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [assignedFilter, setAssignedFilter] = useState("all");
@@ -137,6 +143,7 @@ function MerchantOffersPage() {
     redemptionDays: "90",
     condition: "",
     combinable: false,
+    price: "", points: "", startsAt: "", endsAt: "", allocationLimit: "", codeMode: "unique",
   });
   const fileRef = useRef<HTMLInputElement>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -240,18 +247,18 @@ function MerchantOffersPage() {
 
   useEffect(() => {
     const ac = new AbortController();
-    void loadOffers(ac.signal);
+    queueMicrotask(() => { if (!ac.signal.aborted) void loadOffers(ac.signal); });
     return () => ac.abort();
   }, [loadOffers, revision]);
 
   useEffect(() => {
     const ac = new AbortController();
-    void loadCodes(ac.signal);
+    queueMicrotask(() => { if (!ac.signal.aborted) void loadCodes(ac.signal); });
     return () => ac.abort();
   }, [loadCodes, revision]);
 
   useEffect(() => {
-    if (inventoryParam === "available") setStatusFilter("available");
+    if (inventoryParam === "available" || inventoryParam === "reserved") queueMicrotask(() => setStatusFilter(inventoryParam));
   }, [inventoryParam]);
 
   useEffect(() => {
@@ -305,8 +312,7 @@ function MerchantOffersPage() {
   const selectedOffer = offers.find((o) => o.id === selectedOfferId) ?? visibleOffers[0] ?? null;
 
   useEffect(() => {
-    setSelectedCodes([]);
-    setPage(1);
+    queueMicrotask(() => { setSelectedCodes([]); setPage(1); });
   }, [selectedOfferId]);
 
   const batches = useMemo(() => {
@@ -330,6 +336,7 @@ function MerchantOffersPage() {
       redemptionDays: "90",
       condition: "",
       combinable: false,
+      price: "", points: "", startsAt: "", endsAt: "", allocationLimit: "", codeMode: "unique",
     });
     setSavedPreview(null);
     setModal("new");
@@ -352,6 +359,11 @@ function MerchantOffersPage() {
       redemptionDays: String(t.redemption_validity_days ?? 90),
       condition: t.public_description ?? "",
       combinable: Boolean(t.combinable),
+      price: t.price_minor == null ? "" : String(t.price_minor / 100),
+      points: t.price_points == null ? "" : String(t.price_points),
+      startsAt: localDateTime(t.starts_at), endsAt: localDateTime(t.ends_at),
+      allocationLimit: t.allocation_limit == null ? "" : String(t.allocation_limit),
+      codeMode: t.code_mode ?? "unique",
     });
     setSavedPreview(null);
     setModal("edit");
@@ -375,6 +387,8 @@ function MerchantOffersPage() {
         redemptionDays: form.redemptionDays,
         terms: form.condition,
         combinable: form.combinable,
+        price: form.price, points: form.points, startsAt: form.startsAt, endsAt: form.endsAt,
+        allocationLimit: form.allocationLimit, codeMode: form.codeMode,
       });
       let saved: OfferPayload;
       if (modal === "edit" && selectedOffer) {
@@ -476,28 +490,52 @@ function MerchantOffersPage() {
 
   const commitPreview = async () => {
     if (!importPreview) return;
+    setImportPollError(false);
     setImportBusy(true);
     try {
       const committed = await commitCodeImport(importPreview.id, workspaceId);
-      pushToast({
-        title: `${committed.totals.imported ?? 0} codes toegevoegd`,
-        message: `Batch ${committed.id.slice(-6).toUpperCase()} · afgewezen: ${(committed.totals.invalid ?? 0) + (committed.totals.duplicate_in_upload ?? 0) + (committed.totals.duplicate_existing ?? 0)}.`,
-        kind: "success",
-      });
-      setPasteValue("");
-      setImportPreview(null);
-      setModal(null);
-      await loadCodes();
+      setImportPreview(committed);
     } catch (err) {
       pushToast({
         title: "Import mislukt",
-        message: err instanceof ApiError ? err.message : "Geen codes opgeslagen.",
+        message: err instanceof ApiError ? err.message : "Controleer de batchstatus voordat je opnieuw importeert.",
         kind: "error",
       });
     } finally {
       setImportBusy(false);
     }
   };
+
+  const [importPollError, setImportPollError] = useState(false);
+  const [importPollRetry, setImportPollRetry] = useState(0);
+  useEffect(() => {
+    if (!importPreview || !["committing", "committed"].includes(importPreview.status)) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const finish = async (batch: CodeImportBatch) => {
+      if (cancelled) return;
+      setImportPreview(batch);
+      if (batch.status === "committed") {
+        pushToast({ title: String(batch.totals.imported ?? 0) + " codes toegevoegd", message: "Import voltooid.", kind: "success" });
+        setPasteValue(""); setImportPreview(null); setModal(null);
+        await loadCodes();
+      }
+    };
+    const poll = async () => {
+      try {
+        const batch = await fetchCodeImport(importPreview.id, workspaceId);
+        if (cancelled) return;
+        setImportPollError(false);
+        await finish(batch);
+        if (batch.status === "committing") timer = setTimeout(poll, 2000);
+      } catch {
+        if (!cancelled) setImportPollError(true);
+      }
+    };
+    if (importPreview.status === "committed") timer = setTimeout(() => void finish(importPreview), 0);
+    else timer = setTimeout(poll, 1000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [importPreview, workspaceId, loadCodes, pushToast, importPollRetry]);
 
   const handleUpload = async (file?: File) => {
     if (!file || !selectedOfferId) return;
@@ -790,7 +828,6 @@ function MerchantOffersPage() {
           <div className="mt-4 grid gap-4 border-t border-blue-50 pt-4 lg:grid-cols-[minmax(0,1.35fr)_repeat(4,minmax(90px,.55fr))_auto] lg:items-center">
             <div className="flex items-center gap-3">
               {shopLogo ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img src={shopLogo} alt="" className="h-14 w-14 rounded-2xl object-cover" />
               ) : (
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-blue-50 text-brand">
@@ -989,14 +1026,14 @@ function MerchantOffersPage() {
             setImportPreview(null);
             setModal("paste");
           }}
-          disabled={!selectedOffer || !offerAllows(selectedOffer, "import_codes")}
+          disabled={!selectedOffer || !offerAllows(selectedOffer, "import_codes") || importBusy || importPreview?.status === "committing"}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-extrabold text-brand hover:bg-blue-50 disabled:opacity-40"
         >
           <DashboardIcon name="list" size={17} /> Codes plakken
         </button>
         <button
           onClick={() => fileRef.current?.click()}
-          disabled={!selectedOffer || !offerAllows(selectedOffer, "import_codes") || importBusy}
+          disabled={!selectedOffer || !offerAllows(selectedOffer, "import_codes") || importBusy || importPreview?.status === "committing"}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-extrabold text-brand hover:bg-blue-50 disabled:opacity-40"
         >
           <DashboardIcon name="upload" size={17} /> Excel/CSV uploaden
@@ -1248,6 +1285,7 @@ function MerchantOffersPage() {
         </div>
       </Panel>
 
+      {importPreview && ["committing", "failed"].includes(importPreview.status) && modal !== "paste" && <button type="button" onClick={() => setModal("paste")} className="mt-4 rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm font-bold text-brand">{importPreview.status === "failed" ? "Import mislukt · Details en opnieuw proberen" : "Import wordt verwerkt · Bekijk voortgang"}</button>}
       {modal && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-navy/45 p-4 backdrop-blur-sm"
@@ -1345,8 +1383,13 @@ function MerchantOffersPage() {
                         </ul>
                       )}
                     </div>
+                    <p role="status" className="mt-3 text-sm font-semibold text-navy">
+                      {importPreview.status === "committing" ? "Codes worden verwerkt. Je kunt dit venster sluiten." : importPreview.status === "failed" ? "Import mislukt. Controleer de voorraad en maak een nieuwe preview om opnieuw te proberen." : ""}
+                    </p>
+                    {importPollError && <button type="button" onClick={() => setImportPollRetry((n) => n + 1)} className="mt-3 text-sm font-bold text-brand">Status ophalen mislukt · Opnieuw proberen</button>}
                     <div className="mt-4 flex gap-3">
                       <button
+                        disabled={importPreview.status === "committing"}
                         onClick={() => setImportPreview(null)}
                         className="flex-1 rounded-xl bg-slate-100 py-3 font-extrabold text-navy"
                       >
@@ -1354,7 +1397,7 @@ function MerchantOffersPage() {
                       </button>
                       <button
                         onClick={() => void commitPreview()}
-                        disabled={importBusy || importPreview.totals.valid < 1}
+                        disabled={importBusy || importPreview.status !== "preview" || importPreview.totals.valid < 1}
                         className="flex-1 rounded-xl bg-brand py-3 font-extrabold text-white hover:bg-brand-dark disabled:opacity-50"
                       >
                         Importeer {importPreview.totals.valid}
@@ -1462,6 +1505,26 @@ function MerchantOffersPage() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {([
+                    ["price", "Voucherprijs (€)", "number", "0.01", "0.01"],
+                    ["points", "Puntenprijs", "number", "1", "1"],
+                    ["startsAt", "Start campagne", "datetime-local", undefined, "1"],
+                    ["endsAt", "Einde campagne", "datetime-local", undefined, "1"],
+                    ["allocationLimit", "Totale uitgiftelimiet", "number", "1", "1"],
+                  ] as const).map(([key, label, type, min, step]) => (
+                    <label key={key} className="block text-sm font-bold text-navy">
+                      {label}
+                      <input type={type} min={min} step={step} value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-3 font-normal text-navy" />
+                    </label>
+                  ))}
+                  <label className="block text-sm font-bold text-navy">Codemodel
+                    <select value={form.codeMode} onChange={(e) => setForm((f) => ({ ...f, codeMode: e.target.value }))} className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-3">
+                      <option value="unique">Unieke codes</option><option value="reusable">Herbruikbare code</option>
+                    </select>
+                  </label>
+                </div>
+                <p className="text-xs text-muted">Campagnedatums gebruiken jouw tijdzone ({Intl.DateTimeFormat().resolvedOptions().timeZone}). Een lege limiet is onbeperkt. Punten en eurotegoed hebben afzonderlijke prijzen. De uitgiftelimiet bepaalt geen gebruikslimiet aan je webshopkassa.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1 block text-sm font-bold text-navy">Claimgeldigheid (dagen)</label>
@@ -1535,9 +1598,10 @@ function MerchantOffersPage() {
 }
 
 export default function OffersPage() {
+  const { workspaceId } = useWorkspace();
   return (
     <Suspense fallback={<p className="p-8">Aanbiedingen laden…</p>}>
-      <MerchantOffersPage />
+      <MerchantOffersPage key={workspaceId} />
     </Suspense>
   );
 }

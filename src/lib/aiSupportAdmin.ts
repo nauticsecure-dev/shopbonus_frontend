@@ -63,6 +63,11 @@ export type PlatformSettingsResponse = {
 
 export type OperationsMetrics = {
   from: string;
+  matching_total?: number;
+  outcome_percentages?: Record<string, number>;
+  provider_cost?: number | null;
+  costed_requests?: number;
+  connectivity?: Record<string, string | null>;
   checked_at: string;
   sample_size: number;
   statuses: Record<string, number>;
@@ -108,8 +113,8 @@ export type ReviewDetail = {
 };
 
 export const DEFAULT_SUPPORT_POLICY: SupportAiPolicy = {
-  enabled: true,
-  model: "gpt-5.1",
+  enabled: false,
+  model: null,
   languages: ["nl", "en"],
   daily_request_limit: 100,
   timeout_seconds: 20,
@@ -210,8 +215,8 @@ export async function testSupportPolicy(versionId: string): Promise<{
   return res.data;
 }
 
-export async function fetchAiOperations(): Promise<OperationsMetrics> {
-  const res = await apiRequest<Data<OperationsMetrics>>({ path: "/api/v1/admin/ai/operations" });
+export async function fetchAiOperations(filters: Record<string, string> = {}): Promise<OperationsMetrics> {
+  const res = await apiRequest<Data<OperationsMetrics>>({ path: "/api/v1/admin/ai/operations?" + new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString() });
   return res.data;
 }
 

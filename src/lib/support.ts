@@ -34,6 +34,7 @@ export type SupportMessage = {
   question: string;
   status: SupportMessageStatus;
   result: SupportResult | null;
+  display?: { show_progress_updates: boolean; show_verified_badge: boolean };
   retry_used?: boolean;
   created_at: string;
   completed_at?: string | null;
@@ -61,6 +62,7 @@ export type SupportConversationDetail = {
 };
 
 export type SupportChatStart = {
+  display?: { show_progress_updates: boolean; show_verified_badge: boolean };
   id: string;
   conversation_id: string;
   status: SupportMessageStatus;
@@ -248,6 +250,12 @@ export function resolveSupportActionHref(route: string): string {
   if (route.startsWith("/app/wallet") || route === "/app/wallet") return "/mijn-voordelen";
   if (route.startsWith("/app/vouchers")) return "/mijn-voordelen?tab=vouchers";
   if (route.startsWith("/app/support")) return route;
-  if (route.startsWith("/app/workspaces/")) return "/dashboard";
+  const workspace = route.match(/^\/app\/workspaces\/([0-9a-hjkmnp-tv-z]{26})\/(wallet|offers|banners|integrations)$/i);
+  if (workspace) {
+    const pages: Record<string, string> = { wallet: "/dashboard?section=funding", offers: "/dashboard/offers", banners: "/dashboard/banners", integrations: "/dashboard/app-store" };
+    const path = pages[workspace[2]];
+    return path + (path.includes("?") ? "&" : "?") + "workspace=" + encodeURIComponent(workspace[1]);
+  }
+  if (!route.startsWith("/") || route.startsWith("//") || route.startsWith("/app/workspaces/")) return "/app/support";
   return route;
 }

@@ -11,9 +11,15 @@ import {
   cancelEmailChange,
   changePassword,
   confirmEmailChange,
+  confirmPassword,
+  confirmTwoFactorCode,
   deleteAvatar,
+  disableTwoFactor,
   downloadPrivacyExport,
+  enableTwoFactor,
   fetchConsumerProfile,
+  fetchTwoFactorQrSvg,
+  fetchTwoFactorRecoveryCodes,
   requestAccountDeletion,
   requestEmailChange,
   type ConsumerNotifications,
@@ -71,6 +77,7 @@ export default function ProfielPage() {
   const { pushToast, updateProfile: syncHeaderProfile } = useShopBonus();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [form, setForm] = useState({ firstName: "", phone: "" });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -90,30 +97,55 @@ export default function ProfielPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
 
+  const [show2faModal, setShow2faModal] = useState(false);
+  const [twoFaStep, setTwoFaStep] = useState<"password" | "setup" | "disable">("password");
+  const [twoFaPassword, setTwoFaPassword] = useState("");
+  const [twoFaCode, setTwoFaCode] = useState("");
+  const [twoFaQr, setTwoFaQr] = useState<string | null>(null);
+  const [twoFaRecovery, setTwoFaRecovery] = useState<string[]>([]);
+  const [twoFaBusy, setTwoFaBusy] = useState(false);
+
   const [photoBusy, setPhotoBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const saveLock = useRef(false);
 
   const applyProfile = useCallback(
-    (next: ConsumerProfile) => {
-      setProfile(next);
-      setForm({ firstName: next.first_name, phone: next.phone ?? "" });
+    (next: ConsumerProfile, options?: { syncForm?: boolean; section?: "avatar" | "email" | "security" | "details" }) => {
+      const syncForm = options?.syncForm !== false;
+      const section = options?.section;
+      // Mutation responses are snapshots: merge only what that action changed.
+      // An older avatar/email response must not undo a concurrent details save.
+      const patch = section === "avatar" ? { avatar_url: next.avatar_url }
+        : section === "email" ? { email: next.email, pending_email: next.pending_email, email_verification: next.email_verification, security: next.security }
+        : section === "security" ? { security: next.security }
+        : section === "details" ? { first_name: next.first_name, phone: next.phone, locale: next.locale }
+        : next;
+      setProfile((current) => current ? { ...current, ...patch } : next);
+      if (syncForm) {
+        setForm({ firstName: next.first_name, phone: next.phone ?? "" });
+      }
       syncHeaderProfile({
-        firstName: next.first_name,
-        email: next.email,
-        phone: next.phone ?? "",
-        avatarUrl: next.avatar_url,
-        notifications: {
+        ...(!section || section === "details"
+          ? {
+              firstName: next.first_name,
+              phone: next.phone ?? "",
+            }
+          : {}),
+        ...(!section || section === "email" ? { email: next.email } : {}),
+        ...(!section || section === "avatar" ? { avatarUrl: next.avatar_url } : {}),
+        ...(!section ? { notifications: {
           vouchers: next.notifications.vouchers_discounts,
           reminders: next.notifications.reminders,
           inspiration: next.notifications.offers_inspiration,
-        },
+        } } : {}),
       });
     },
     [syncHeaderProfile]
   );
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const data = await fetchConsumerProfile(locale);
       applyProfile(data);
@@ -122,9 +154,11 @@ export default function ProfielPage() {
         router.replace(`/account?mode=login&next=${encodeURIComponent("/profiel")}`);
         return;
       }
+      const message = formatApiError(err, "Probeer het later opnieuw.");
+      setLoadError(message);
       pushToast({
         title: "Profiel niet geladen",
-        message: formatApiError(err, "Probeer het later opnieuw."),
+        message,
         kind: "error",
       });
     } finally {
@@ -134,12 +168,14 @@ export default function ProfielPage() {
 
   useEffect(() => {
     if (!sessionReady) return;
-    if (!session?.user) {
+    if (!session?.user.id) {
       router.replace(`/account?mode=login&next=${encodeURIComponent("/profiel")}`);
       return;
     }
-    void load();
-  }, [sessionReady, session?.user, load, router]);
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) void load(); });
+    return () => { cancelled = true; };
+  }, [sessionReady, session?.user.id, load, router]);
 
   const save = async () => {
     if (!profile || saveLock.current) return;
@@ -158,12 +194,17 @@ export default function ProfielPage() {
 
     saveLock.current = true;
     setSaving(true);
+    const submitted = { ...form };
     try {
       const next = await updateConsumerProfile(
         { first_name: firstName, phone: phone || null, locale },
         locale
       );
-      applyProfile(next);
+      applyProfile(next, { syncForm: false, section: "details" });
+      setForm((current) => ({
+        firstName: current.firstName === submitted.firstName ? next.first_name : current.firstName,
+        phone: current.phone === submitted.phone ? next.phone ?? "" : current.phone,
+      }));
       setFieldErrors({});
       pushToast({ title: "Wijzigingen opgeslagen", message: "Je profiel is bijgewerkt.", kind: "success" });
       void refreshSession?.();
@@ -193,7 +234,8 @@ export default function ProfielPage() {
     setPhotoBusy(true);
     try {
       const next = await uploadAvatar(file, locale);
-      applyProfile(next);
+      // Keep dirty first-name / phone fields; only refresh avatar + server profile.
+      applyProfile(next, { syncForm: false, section: "avatar" });
       pushToast({ title: "Profielfoto bijgewerkt", message: "Je nieuwe foto is opgeslagen.", kind: "success" });
     } catch (err) {
       pushToast({
@@ -211,7 +253,7 @@ export default function ProfielPage() {
     setPhotoBusy(true);
     try {
       const next = await deleteAvatar(locale);
-      applyProfile(next);
+      applyProfile(next, { syncForm: false, section: "avatar" });
       pushToast({ title: "Profielfoto verwijderd", message: "We tonen weer je initialen.", kind: "success" });
     } catch (err) {
       pushToast({
@@ -229,10 +271,7 @@ export default function ProfielPage() {
     const nextValue = !profile.notifications[key];
     setNotifBusy(key);
     // Optimistic UI
-    setProfile({
-      ...profile,
-      notifications: { ...profile.notifications, [key]: nextValue },
-    });
+    setProfile((current) => current ? { ...current, notifications: { ...current.notifications, [key]: nextValue } } : current);
     try {
       const prefs = await updateNotificationPreferences({ [key]: nextValue }, locale);
       setProfile((p) => (p ? { ...p, notifications: prefs.notifications } : p));
@@ -244,10 +283,7 @@ export default function ProfielPage() {
         },
       });
     } catch (err) {
-      setProfile({
-        ...profile,
-        notifications: { ...profile.notifications, [key]: !nextValue },
-      });
+      setProfile((current) => current ? { ...current, notifications: { ...current.notifications, [key]: !nextValue } } : current);
       pushToast({
         title: "Voorkeur niet opgeslagen",
         message: formatApiError(err, "Probeer het opnieuw."),
@@ -304,7 +340,7 @@ export default function ProfielPage() {
       setEmailStep("confirm");
       setEmailForm((f) => ({ ...f, password: "", code: "" }));
       const refreshed = await fetchConsumerProfile(locale);
-      applyProfile(refreshed);
+      applyProfile(refreshed, { syncForm: false, section: "email" });
       pushToast({
         title: "Bevestigingscode verstuurd",
         message: `We hebben een code gestuurd naar ${pending.pending_email}. Je huidige e-mail blijft actief.`,
@@ -330,7 +366,7 @@ export default function ProfielPage() {
     try {
       await confirmEmailChange(emailForm.code, locale);
       const refreshed = await fetchConsumerProfile(locale);
-      applyProfile(refreshed);
+      applyProfile(refreshed, { syncForm: false, section: "email" });
       setShowEmailModal(false);
       setEmailStep("request");
       setEmailForm({ email: "", password: "", code: "" });
@@ -351,7 +387,7 @@ export default function ProfielPage() {
     try {
       await cancelEmailChange(locale);
       const refreshed = await fetchConsumerProfile(locale);
-      applyProfile(refreshed);
+      applyProfile(refreshed, { syncForm: false, section: "email" });
       setShowEmailModal(false);
       setEmailStep("request");
       pushToast({ title: "Wijziging geannuleerd", message: "Je huidige e-mailadres blijft actief.", kind: "info" });
@@ -422,6 +458,73 @@ export default function ProfielPage() {
     }
   };
 
+  const startTwoFaManage = () => {
+    setTwoFaPassword("");
+    setTwoFaCode("");
+    setTwoFaQr(null);
+    setTwoFaRecovery([]);
+    setTwoFaStep(profile?.security.two_factor === "enabled" ? "disable" : "password");
+    setShow2faModal(true);
+  };
+
+  const submitTwoFaPassword = async () => {
+    if (!twoFaPassword) {
+      pushToast({ title: "Wachtwoord vereist", message: "Bevestig met je huidige wachtwoord.", kind: "error" });
+      return;
+    }
+    setTwoFaBusy(true);
+    try {
+      await confirmPassword(twoFaPassword, locale);
+      setTwoFaPassword("");
+      if (profile?.security.two_factor === "enabled") {
+        await disableTwoFactor(locale);
+        const refreshed = await fetchConsumerProfile(locale);
+        applyProfile(refreshed, { syncForm: false, section: "security" });
+        setShow2faModal(false);
+        void refreshSession?.();
+        pushToast({ title: "2FA uitgeschakeld", message: "Tweestapsverificatie is uitgeschakeld.", kind: "success" });
+      } else {
+        await enableTwoFactor(locale);
+        const svg = await fetchTwoFactorQrSvg(locale);
+        setTwoFaQr(svg);
+        setTwoFaStep("setup");
+      }
+    } catch (err) {
+      pushToast({
+        title: "Beveiliging mislukt",
+        message: formatApiError(err, "Controleer je wachtwoord."),
+        kind: "error",
+      });
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const submitTwoFaConfirm = async () => {
+    if (!/^\d{6}$/.test(twoFaCode)) {
+      pushToast({ title: "Ongeldige code", message: "Voer de 6-cijferige authenticatorcode in.", kind: "error" });
+      return;
+    }
+    setTwoFaBusy(true);
+    try {
+      await confirmTwoFactorCode(twoFaCode, locale);
+      const codes = await fetchTwoFactorRecoveryCodes(locale);
+      setTwoFaRecovery(codes);
+      const refreshed = await fetchConsumerProfile(locale);
+      applyProfile(refreshed, { syncForm: false, section: "security" });
+      void refreshSession?.();
+      pushToast({ title: "2FA actief", message: "Bewaar je herstelcodes op een veilige plek.", kind: "success" });
+    } catch (err) {
+      pushToast({
+        title: "Bevestiging mislukt",
+        message: formatApiError(err, "Controleer de code in je authenticator-app."),
+        kind: "error",
+      });
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
   if (!sessionReady || loading) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -438,7 +541,26 @@ export default function ProfielPage() {
   }
 
   if (!profile) {
-    return null;
+    return (
+      <div className="relative overflow-hidden">
+        <section className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <h1 className="text-[clamp(2.2rem,5vw,3.4rem)] font-black tracking-tight text-navy">Mijn profiel</h1>
+          <div className="mt-8 max-w-xl rounded-[1.75rem] border border-amber-100 bg-white p-7 shadow-[0_10px_36px_-16px_rgba(10,27,63,0.2)]">
+            <h2 className="text-xl font-black text-navy">Profiel tijdelijk niet beschikbaar</h2>
+            <p className="mt-2 text-muted">
+              {loadError || "We konden je gegevens nu niet laden. Je account is ongewijzigd."}
+            </p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="mt-5 rounded-2xl bg-brand px-5 py-3.5 font-extrabold text-white hover:bg-brand-dark"
+            >
+              Opnieuw proberen
+            </button>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   const badge = verificationBadge(profile);
@@ -522,8 +644,9 @@ export default function ProfielPage() {
 
             <div className="mt-7 space-y-5">
               <div>
-                <label className="mb-1.5 block font-bold text-navy">Voornaam</label>
+                <label htmlFor="profile-first-name" className="mb-1.5 block font-bold text-navy">Voornaam</label>
                 <input
+                  id="profile-first-name"
                   value={form.firstName}
                   onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                   className="w-full rounded-2xl border border-blue-100 bg-white px-5 py-3.5 font-medium text-navy focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
@@ -532,9 +655,10 @@ export default function ProfielPage() {
                 {fieldErrors.first_name && <p className="mt-1 text-sm font-semibold text-red-600">{fieldErrors.first_name}</p>}
               </div>
               <div>
-                <label className="mb-1.5 block font-bold text-navy">E-mailadres</label>
+                <label htmlFor="profile-email" className="mb-1.5 block font-bold text-navy">E-mailadres</label>
                 <div className="relative">
                   <input
+                    id="profile-email"
                     value={profile.email}
                     readOnly
                     type="email"
@@ -574,10 +698,11 @@ export default function ProfielPage() {
                 </button>
               </div>
               <div>
-                <label className="mb-1.5 block font-bold text-navy">
+                <label htmlFor="profile-phone" className="mb-1.5 block font-bold text-navy">
                   Telefoonnummer <span className="font-medium text-muted">(optioneel)</span>
                 </label>
                 <input
+                  id="profile-phone"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="Bijv. 06 12345678 of +31 6 12345678"
@@ -673,6 +798,29 @@ export default function ProfielPage() {
                     <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
+                <button
+                  type="button"
+                  onClick={startTwoFaManage}
+                  className="flex w-full items-center gap-4 rounded-2xl border border-blue-50 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                >
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand-light text-brand">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <rect x="6" y="2" width="12" height="20" rx="2.5" stroke="currentColor" strokeWidth="2.2" />
+                      <circle cx="12" cy="17" r="1.2" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <span className="flex-1">
+                    <span className="block font-extrabold text-navy">Tweestapsverificatie</span>
+                    <span className="block text-sm text-muted">
+                      {profile.security.two_factor === "enabled"
+                        ? "Ingeschakeld via Fortify. Beheer of schakel uit."
+                        : "Nog niet actief. Koppel een authenticator-app."}
+                    </span>
+                  </span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-navy">
+                    <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -680,7 +828,9 @@ export default function ProfielPage() {
 
             <div className="rounded-[1.75rem] bg-white p-7 shadow-[0_10px_36px_-16px_rgba(10,27,63,0.2)]">
               <h2 className="text-2xl font-black text-navy">E-mailmeldingen</h2>
-              <p className="mt-1 text-muted">Ontvang alleen de updates die je interessant vindt.</p>
+              <p className="mt-1 text-muted">
+                Toestemming voor optionele communicatie. Leveringskanalen hieronder bepalen óf een event-mail mag worden verstuurd.
+              </p>
               <div className="mt-5 space-y-5">
                 {NOTIF_ROWS.map(({ key, title, desc }) => {
                   const on = profile.notifications[key];
@@ -688,7 +838,9 @@ export default function ProfielPage() {
                     <button
                       key={key}
                       type="button"
-                      disabled={notifBusy === key}
+                      role="switch"
+                      aria-checked={on}
+                      disabled={notifBusy !== null}
                       onClick={() => void toggleNotif(key)}
                       className="flex w-full items-start gap-3.5 text-left disabled:opacity-60"
                     >
@@ -710,11 +862,11 @@ export default function ProfielPage() {
                 })}
               </div>
               <p className="mt-5 text-xs text-muted">
-                Account-, beveiligings- en transactiemails worden altijd verstuurd en hangen niet af van deze voorkeuren.
+                Account-, beveiligings- en transactiemails worden altijd verstuurd. Alleen “Herinneringen” aanzetten is niet genoeg voor vervalmails — ook het kanaal “Voucher verloopt” hieronder moet aan staan.
               </p>
             </div>
 
-            <NotificationPreferencesPanel />
+            <NotificationPreferencesPanel consent={profile.notifications} consentBusy={notifBusy !== null} />
 
             <div className="rounded-[1.75rem] bg-white p-7 shadow-[0_10px_36px_-16px_rgba(10,27,63,0.2)]">
               <h2 className="text-xl font-black text-navy">Voorkeuren & privacy</h2>
@@ -865,6 +1017,89 @@ export default function ProfielPage() {
               <button type="button" disabled={deleteBusy} onClick={() => void onDeleteRequest()} className="flex-1 rounded-2xl bg-red-600 py-3.5 font-extrabold text-white hover:bg-red-700 disabled:opacity-70">
                 {deleteBusy ? "Bezig…" : "Verzoek indienen"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2FA management — Fortify routes */}
+      {show2faModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 p-4 backdrop-blur-sm" onClick={() => !twoFaBusy && setShow2faModal(false)}>
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-black text-navy">Tweestapsverificatie</h3>
+            <p className="mt-1 text-sm text-muted">
+              {twoFaStep === "setup"
+                ? "Scan de QR-code en bevestig met de 6-cijferige code uit je authenticator-app."
+                : twoFaStep === "disable"
+                  ? "Bevestig je wachtwoord om tweestapsverificatie uit te schakelen."
+                  : "Bevestig je wachtwoord om tweestapsverificatie in te schakelen."}
+            </p>
+
+            {(twoFaStep === "password" || twoFaStep === "disable") && (
+              <div className="mt-5">
+                <label className="mb-1 block text-sm font-bold text-navy">Huidig wachtwoord</label>
+                <input
+                  type="password"
+                  value={twoFaPassword}
+                  onChange={(e) => setTwoFaPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="w-full rounded-xl border border-blue-100 px-4 py-3 text-navy focus:border-brand focus:outline-none"
+                />
+              </div>
+            )}
+
+            {twoFaStep === "setup" && (
+              <div className="mt-5 space-y-4">
+                {twoFaQr && (
+                  <div
+                    className="mx-auto flex max-w-[220px] justify-center rounded-2xl border border-blue-50 bg-slate-50 p-3 [&_svg]:h-full [&_svg]:w-full"
+                    dangerouslySetInnerHTML={{ __html: twoFaQr }}
+                  />
+                )}
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-navy">Authenticatorcode</label>
+                  <input
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={twoFaCode}
+                    onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="w-full rounded-xl border border-blue-100 px-4 py-3 text-navy tracking-widest focus:border-brand focus:outline-none"
+                  />
+                </div>
+                {twoFaRecovery.length > 0 && (
+                  <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-950">
+                    <p className="font-extrabold">Herstelcodes (eenmalig bewaren)</p>
+                    <ul className="mt-2 space-y-1 font-mono text-xs">
+                      {twoFaRecovery.map((c) => (
+                        <li key={c}>{c}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                disabled={twoFaBusy}
+                onClick={() => setShow2faModal(false)}
+                className="flex-1 rounded-2xl bg-slate-100 py-3.5 font-extrabold text-navy hover:bg-slate-200"
+              >
+                {twoFaRecovery.length > 0 ? "Sluiten" : "Annuleren"}
+              </button>
+              {twoFaRecovery.length === 0 && (
+                <button
+                  type="button"
+                  disabled={twoFaBusy}
+                  onClick={() => void (twoFaStep === "setup" ? submitTwoFaConfirm() : submitTwoFaPassword())}
+                  className={`flex-1 rounded-2xl py-3.5 font-extrabold text-white disabled:opacity-70 ${
+                    twoFaStep === "disable" ? "bg-red-600 hover:bg-red-700" : "bg-brand hover:bg-brand-dark"
+                  }`}
+                >
+                  {twoFaBusy ? "Bezig…" : twoFaStep === "setup" ? "Bevestigen" : twoFaStep === "disable" ? "Uitschakelen" : "Doorgaan"}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -1,0 +1,260 @@
+{
+  "generated_at": "2026-10-31T13:46:37+00:00",
+  "cache_seconds": 60,
+  "period": {
+    "from": "2026-10-30T23:00:00+00:00",
+    "to": "2026-10-31T22:59:59+00:00"
+  },
+  "kpis": {
+    "webshops": {
+      "total": 1,
+      "active": 1,
+      "pending": 0,
+      "pending_review": 0,
+      "suspended": 0,
+      "rejected": 0
+    },
+    "consumers": {
+      "registered": 1,
+      "new_in_period": 1,
+      "active_in_period": 0
+    },
+    "offers": {
+      "published": 1
+    },
+    "vouchers": {
+      "issued_in_period": 2,
+      "redeemed_in_period": 0,
+      "outstanding": 2,
+      "available_codes": 0
+    },
+    "orders": {
+      "received_in_period": 0,
+      "confirmed_paid_in_period": 0
+    },
+    "answer24": {
+      "requests_in_period": 0,
+      "by_status": []
+    },
+    "affiliate_commissions": {
+      "pending": {
+        "count": 0,
+        "by_currency": []
+      },
+      "approved": {
+        "count": 1,
+        "by_currency": {
+          "EUR": 100
+        }
+      },
+      "rejected": {
+        "count": 0,
+        "by_currency": []
+      },
+      "reversed": {
+        "count": 0,
+        "by_currency": []
+      }
+    },
+    "wallets": [],
+    "disputes": {
+      "open": 0
+    },
+    "incidents": {
+      "application_errors_in_period": 0,
+      "failed_jobs": 0,
+      "failed_webhooks_in_period": 0,
+      "failed_outbox": 0,
+      "open_reconciliation_flags": 0,
+      "paid_unfulfilled_checkouts": 0,
+      "access_denials_in_period": 0
+    }
+  },
+  "cards": [
+    {
+      "key": "active_webshops",
+      "label": "Actieve webshops",
+      "value": 1,
+      "display": "1",
+      "change_percent": null,
+      "comparison_unavailable_reason": "Historical snapshots are unavailable for this current-state total.",
+      "helper": "Goedgekeurde workspaces",
+      "href": "/admin/webshops?status=approved",
+      "tone": "blue",
+      "icon": "store"
+    },
+    {
+      "key": "consumers",
+      "label": "Consumenten",
+      "value": 1,
+      "display": "1",
+      "change_percent": null,
+      "comparison_unavailable_reason": "Historical snapshots are unavailable for this current-state total.",
+      "helper": "Actieve consumentenaccounts",
+      "href": "/admin/users?role=consumer&status=active",
+      "tone": "blue",
+      "icon": "users"
+    },
+    {
+      "key": "active_vouchers",
+      "label": "Actieve vouchers",
+      "value": 2,
+      "display": "2",
+      "change_percent": null,
+      "comparison_unavailable_reason": "Historical snapshots are unavailable for this current-state total.",
+      "helper": "Uitgegeven en nog bruikbaar",
+      "href": "/admin/vouchers?usable=1",
+      "tone": "blue",
+      "icon": "ticket"
+    },
+    {
+      "key": "affiliate_commission",
+      "label": "Affiliatecommissie",
+      "value": 100,
+      "display": "€ 1,00",
+      "change_percent": null,
+      "helper": "Bevestigd · pending € 0,00",
+      "status": "confirmed",
+      "breakdown": {
+        "confirmed_minor": 100,
+        "pending_minor": 0,
+        "rejected_minor": 0,
+        "reversed_minor": 0
+      },
+      "href": "/admin/affiliate?tab=transactions&status=approved&from=2026-10-31&to=2026-10-31",
+      "tone": "blue",
+      "icon": "coins"
+    },
+    {
+      "key": "wallet_liability",
+      "label": "Virtueel wallettegoed",
+      "value": 0,
+      "display": "€ 0,00",
+      "change_percent": null,
+      "comparison_unavailable_reason": "Historical snapshots are unavailable for this current-state total.",
+      "helper": "Beschikbaar € 0,00 · gereserveerd € 0,00 · geen winst",
+      "breakdown": {
+        "available_minor": 0,
+        "reserved_minor": 0,
+        "pending_minor": 0,
+        "outstanding_minor": 0
+      },
+      "href": "/admin/wallets",
+      "tone": "blue",
+      "icon": "wallet"
+    },
+    {
+      "key": "open_actions",
+      "label": "Openstaande acties",
+      "value": 0,
+      "display": "0",
+      "change_percent": null,
+      "comparison_unavailable_reason": "Historical snapshots are unavailable for this current-state total.",
+      "helper": "Goedkeuringen, syncs en support",
+      "href": "/admin#actions",
+      "tone": "blue",
+      "icon": "list"
+    }
+  ],
+  "trends": {
+    "timezone": "Europe/Amsterdam",
+    "days": [
+      {
+        "date": "2026-10-31",
+        "new_webshops": 1,
+        "new_consumers": 1,
+        "paid_orders": 0,
+        "vouchers_issued": 2,
+        "vouchers_redeemed": 0
+      }
+    ]
+  },
+  "affiliate_channels": {
+    "metric": "vouchers",
+    "metric_label": "Uitgegeven vouchers per geverifieerde acquisitiebron; ontbrekend bewijs staat bij Overig / onbekend.",
+    "total": 2,
+    "period": {
+      "from": "2026-10-30T23:00:00+00:00",
+      "to": "2026-10-31T22:59:59+00:00"
+    },
+    "channels": [
+      {
+        "network": "daisycon",
+        "label": "Daisycon",
+        "count": 1,
+        "percent": 50,
+        "href": "/admin/affiliate?tab=vouchers&network=daisycon&from=2026-10-31&to=2026-10-31"
+      },
+      {
+        "network": "other",
+        "label": "Overig / onbekend",
+        "count": 1,
+        "percent": 50,
+        "href": "/admin/affiliate?tab=vouchers&network=other&from=2026-10-31&to=2026-10-31"
+      }
+    ]
+  },
+  "attention": {
+    "pending_approvals": [],
+    "failed_sync_items": [],
+    "integration_failures": [],
+    "failed_jobs": [],
+    "reconciliation_flags": [],
+    "paid_unfulfilled_checkouts": [],
+    "affiliate_problems": 0,
+    "security_denials_24h": [],
+    "recent_admin_actions": [],
+    "open_actions": {
+      "pending_approvals": {
+        "count": 0,
+        "severity": "none",
+        "href": "/admin/webshops?status=pending_review",
+        "title": "webshops wachten op goedkeuring",
+        "detail": "Bekijk en keur nieuwe webshops goed."
+      },
+      "failed_syncs": {
+        "count": 0,
+        "severity": "none",
+        "href": "/admin/integrations?attention=1",
+        "title": "mislukte syncs",
+        "detail": "Controleer mislukte imports of connectorfouten."
+      },
+      "open_support": {
+        "count": 0,
+        "severity": "none",
+        "href": "/admin/support?outcome=open",
+        "title": "supportcases",
+        "detail": "Nieuwe of openstaande supportcases."
+      },
+      "total": 0
+    }
+  },
+  "sources": {
+    "webshops": "ok",
+    "consumers": "ok",
+    "vouchers": "ok",
+    "affiliate": "ok",
+    "wallets": "ok",
+    "support": "ok",
+    "integrations": "ok"
+  },
+  "warnings": [],
+  "definitions": {
+    "webshops.active": "Status approved (commercially active workspaces).",
+    "webshops.pending": "Status draft, awaiting_verification, verification_failed or pending_review; pending_review is waiting for an admin.",
+    "consumers.registered": "Active consumer-intent accounts, including webshop members; active platform staff and configured test_account_public_ids excluded.",
+    "consumers.active_in_period": "Active consumers who signed in during the period.",
+    "offers.published": "Offers with status active.",
+    "vouchers.issued_in_period": "Vouchers whose issued_at is in the period (reserved claims are not issued).",
+    "vouchers.outstanding": "Issued, not expired, with an available/issued code that is not invalidated or mismatched.",
+    "vouchers.available_codes": "Codes in inventory that are not reserved, issued, redeemed or invalid.",
+    "orders.confirmed_paid_in_period": "Orders whose paid_at (provider-confirmed payment) is in the period.",
+    "affiliate_commissions": "Network commissions by our status, summed per currency; pending, approved, rejected and reversed are never added together. Headline card shows confirmed (approved) only.",
+    "affiliate_channels": "Issued vouchers grouped by explicit approved non-duplicate acquisition transaction with matching consumer and webshop; absent or invalid evidence is Other/Unknown.",
+    "wallets": "Consumer wallets per unit: credits issued, debits spent and expiries in the period; outstanding = available + reserved now (liability, not profit); pending (not yet credited) is separate.",
+    "open_actions": "Pending webshop reviews, unresolved support reviews and unique webshop connections with errors/failed webhooks plus affiliate connections in error. Incident occurrences and failed jobs are diagnostic, not additive.",
+    "incidents": "Counts of recorded technical faults and failures; access denials are audited 401/403 responses."
+  },
+  "period_name": "custom",
+  "timezone": "Europe/Amsterdam"
+}

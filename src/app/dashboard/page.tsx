@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import DashboardIcon from "@/components/DashboardIcon";
 import {
@@ -19,6 +19,7 @@ import {
   activityLabel,
   connectionHealthLabel,
   fetchClaimsSeries,
+  fetchPreviousClaimsSeries,
   fetchMerchantDashboard,
   formatChartDayLabel,
   formatMinOrder,
@@ -68,7 +69,6 @@ function quickActionIcon(key: string): DashboardIconName {
 
 function dashboardStatusQuery(filter: string): string | undefined {
   if (filter === "all") return undefined;
-  if (filter === "sold_out") return "active";
   return filter;
 }
 
@@ -81,10 +81,16 @@ const RANGE_OPTIONS: { days: ClaimsRange; label: string }[] = [
 ];
 
 export default function MerchantDashboardPage() {
+  const { workspaceId } = useWorkspace();
+  return <MerchantOverview key={workspaceId} />;
+}
+
+function MerchantOverview() {
   const router = useRouter();
   const { workspaceId, revision, current } = useWorkspace();
   const [dashboard, setDashboard] = useState<MerchantDashboard | null>(null);
   const [claims, setClaims] = useState<ClaimsSeries | null>(null);
+  const [previousClaims, setPreviousClaims] = useState<ClaimsSeries | null>(null);
   const [range, setRange] = useState<ClaimsRange>(30);
   const [loading, setLoading] = useState(true);
   const [claimsLoading, setClaimsLoading] = useState(true);
@@ -93,16 +99,28 @@ export default function MerchantDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "paused" | "draft" | "expired" | "scheduled" | "archived" | "sold_out"
   >("all");
+  const [offerPage, setOfferPage] = useState(1);
+  const [clock, setClock] = useState(() => Date.now());
+  const dashboardRequest = useRef<AbortController | null>(null);
+  const claimsRequest = useRef<AbortController | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingData | null>(null);
 
-  const loadDashboard = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
+  const loadDashboard = useCallback(async (signal?: AbortSignal, background = false) => {
+    dashboardRequest.current?.abort();
+    const request = new AbortController();
+    dashboardRequest.current = request;
+    signal?.addEventListener("abort", () => request.abort(), { once: true });
+    signal = request.signal;
+    if (!background) setLoading(true);
     setError(null);
     try {
       const data = await fetchMerchantDashboard(workspaceId, signal, {
-        status: dashboardStatusQuery(statusFilter),
+        status: dashboardStatusQuery(statusFilter), page: offerPage, per_page: 10,
       });
-      if (!signal?.aborted) setDashboard(data);
+      if (!signal?.aborted) {
+        setDashboard(data);
+        if (offerPage > data.offers_meta.last_page) setOfferPage(data.offers_meta.last_page);
+      }
     } catch (err) {
       if (signal?.aborted) return;
       const message =
@@ -114,18 +132,25 @@ export default function MerchantDashboardPage() {
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [workspaceId, statusFilter]);
+  }, [workspaceId, statusFilter, offerPage]);
 
-  const loadClaims = useCallback(async (signal?: AbortSignal) => {
-    setClaimsLoading(true);
+  const loadClaims = useCallback(async (signal?: AbortSignal, background = false) => {
+    claimsRequest.current?.abort();
+    const request = new AbortController();
+    claimsRequest.current = request;
+    signal?.addEventListener("abort", () => request.abort(), { once: true });
+    signal = request.signal;
+    if (!background) setClaimsLoading(true);
     setClaimsError(null);
     try {
       const data = await fetchClaimsSeries(workspaceId, range, signal);
-      if (!signal?.aborted) setClaims(data);
+      const previous = await fetchPreviousClaimsSeries(workspaceId, data, signal);
+      if (!signal?.aborted) { setClaims(data); setPreviousClaims(previous); }
     } catch (err) {
       if (signal?.aborted) return;
       setClaimsError(err instanceof ApiError ? err.message : "Claimsgrafiek kon niet worden geladen.");
       setClaims(null);
+      setPreviousClaims(null);
     } finally {
       if (!signal?.aborted) setClaimsLoading(false);
     }
@@ -133,13 +158,13 @@ export default function MerchantDashboardPage() {
 
   useEffect(() => {
     const ac = new AbortController();
-    void loadDashboard(ac.signal);
+    queueMicrotask(() => { if (!ac.signal.aborted) void loadDashboard(ac.signal); });
     return () => ac.abort();
   }, [loadDashboard, revision]);
 
   useEffect(() => {
     const ac = new AbortController();
-    void loadClaims(ac.signal);
+    queueMicrotask(() => { if (!ac.signal.aborted) void loadClaims(ac.signal); });
     return () => ac.abort();
   }, [loadClaims, revision]);
 
@@ -155,15 +180,26 @@ export default function MerchantDashboardPage() {
     return () => ac.abort();
   }, [workspaceId, revision]);
 
-  const offers = useMemo(() => {
-    const rows = dashboard?.offers ?? [];
-    if (statusFilter === "all") return rows;
-    return rows.filter((offer) => {
-      const life = offerLifecycle(offer);
-      if (statusFilter === "expired") return life === "expired" || life === "ended" || offer.status === "expired" || offer.status === "ended";
-      return life === statusFilter;
-    });
-  }, [dashboard?.offers, statusFilter]);
+  useEffect(() => {
+    const refresh = () => {
+      setClock(Date.now());
+      if (document.visibilityState !== "visible") return;
+      void loadDashboard(undefined, true);
+      void loadClaims(undefined, true);
+    };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadDashboard, loadClaims, revision]);
+
+  useEffect(() => () => { dashboardRequest.current?.abort(); claimsRequest.current?.abort(); }, []);
+
+  const offers = dashboard?.offers ?? [];
 
   const chartValues = claims?.days.map((d) => d.claims) ?? [];
   const chartLabels = claims?.days.map((d) => formatChartDayLabel(d.date)) ?? [];
@@ -218,6 +254,12 @@ export default function MerchantDashboardPage() {
         }
       />
 
+      {dashboard && (
+        <p className="mb-4 text-xs text-muted" role="status">
+          Bijgewerkt: {formatRelativeNl(dashboard.generated_at)} · Automatisch elke 30 seconden
+          {clock - Date.parse(dashboard.generated_at) > 90_000 && " · Gegevens zijn verouderd"}
+        </p>
+      )}
       {error && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
           <p className="font-semibold">{error}</p>
@@ -266,49 +308,11 @@ export default function MerchantDashboardPage() {
         </div>
       )}
 
-      {!loading && dashboard && !dashboard.empty && availableActions.length > 0 && (
-        <div className="mb-5 flex flex-wrap gap-2">
-          {availableActions.map((action) => (
-            <Link
-              key={action.key}
-              href={quickActionHref(action.key)}
-              className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-extrabold text-brand shadow-sm hover:border-brand/40 hover:bg-blue-50"
-            >
-              <DashboardIcon name={quickActionIcon(action.key)} size={16} />
-              {quickActionLabel(action.key)}
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {!loading && dashboard?.connection_health && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-white px-4 py-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusPill status={connectionHealthLabel(dashboard.connection_health.status)} />
-            {dashboard.connection_health.total > 0 && (
-              <p className="text-sm font-semibold text-muted">
-                {dashboard.connection_health.connected} van {dashboard.connection_health.total} gekoppeld
-                {dashboard.connection_health.attention > 0
-                  ? ` · ${dashboard.connection_health.attention} met aandacht`
-                  : ""}
-              </p>
-            )}
-            {dashboard.connection_health.last_error_at && (
-              <p className="text-xs font-semibold text-muted">
-                Laatste fout {formatRelativeNl(dashboard.connection_health.last_error_at)}
-              </p>
-            )}
-          </div>
-          <Link href="/dashboard/app-store" className="text-sm font-extrabold text-brand hover:underline">
-            App Store
-          </Link>
-        </div>
-      )}
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardStatCard
           label="Actieve aanbiedingen"
-          value={formatCount(dashboard?.kpis.active_offers ?? 0)}
+          value={dashboard ? formatCount(dashboard.kpis.active_offers) : "Niet beschikbaar"}
           helper="Momenteel actief"
           icon="tag"
           loading={loading}
@@ -316,7 +320,7 @@ export default function MerchantDashboardPage() {
         />
         <DashboardStatCard
           label="Beschikbare codes"
-          value={formatCount(dashboard?.kpis.available_codes ?? 0)}
+          value={dashboard ? formatCount(dashboard.kpis.available_codes) : "Niet beschikbaar"}
           helper="Nog uit te geven"
           icon="ticket"
           loading={loading}
@@ -324,7 +328,7 @@ export default function MerchantDashboardPage() {
         />
         <DashboardStatCard
           label="Uitgegeven vouchers"
-          value={formatCount(dashboard?.kpis.issued_vouchers ?? 0)}
+          value={dashboard ? formatCount(dashboard.kpis.issued_vouchers) : "Niet beschikbaar"}
           helper="Totaal uitgegeven"
           icon="users"
           loading={loading}
@@ -332,52 +336,23 @@ export default function MerchantDashboardPage() {
         />
         <DashboardStatCard
           label="Geclaimde vouchers"
-          value={formatCount(dashboard?.kpis.claimed_vouchers ?? 0)}
+          value={dashboard ? formatCount(dashboard.kpis.claimed_vouchers) : "Niet beschikbaar"}
           helper="Door klanten geclaimd"
           icon="check"
           tone="green"
           loading={loading}
-          href="/dashboard/offers?focus=claims"
-        />
-        <DashboardStatCard
-          label="Ingewisselde vouchers"
-          value={formatCount(dashboard?.kpis.redeemed_vouchers ?? 0)}
-          helper="Geverifieerd ingewisseld"
-          icon="check"
-          tone="green"
-          loading={loading}
-          href="/dashboard/vouchers?status=redeemed"
-        />
-        <DashboardStatCard
-          label="Geplande aanbiedingen"
-          value={formatCount(dashboard?.kpis.scheduled_offers ?? 0)}
-          helper="Nog niet geopend"
-          icon="clock"
-          loading={loading}
-          href="/dashboard/offers?status=scheduled"
-        />
-        <DashboardStatCard
-          label="Gepauzeerde aanbiedingen"
-          value={formatCount(dashboard?.kpis.paused_offers ?? 0)}
-          helper="Tijdelijk stopgezet"
-          icon="pause"
-          tone="amber"
-          loading={loading}
-          href="/dashboard/offers?status=paused"
-        />
-        <DashboardStatCard
-          label="Openstaande geschillen"
-          value={formatCount(dashboard?.kpis.open_disputes ?? 0)}
-          helper="Nog niet afgehandeld"
-          icon="alert"
-          tone="amber"
-          loading={loading}
-          href="/dashboard/vouchers?tab=disputes"
+          href="/dashboard/vouchers?claimed=1"
         />
       </section>
 
-      <div className="mt-5 grid items-start gap-5 2xl:grid-cols-12">
-        <Panel className="2xl:col-span-7">
+      {dashboard && <section aria-label="Voorraad en verval" className="mt-4 grid gap-3 sm:grid-cols-3">
+        <Link href="/dashboard/offers?inventory=reserved" className="rounded-2xl border border-blue-100 bg-white p-4 text-sm font-bold text-navy">Gereserveerde codes <strong className="ml-2 text-brand">{formatCount(dashboard.kpis.reserved_codes)}</strong></Link>
+        <Link href="/dashboard/vouchers?status=expired" className="rounded-2xl border border-blue-100 bg-white p-4 text-sm font-bold text-navy">Verlopen vouchers <strong className="ml-2 text-brand">{formatCount(dashboard.kpis.expired_vouchers)}</strong></Link>
+        <Link href="/dashboard/offers?status=expired" className="rounded-2xl border border-blue-100 bg-white p-4 text-sm font-bold text-navy">Verlopen aanbiedingen <strong className="ml-2 text-brand">{formatCount(dashboard.kpis.expired_offers)}</strong></Link>
+      </section>}
+
+      <div className="mt-5 grid items-start gap-5 xl:grid-cols-12">
+        <Panel className="xl:col-span-7">
           <PanelHeading
             title="Jouw aanbiedingen"
             description="Overzicht van al je kortingsacties via ShopBonus."
@@ -385,7 +360,7 @@ export default function MerchantDashboardPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                  onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setOfferPage(1); }}
                   className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-navy outline-none focus:border-brand"
                   aria-label="Filter aanbiedingen"
                 >
@@ -424,7 +399,10 @@ export default function MerchantDashboardPage() {
           {!loading && offers.length > 0 && (
             <>
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[620px] table-fixed border-collapse text-left text-xs [&_th]:px-2 [&_td]:px-2">
+                  <colgroup>
+                    {[24, 14, 14, 10, 12, 13, 13].map((width, i) => <col key={i} style={{ width: `${width}%` }} />)}
+                  </colgroup>
                   <thead>
                     <tr className="bg-blue-50/70 text-xs font-extrabold text-muted">
                       <th className="rounded-l-xl px-3 py-3">Aanbieding</th>
@@ -444,16 +422,16 @@ export default function MerchantDashboardPage() {
                             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand text-white">
                               <DashboardIcon name="ticket" size={20} />
                             </span>
-                            <div>
-                              <p className="font-extrabold text-navy">{offer.name ?? offer.summary ?? "Aanbieding"}</p>
-                              <p className="text-xs text-muted">
+                            <div className="min-w-0">
+                              <p className="truncate font-extrabold text-navy" title={offer.name ?? undefined}>{offer.name ?? offer.summary ?? "Aanbieding"}</p>
+                              <p className="truncate text-xs text-muted" title={offer.summary ?? undefined}>
                                 {offer.summary ?? `Vanaf ${formatMinOrder(offer.min_order_minor)}`}
                               </p>
                             </div>
                           </div>
                         </td>
                         <td className="px-3 py-4">
-                          <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand">
+                          <span className="rounded-full bg-blue-50 px-2 py-1.5 text-[10px] font-bold text-brand">
                             {offerTypeLabel(offer.type)}
                           </span>
                         </td>
@@ -515,9 +493,16 @@ export default function MerchantDashboardPage() {
               </div>
             </>
           )}
+          {!loading && dashboard && dashboard.offers_meta.last_page > 1 && (
+            <nav aria-label="Paginering aanbiedingen" className="mt-4 flex items-center justify-between gap-3 text-sm">
+              <button type="button" disabled={offerPage <= 1} onClick={() => setOfferPage((p) => p - 1)} className="rounded-xl border px-3 py-2 disabled:opacity-40">Vorige</button>
+              <span>Pagina {dashboard.offers_meta.current_page} van {dashboard.offers_meta.last_page} · {dashboard.offers_meta.total} aanbiedingen</span>
+              <button type="button" disabled={offerPage >= dashboard.offers_meta.last_page} onClick={() => setOfferPage((p) => p + 1)} className="rounded-xl border px-3 py-2 disabled:opacity-40">Volgende</button>
+            </nav>
+          )}
         </Panel>
 
-        <div className="space-y-5 2xl:col-span-5">
+        <div className="space-y-5 xl:col-span-5">
           <Panel>
             <PanelHeading
               title="Meldingen"
@@ -528,7 +513,8 @@ export default function MerchantDashboardPage() {
               }
             />
             {loading && <p className="py-6 text-center text-sm text-muted">Meldingen laden…</p>}
-            {!loading && (dashboard?.notifications.latest.length ?? 0) === 0 && (
+            {!loading && !dashboard && <p role="status">Meldingen niet beschikbaar.</p>}
+            {!loading && dashboard && dashboard.notifications.latest.length === 0 && (
               <p className="py-6 text-center text-sm font-semibold text-muted">Geen open meldingen.</p>
             )}
             <div className="space-y-2.5">
@@ -571,7 +557,7 @@ export default function MerchantDashboardPage() {
 
           <Panel>
             <PanelHeading
-              title="Claims afgelopen 30 dagen"
+              title={`Claims afgelopen ${range} dagen`}
               action={
                 <select
                   value={range}
@@ -604,6 +590,12 @@ export default function MerchantDashboardPage() {
                     {maxClaims} piek · {formatCount(claims.totals.claims)} totaal
                   </strong>
                 </div>
+                {previousClaims && <div className="mb-4 rounded-xl bg-blue-50 p-3 text-xs text-navy">
+                  <p className="font-bold">Vergelijking {claims.from}–{claims.to} met {previousClaims.from}–{previousClaims.to} ({claims.timezone})</p>
+                  <table className="mt-2 w-full text-left"><thead><tr><th>Gebeurtenis</th><th>Huidig</th><th>Vorig</th><th>Verschil</th></tr></thead>
+                    <tbody>{([ ["claims", "Claims"], ["issued", "Uitgegeven"], ["redeemed", "Ingewisseld"] ] as const).map(([key, label]) => <tr key={key}><td>{label}</td><td>{claims.totals[key]}</td><td>{previousClaims.totals[key]}</td><td>{claims.totals[key] - previousClaims.totals[key]}</td></tr>)}</tbody>
+                  </table>
+                </div>}
                 <DashboardLineChart
                   values={chartValues}
                   id="merchant-claims"
@@ -612,7 +604,7 @@ export default function MerchantDashboardPage() {
                   height={225}
                   onPointClick={(_i, date) => {
                     if (!date) return;
-                    router.push(`/dashboard/offers?focus=claims&from=${encodeURIComponent(date)}&to=${encodeURIComponent(date)}`);
+                    router.push(`/dashboard/vouchers?claimed=1&from=${encodeURIComponent(date)}&to=${encodeURIComponent(date)}`);
                   }}
                 />
               </>
@@ -621,46 +613,92 @@ export default function MerchantDashboardPage() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-3">
-        <Panel className="lg:col-span-2">
-          <PanelHeading
-            title="Recente activiteit"
-            description="Laatste gebeurtenissen in deze webshop."
-          />
-          {loading && <p className="py-6 text-center text-sm text-muted">Activiteit laden…</p>}
-          {!loading && (dashboard?.recent_activity?.length ?? 0) === 0 && (
-            <p className="py-6 text-center text-sm font-semibold text-muted">Nog geen activiteit.</p>
-          )}
-          <ul className="space-y-2">
-            {(dashboard?.recent_activity ?? []).slice(0, 6).map((item, index) => (
-              <li
-                key={`${item.action}-${item.at}-${index}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-blue-50 px-3 py-2.5"
+      <details className="mt-5">
+        <summary className="cursor-pointer text-sm font-bold text-brand">Operationeel overzicht en extra statistieken</summary>
+        {dashboard && <p className="my-3 text-sm text-muted">Gereserveerde codes: {formatCount(dashboard.kpis.reserved_codes)} · Verlopen vouchers: {formatCount(dashboard.kpis.expired_vouchers)} · Verlopen aanbiedingen: {formatCount(dashboard.kpis.expired_offers)} · Ingewisseld: {formatCount(dashboard.kpis.redeemed_vouchers)} · Gepland: {formatCount(dashboard.kpis.scheduled_offers)} · Gepauzeerd: {formatCount(dashboard.kpis.paused_offers)} · Open geschillen: {formatCount(dashboard.kpis.open_disputes)}</p>}
+        {!loading && dashboard && !dashboard.empty && availableActions.length > 0 && (
+          <div className="mb-5 flex flex-wrap gap-2">
+            {availableActions.map((action) => (
+              <Link
+                key={action.key}
+                href={quickActionHref(action.key)}
+                className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-extrabold text-brand shadow-sm hover:border-brand/40 hover:bg-blue-50"
               >
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-extrabold text-navy">{activityLabel(item.action)}</span>
-                  {item.resource_type && <span className="text-xs text-muted">{item.resource_type}</span>}
-                </span>
-                <span className="shrink-0 text-xs font-semibold text-muted">{formatRelativeNl(item.at)}</span>
-              </li>
+                <DashboardIcon name={quickActionIcon(action.key)} size={16} />
+                {quickActionLabel(action.key)}
+              </Link>
             ))}
-          </ul>
-        </Panel>
-        <Panel className="flex flex-col justify-between bg-gradient-to-br from-blue-50 to-white">
-          <div>
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand shadow-sm">
-              <DashboardIcon name="gift" size={23} />
-            </span>
-            <h3 className="mt-4 text-lg font-black text-navy">Meer bereik, meer klanten</h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted">
-              Geef je aanbiedingen een boost en bereik shoppers die klaar zijn om te kopen.
-            </p>
           </div>
-          <Link href="/dashboard/analytics" className="mt-4 inline-flex items-center gap-2 font-extrabold text-brand hover:underline">
-            Bekijk je analyse <DashboardIcon name="arrow" size={16} />
-          </Link>
-        </Panel>
-      </div>
+        )}
+
+        {!loading && dashboard?.connection_health && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-white px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <StatusPill status={connectionHealthLabel(dashboard.connection_health.status)} />
+              {dashboard.connection_health.total > 0 && (
+                <p className="text-sm font-semibold text-muted">
+                  {dashboard.connection_health.connected} van {dashboard.connection_health.total} gekoppeld
+                  {dashboard.connection_health.attention > 0
+                    ? ` · ${dashboard.connection_health.attention} met aandacht`
+                    : ""}
+                </p>
+              )}
+              {dashboard.connection_health.last_error_at && (
+                <p className="text-xs font-semibold text-muted">
+                  Laatste fout {formatRelativeNl(dashboard.connection_health.last_error_at)}
+                </p>
+              )}
+            </div>
+            <Link href="/dashboard/app-store" className="text-sm font-extrabold text-brand hover:underline">
+              App Store
+            </Link>
+          </div>
+        )}
+
+      </details>
+      <details className="mt-5">
+        <summary className="cursor-pointer text-sm font-bold text-brand">Recente activiteit en analyse</summary>
+        <div className="mt-5 grid gap-5 lg:grid-cols-3">
+          <Panel className="lg:col-span-2">
+            <PanelHeading
+              title="Recente activiteit"
+              description="Laatste gebeurtenissen in deze webshop."
+            />
+            {loading && <p className="py-6 text-center text-sm text-muted">Activiteit laden…</p>}
+            {!loading && dashboard && dashboard.recent_activity.length === 0 && (
+              <p className="py-6 text-center text-sm font-semibold text-muted">Nog geen activiteit.</p>
+            )}
+            <ul className="space-y-2">
+              {(dashboard?.recent_activity ?? []).slice(0, 6).map((item, index) => (
+                <li
+                  key={`${item.action}-${item.at}-${index}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-blue-50 px-3 py-2.5"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-extrabold text-navy">{activityLabel(item.action)}</span>
+                    {item.resource_type && <span className="text-xs text-muted">{item.resource_type}</span>}
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold text-muted">{formatRelativeNl(item.at)}</span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+          <Panel className="flex flex-col justify-between bg-gradient-to-br from-blue-50 to-white">
+            <div>
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand shadow-sm">
+                <DashboardIcon name="gift" size={23} />
+              </span>
+              <h3 className="mt-4 text-lg font-black text-navy">Meer bereik, meer klanten</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted">
+                Geef je aanbiedingen een boost en bereik shoppers die klaar zijn om te kopen.
+              </p>
+            </div>
+            <Link href="/dashboard/analytics" className="mt-4 inline-flex items-center gap-2 font-extrabold text-brand hover:underline">
+              Bekijk je analyse <DashboardIcon name="arrow" size={16} />
+            </Link>
+          </Panel>
+        </div>
+      </details>
     </DashboardShell>
   );
 }

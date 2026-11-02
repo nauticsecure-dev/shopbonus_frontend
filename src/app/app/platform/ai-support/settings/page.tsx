@@ -20,14 +20,14 @@ import {
   type SupportAiPolicy,
 } from "@/lib/aiSupportAdmin";
 
-type Tab = "general" | "restrictions" | "knowledge" | "quality" | "operations";
+type Tab = "general" | "provider" | "restrictions" | "quality" | "operations";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "general", label: "General" },
-  { id: "restrictions", label: "Restrictions" },
-  { id: "knowledge", label: "Knowledge" },
+  { id: "general", label: "Behavior" },
+  { id: "restrictions", label: "Rules" },
+  { id: "provider", label: "OpenAI" },
   { id: "quality", label: "Quality" },
-  { id: "operations", label: "Operations" },
+  { id: "operations", label: "Monitoring" },
 ];
 
 function asPolicy(value: unknown): SupportAiPolicy {
@@ -42,6 +42,7 @@ export default function AiSupportSettingsPage() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [reason, setReason] = useState("Update AI support customer experience policy");
   const [ops, setOps] = useState<OperationsMetrics | null>(null);
+  const [filters, setFilters] = useState<Record<string, string>>({});
   const [reviews, setReviews] = useState<ReviewListItem[]>([]);
   const [testReport, setTestReport] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,7 +72,8 @@ export default function AiSupportSettingsPage() {
   }, []);
 
   useEffect(() => {
-    void load().catch((err) => setError(err instanceof ApiError ? err.message : "Laden mislukt."));
+    const timer = window.setTimeout(() => { void load().catch((err) => setError(err instanceof ApiError ? err.message : "Laden mislukt.")); }, 0);
+    return () => window.clearTimeout(timer);
   }, [load]);
 
   const setField = <K extends keyof SupportAiPolicy>(key: K, value: SupportAiPolicy[K]) => {
@@ -83,7 +85,7 @@ export default function AiSupportSettingsPage() {
     setError(null);
     setNotice(null);
     try {
-      const created = await createSupportPolicyDraft(policy, reason);
+      const created = await createSupportPolicyDraft({ ...policy, ...Object.fromEntries(["default_language","tone","empathy","answer_detail","target_answer_words","max_answer_words","max_clarification_questions","human_escalation","reasoning_effort","text_verbosity","tool_choice","parallel_tool_calls","store","stream","response_deadline_ms","progress_message_delay_ms","max_function_rounds","daily_cost_limit_eur","fallback_model"].map((key) => [key, DEFAULT_SUPPORT_POLICY[key as keyof SupportAiPolicy]])) }, reason);
       setDraftId(created.id);
       setNotice(`Draft opgeslagen (${created.id}).`);
       await load();
@@ -152,6 +154,18 @@ export default function AiSupportSettingsPage() {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (tab !== "operations") return;
+    let cancelled = false;
+    const refresh = async () => {
+      try { const data = await fetchAiOperations(filters); if (!cancelled) setOps(data); }
+      catch (err) { if (!cancelled) { setOps(null); setError(err instanceof ApiError ? err.message : "Monitoring unavailable."); } }
+    };
+    void refresh();
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 15000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [tab, filters]);
 
   const verifiedPct = useMemo(() => {
     if (!ops?.statuses) return null;
@@ -232,6 +246,9 @@ export default function AiSupportSettingsPage() {
             <section>
               <h3 className="mb-4 text-sm font-extrabold uppercase tracking-wide text-navy/80">Behavior</h3>
               <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-bold">Languages
+                  <select multiple aria-label="Languages" value={policy.languages} onChange={(event) => setField("languages", Array.from(event.target.selectedOptions, (option) => option.value))} className="block rounded-xl border p-2"><option value="en">English</option><option value="nl">Nederlands</option></select>
+                </label>
                 <Toggle label="Chat enabled" checked={policy.enabled} onChange={(v) => setField("enabled", v)} />
                 <Select
                   label="Default language"
@@ -272,6 +289,10 @@ export default function AiSupportSettingsPage() {
                 />
               </div>
             </section>
+          </div>
+        )}
+        {tab === "provider" && (
+          <div>
             <section>
               <h3 className="mb-4 text-sm font-extrabold uppercase tracking-wide text-navy/80">OpenAI</h3>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -306,7 +327,7 @@ export default function AiSupportSettingsPage() {
                 <NumberField label="timeout_seconds" value={policy.timeout_seconds} onChange={(v) => setField("timeout_seconds", v)} />
                 <NumberField label="daily_request_limit" value={policy.daily_request_limit} onChange={(v) => setField("daily_request_limit", v)} />
                 <p className="sm:col-span-2 text-xs text-muted">
-                  Temperature/top-p zijn verborgen: niet ondersteund voor de geselecteerde Responses-flow. Secrets worden nooit in de UI getoond.
+                  Model-specific reasoning and verbosity controls are disabled until capabilities are verified. Answers use server templates. Deadlines, cost ceilings, fallback models and prose controls are unsupported and locked; request timeout and request quota are enforced.
                 </p>
               </div>
             </section>
@@ -381,7 +402,7 @@ export default function AiSupportSettingsPage() {
           </div>
         )}
 
-        {tab === "knowledge" && (
+        {tab === "quality" && (
           <div className="space-y-4">
             <p className="text-sm text-muted">
               FAQ-kennis voor AI-antwoorden wordt beheerd in Content Studio. Gepubliceerde FAQ-items worden gebruikt naast geverifieerde accountdata.
@@ -427,11 +448,16 @@ export default function AiSupportSettingsPage() {
 
         {tab === "operations" && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-3">
+              {["from", "to", "model"].map((key) => <label key={key}>{key}<input aria-label={key} type={key === "model" ? "text" : "datetime-local"} value={filters[key] || ""} onChange={(e) => setFilters((f) => ({ ...f, [key]: e.target.value }))} className="block rounded border p-2" /></label>)}
+              {Object.entries({ scope: ["consumer", "workspace"], locale: ["en", "nl"], status: ["VERIFIED", "PARTIALLY_VERIFIED", "NEEDS_CLARIFICATION", "ESCALATED", "UNAVAILABLE", "PENDING", "RESEARCHING", "VERIFYING", "RETRYING"], retry_used: ["0", "1"], outcome: ["CONFIRMED_ERROR", "ANSWER_CORRECT", "NEEDS_INVESTIGATION"] }).map(([key, values]) => <label key={key}>{key}<select aria-label={key} className="block rounded border p-2" value={filters[key] || ""} onChange={(e) => setFilters((f) => ({ ...f, [key]: e.target.value }))}><option value="">All</option>{values.map((v) => <option key={v}>{v}</option>)}</select></label>)}
+            </div>
             {!ops && <p className="text-sm text-muted">Geen operations-data.</p>}
             {ops && (
               <>
-                <Metric label="Sample conversations (24u)" value={String(ops.sample_size)} />
+                <Metric label="Sample requests" value={String(ops.sample_size)} />
                 <Metric label="Verified %" value={verifiedPct === null ? "—" : `${verifiedPct}%`} />
+                {Object.entries(ops.outcome_percentages ?? {}).map(([status, percentage]) => <Metric key={status} label={status + " (%)"} value={String(percentage) + "%"} />)}
                 <Metric label="Retries" value={String(ops.retrieval_retries)} />
                 <Metric label="Escalations / open reviews" value={String(ops.open_reviews)} />
                 <Metric label="P95 latency (ms)" value={ops.latency_p95_ms === null ? "—" : String(ops.latency_p95_ms)} />
@@ -439,13 +465,16 @@ export default function AiSupportSettingsPage() {
                 <Metric label="Output tokens" value={String(ops.output_tokens)} />
                 <Metric label="Daily requests" value={String(ops.daily_requests)} />
                 <Metric label="Broadcaster" value={ops.broadcaster} />
-                <Metric label="Last broadcast" value={ops.last_successful_broadcast_at || "—"} />
+                <Metric label="Last broadcast dispatch attempt" value={ops.last_successful_broadcast_at || "—"} />
                 <Metric label="Broadcast failures 24u" value={String(ops.broadcast_failures_last_24h)} />
                 <Metric label="Circuit open" value={ops.circuit_open ? "yes" : "no"} />
+                <Metric label="Matching requests / sample" value={String(ops.matching_total ?? ops.sample_size) + " / " + ops.sample_size} />
+                <Metric label="Estimated provider cost (EUR)" value={ops.provider_cost == null ? "Unavailable" : String(ops.provider_cost)} />
+                <Metric label="Requests with priced usage" value={String(ops.costed_requests ?? 0) + " / " + ops.sample_size} />
                 <Metric label="Policy version" value={ops.policy_version} />
                 <p className="sm:col-span-2 lg:col-span-3 text-xs text-muted">{ops.cost_notice}</p>
                 <pre className="sm:col-span-2 lg:col-span-3 overflow-auto rounded-xl bg-slate-50 p-3 text-xs">
-                  {JSON.stringify({ statuses: ops.statuses, failures: ops.failures }, null, 2)}
+                  {JSON.stringify({ outcome_percentages: ops.outcome_percentages, statuses: ops.statuses, failures: ops.failures, connectivity: ops.connectivity }, null, 2)}
                 </pre>
               </>
             )}
@@ -456,11 +485,13 @@ export default function AiSupportSettingsPage() {
   );
 }
 
+const SUPPORTED_CONTROLS = new Set(["Chat enabled","Max automatic research retries","Show progress updates","Show verified badge","Suggest relevant actions","Model","max_output_tokens","timeout_seconds","daily_request_limit","rule_code","action","scope","enabled"]);
+
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center justify-between gap-3 rounded-xl border border-blue-50 px-3 py-2 text-sm font-bold text-navy">
-      {label}
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      {label}{!SUPPORTED_CONTROLS.has(label) && " (unsupported — locked)"}
+      <input disabled={!SUPPORTED_CONTROLS.has(label)} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
     </label>
   );
 }
@@ -479,7 +510,7 @@ function Select({
   return (
     <label className="block text-sm font-bold text-navy">
       {label}
-      <select className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2 text-sm font-medium" value={value} onChange={(e) => onChange(e.target.value)}>
+      <select disabled={!SUPPORTED_CONTROLS.has(label)} className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2 text-sm font-medium" value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o} value={o}>
             {o}
@@ -495,6 +526,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
     <label className="block text-sm font-bold text-navy">
       {label}
       <input
+        disabled={!SUPPORTED_CONTROLS.has(label)}
         type="number"
         className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2 text-sm font-medium"
         value={value}
@@ -508,7 +540,7 @@ function TextField({ label, value, onChange }: { label: string; value: string; o
   return (
     <label className="block text-sm font-bold text-navy">
       {label}
-      <input className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2 text-sm font-medium" value={value} onChange={(e) => onChange(e.target.value)} />
+      <input disabled={!SUPPORTED_CONTROLS.has(label)} className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2 text-sm font-medium" value={value} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
 }

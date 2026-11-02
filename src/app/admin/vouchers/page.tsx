@@ -11,6 +11,10 @@ function VouchersList() {
   const status = params.get("status") || undefined;
   const issuedOn = params.get("issued_on") || undefined;
   const id = params.get("id") || undefined;
+  const usable = params.get("usable") || undefined;
+  const from = params.get("from") || undefined;
+  const to = params.get("to") || undefined;
+  const acquisitionNetwork = params.get("acquisition_network") || undefined;
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +22,10 @@ function VouchersList() {
 
   useEffect(() => {
     const ac = new AbortController();
+    const timer = window.setTimeout(() => {
     setLoading(true);
-    void fetchAdminVouchers({ status, issued_on: issuedOn, id, signal: ac.signal })
+    setError(null);
+    void fetchAdminVouchers({ status, issued_on: issuedOn, id, usable, from, to, acquisition_network: acquisitionNetwork, signal: ac.signal })
       .then((res) => {
         if (ac.signal.aborted) return;
         setRows(res.data);
@@ -31,8 +37,9 @@ function VouchersList() {
       .finally(() => {
         if (!ac.signal.aborted) setLoading(false);
       });
-    return () => ac.abort();
-  }, [status, issuedOn, id]);
+    }, 0);
+    return () => { window.clearTimeout(timer); ac.abort(); };
+  }, [status, issuedOn, id, usable, from, to, acquisitionNetwork]);
 
   return (
     <AdminListPage

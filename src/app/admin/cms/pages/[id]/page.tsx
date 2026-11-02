@@ -60,7 +60,7 @@ export default function AdminCmsPageEditor() {
   }, [pageId, editLocale, uiLocale, t.errorGeneric]);
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => void load());
   }, [load]);
 
   async function onSaveDraft() {
@@ -94,6 +94,7 @@ export default function AdminCmsPageEditor() {
       const res = await previewCmsDraft(pageId, editLocale);
       setContent(res.content);
       setSlug(res.slug);
+      setRevision(res.draft_revision);
       setPreview(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.errorGeneric);
@@ -110,6 +111,7 @@ export default function AdminCmsPageEditor() {
       await publishCmsLocale({
         pageId,
         locale: editLocale,
+        revision,
         legal_version: needsLegal ? legalVersion || undefined : undefined,
         effective_date: needsLegal ? effectiveDate || undefined : undefined,
         approve: needsLegal ? true : undefined,

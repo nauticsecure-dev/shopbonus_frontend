@@ -1,5 +1,6 @@
 "use client";
 
+import { useInlineCms } from "@/components/homepage/InlineCms";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -70,11 +71,12 @@ export default function Header() {
 }
 
 function HeaderInner() {
+  const cms = useInlineCms();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { session, ready, signOut } = useSession();
-  const { availableMinor, pendingCashbackMinor, profile } = useShopBonus();
+  const { availableMinor, profile, walletError, walletReady } = useShopBonus();
   const { locale, setLocale, dictionary: t } = useLocale();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -82,7 +84,7 @@ function HeaderInner() {
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
   // Keep guest nav until session is ready so SSR HTML matches the first client paint.
   const authed = ready && !!session;
-  const links = [
+  const links = pathname === "/" ? cms.content.nav.links : [
     { href: "/webshops", label: t.navWebshops },
     ...(authed ? [{ href: "/mijn-voordelen", label: t.navCashback }] : []),
     { href: "/kortingscodes", label: t.navDiscountCodes },
@@ -115,8 +117,12 @@ function HeaderInner() {
     setOpen(false);
     try {
       await signOut();
-    } finally {
       router.replace("/account?mode=login");
+    } catch {
+      setLoggingOut(false);
+      window.alert(locale === "en"
+        ? "Sign-out failed. Try again — you are still signed in."
+        : "Uitloggen mislukt. Probeer het opnieuw — je bent nog aangemeld.");
     }
   }
 
@@ -153,7 +159,7 @@ function HeaderInner() {
 
         <nav
           aria-label={t.mainNav}
-          className="no-scrollbar hidden h-full min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto lg:flex xl:gap-2"
+          className="no-scrollbar hidden h-full min-w-0 flex-1 items-center justify-start gap-1 overflow-x-auto lg:flex xl:gap-2"
         >
           {links.map((link) => {
             const active = isActive(pathname, link.href, search);
@@ -212,19 +218,30 @@ function HeaderInner() {
             <>
               <Link
                 href="/mijn-voordelen"
-                className="hidden items-center gap-2 rounded-full border border-blue-100 bg-blue-50/70 px-3.5 py-2 text-sm font-bold text-navy transition hover:bg-blue-50 md:flex"
+                className={`hidden items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-bold transition md:flex ${
+                  walletError
+                    ? "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                    : "border-blue-100 bg-blue-50/70 text-navy hover:bg-blue-50"
+                }`}
                 title={
-                  pendingCashbackMinor > 0
-                    ? `${formatMinor(availableMinor)} beschikbaar · ${formatMinor(pendingCashbackMinor)} cashback in behandeling`
-                    : `${formatMinor(availableMinor)} beschikbaar`
+                  walletError
+                    ? locale === "en"
+                      ? `Balance may be outdated: ${walletError}`
+                      : `Saldo mogelijk verouderd: ${walletError}`
+                    : !walletReady
+                      ? locale === "en"
+                        ? "Loading wallet…"
+                        : "Tegoed laden…"
+                      : `${formatMinor(availableMinor)} beschikbaar`
                 }
+                aria-busy={!walletReady && !walletError}
               >
-                <Icon name="wallet" size={18} className="text-brand" />
+                <Icon name="wallet" size={18} className={walletError ? "text-amber-700" : "text-brand"} />
                 <span className="hidden text-xs font-semibold text-muted lg:inline">Mijn ShopBonus-tegoed</span>
-                <strong className="text-navy">{formatMinor(availableMinor)}</strong>
-                {pendingCashbackMinor > 0 && (
-                  <span className="hidden rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-extrabold text-amber-700 xl:inline">
-                    +{formatMinor(pendingCashbackMinor)} pending
+                <strong className={walletError ? "text-amber-900" : "text-navy"}>{walletReady ? formatMinor(availableMinor) : "…"}</strong>
+                {walletError && (
+                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-amber-700">
+                    {locale === "en" ? "Stale" : "Verouderd"}
                   </span>
                 )}
                 <Icon name="chevron" size={14} className="text-muted" />
@@ -338,10 +355,12 @@ function HeaderInner() {
             <Link
               href="/mijn-voordelen"
               onClick={() => setOpen(false)}
-              className="mb-2 flex items-center justify-between rounded-xl bg-blue-50 px-3 py-3 text-sm font-bold text-navy"
+              className={`mb-2 flex items-center justify-between rounded-xl px-3 py-3 text-sm font-bold ${
+                walletError ? "bg-amber-50 text-amber-900" : "bg-blue-50 text-navy"
+              }`}
             >
-              <span>Mijn ShopBonus-tegoed</span>
-              <strong>{formatMinor(availableMinor)}</strong>
+              <span>Mijn ShopBonus-tegoed{walletError ? (locale === "en" ? " (outdated)" : " (verouderd)") : ""}</span>
+              <strong>{walletReady ? formatMinor(availableMinor) : "…"}</strong>
             </Link>
           )}
           {authed && (

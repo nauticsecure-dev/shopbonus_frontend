@@ -1,9 +1,12 @@
 "use client";
+import { useRoleCopy } from "@/i18n/roleCopy";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import DashboardIcon from "@/components/DashboardIcon";
+import AdminStepUpModal from "@/components/AdminStepUpModal";
+import NotificationTemplateEditor, { NotificationTemplatePreview } from "@/components/NotificationTemplateEditor";
 import { ApiError } from "@/lib/api";
 import {
   fetchPlatformDeliveries,
@@ -44,6 +47,7 @@ function newIdempotencyKey(): string {
 }
 
 export default function PlatformNotificationsPage() {
+  const c = useRoleCopy();
   const [tab, setTab] = useState<Tab>("overview");
   const [templates, setTemplates] = useState<PlatformTemplate[]>([]);
   const [events, setEvents] = useState<PlatformEventDef[]>([]);
@@ -56,14 +60,15 @@ export default function PlatformNotificationsPage() {
   const [emailAvailable, setEmailAvailable] = useState(false);
   const [generateEvent, setGenerateEvent] = useState("cashback_credited");
   const [busy, setBusy] = useState(false);
+  const [stepUp, setStepUp] = useState<{ action: () => Promise<void>; ok: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
+  const [preview, setPreview] = useState<{ id: string; report: Record<string, unknown> } | null>(null);
   const [settingsDraft, setSettingsDraft] = useState({
     voucher_reminder_days: "30,7,1",
     offer_expiry_days: "7",
     retention_days: "90",
-    reason: "Update notification policy",
+    reason: "",
   });
 
   const load = useCallback(async () => {
@@ -85,13 +90,13 @@ export default function PlatformNotificationsPage() {
       voucher_reminder_days: (pol.data.voucher_reminder_days ?? [30, 7, 1]).join(","),
       offer_expiry_days: String(pol.data.offer_expiry_days ?? 7),
       retention_days: String(pol.data.retention_days ?? 90),
-      reason: "Update notification policy",
+      reason: "",
     });
   }, []);
 
   useEffect(() => {
-    void load().catch((err) => setError(err instanceof ApiError ? err.message : "Laden mislukt."));
-  }, [load]);
+    queueMicrotask(() => void load().catch((err) => setError(err instanceof ApiError ? err.message : c("Could_not_load_notification_management"))));
+  }, [load, c]);
 
   const publishedCount = useMemo(() => templates.filter((t) => t.is_current).length, [templates]);
   const draftCount = useMemo(
@@ -108,7 +113,8 @@ export default function PlatformNotificationsPage() {
       setNotice(ok);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Actie mislukt.");
+      if (err instanceof ApiError && ["password_confirmation_required", "step_up_code_required"].includes(err.code ?? "")) setStepUp({ action: fn, ok });
+      else setError(err instanceof ApiError ? err.message : c("Action_failed"));
     } finally {
       setBusy(false);
     }
@@ -116,20 +122,24 @@ export default function PlatformNotificationsPage() {
 
   return (
     <DashboardShell admin>
+      <AdminStepUpModal open={stepUp !== null} title={c("Notification_center")} onClose={() => setStepUp(null)} onReady={async () => {
+        if (!stepUp) return;
+        await stepUp.action();
+        setNotice(stepUp.ok);
+        await load();
+      }} />
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-wide text-brand">OpenAI 6</p>
-          <h1 className="text-3xl font-black text-navy sm:text-4xl">Notification center</h1>
+          <h1 className="text-3xl font-black text-navy sm:text-4xl">{c("Notification_center")}</h1>
           <p className="mt-1 text-sm text-muted">
-            Templates, events, reminders and delivery control for ShopBonus.
-          </p>
+            {c("Templates_events_reminders_and_delivery_control_for_ShopBonus")}</p>
         </div>
         <Link
           href="/admin/notifications"
           className="rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm font-extrabold text-brand hover:bg-blue-50"
         >
-          Mijn inbox
-        </Link>
+          {c("My_inbox")}</Link>
       </div>
 
       <div className="mb-5 flex flex-wrap gap-2">
@@ -143,7 +153,7 @@ export default function PlatformNotificationsPage() {
             }`}
             data-testid={`platform-notifications-tab-${item.id}`}
           >
-            {item.label}
+            {c(({"Overview":"Overview","Templates":"Templates","Events":"Events","Reminders":"Reminders","Delivery logs":"Delivery_logs","Settings":"Settings"} as Record<string,string>)[item.label])}
           </button>
         ))}
       </div>
@@ -162,25 +172,24 @@ export default function PlatformNotificationsPage() {
       {tab === "overview" && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            ["Published templates", publishedCount],
-            ["Draft / review", draftCount],
-            ["Failed events", ops?.failed_events ?? failures.length],
-            ["Locale fallbacks", ops?.locale_fallbacks ?? 0],
+            [c("Published_templates"), publishedCount],
+            [c("Draft_review"), draftCount],
+            [c("Failed_events"), ops?.failed_events ?? failures.length],
+            [c("Locale_fallbacks"), ops?.locale_fallbacks ?? 0],
           ].map(([label, value]) => (
             <div key={String(label)} className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted">{label}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-muted">{c(String(label))}</p>
               <p className="mt-2 text-3xl font-black text-navy">{value}</p>
             </div>
           ))}
           <div className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm sm:col-span-2 xl:col-span-4">
-            <h2 className="text-lg font-black text-navy">Delivery readiness</h2>
+            <h2 className="text-lg font-black text-navy">{c("Delivery_readiness")}</h2>
             <p className="mt-2 text-sm text-muted">
-              Email transport:{" "}
+              {c("Email_transport")}{" "}
               <strong className={emailAvailable ? "text-green-700" : "text-amber-700"}>
-                {emailAvailable ? "available" : "disabled / unavailable"}
+                {emailAvailable ? c("available") : c("disabled_unavailable")}
               </strong>
-              . AI drafts never publish automatically — test, then independent publish.
-            </p>
+              {c("AI_drafts_never_publish_automatically_test_then_independent_publish")}</p>
           </div>
         </div>
       )}
@@ -188,21 +197,19 @@ export default function PlatformNotificationsPage() {
       {tab === "templates" && (
         <div className="space-y-5">
           <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-black text-navy">Generate with OpenAI</h2>
+            <h2 className="text-lg font-black text-navy">{c("Generate_with_OpenAI")}</h2>
             <p className="mt-1 text-sm text-muted">
-              Creates private NL/EN drafts. Requires step-up. Never auto-publishes.
-            </p>
+              {c("Creates_private_NL_EN_drafts_Requires_step_up_Never_auto_publishes")}</p>
             <div className="mt-4 flex flex-wrap items-end gap-3">
               <label className="text-sm font-bold text-navy">
-                Event
-                <select
+                {c("Event")}<select
                   value={generateEvent}
                   onChange={(e) => setGenerateEvent(e.target.value)}
                   className="mt-1 block rounded-xl border border-blue-100 px-3 py-2 text-sm"
                 >
                   {events.map((ev) => (
                     <option key={ev.event_type} value={ev.event_type}>
-                      {ev.event_type} ({ev.audience})
+                      {ev.event_type} ({c(ev.audience)})
                     </option>
                   ))}
                 </select>
@@ -213,27 +220,26 @@ export default function PlatformNotificationsPage() {
                 onClick={() =>
                   void run(async () => {
                     await generatePlatformTemplates(generateEvent, newIdempotencyKey());
-                  }, "Draft templates generated.")
+                  }, c("Draft_templates_generated"))
                 }
                 className="rounded-xl bg-brand px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-50"
               >
-                Generate NL/EN drafts
-              </button>
+                {c("Generate_NL_EN_drafts")}</button>
             </div>
           </section>
 
           <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-lg font-black text-navy">Template versions</h2>
+            <h2 className="mb-4 text-lg font-black text-navy">{c("Template_versions")}</h2>
             <div className="space-y-3">
-              {templates.length === 0 && <p className="text-sm text-muted">Nog geen templates.</p>}
+              {templates.length === 0 && <p className="text-sm text-muted">{c("No_templates_yet")}</p>}
               {templates.map((tpl) => (
                 <article key={tpl.id} className="rounded-2xl border border-slate-100 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-extrabold text-navy">{tpl.key}</p>
                       <p className="text-xs text-muted">
-                        v{tpl.version} · {tpl.status}
-                        {tpl.is_current ? " · current" : ""}
+                        v{tpl.version} · {c(tpl.status)}
+                        {tpl.is_current ? ` · ${c("current")}` : ""}
                       </p>
                       <p className="mt-2 text-sm font-bold text-navy">{tpl.value.title}</p>
                       <p className="text-sm text-muted">{tpl.value.body}</p>
@@ -247,8 +253,8 @@ export default function PlatformNotificationsPage() {
                             onClick={() =>
                               void run(async () => {
                                 const report = await testPlatformTemplate(tpl.id);
-                                setPreview(report);
-                              }, "Template tested (synthetic).")
+                                setPreview({ id: tpl.id, report });
+                              }, c("Template_tested_synthetic"))
                             }
                             className="rounded-lg border border-blue-100 px-3 py-2 text-xs font-extrabold text-brand"
                           >
@@ -262,13 +268,12 @@ export default function PlatformNotificationsPage() {
                                 async () => {
                                   await publishPlatformTemplate(tpl.id, "Publish approved notification template");
                                 },
-                                "Publish requested (second admin required)."
+                                c("Publish_requested_second_admin_required")
                               )
                             }
                             className="rounded-lg bg-brand px-3 py-2 text-xs font-extrabold text-white"
                           >
-                            Publish
-                          </button>
+                            {c("Publish")}</button>
                         </>
                       )}
                       {tpl.is_current && (
@@ -278,23 +283,21 @@ export default function PlatformNotificationsPage() {
                           onClick={() =>
                             void run(async () => {
                               await rollbackPlatformTemplate(tpl.id, "Rollback to previous notification template");
-                            }, "Rollback draft created — test and publish independently.")
+                            }, c("Rollback_draft_created_test_and_publish_independently"))
                           }
                           className="rounded-lg border border-amber-200 px-3 py-2 text-xs font-extrabold text-amber-700"
                         >
-                          Rollback
-                        </button>
+                          {c("Rollback")}</button>
                       )}
                     </div>
                   </div>
+                  <NotificationTemplateEditor template={tpl}
+                    allowedVariables={events.find(ev => tpl.key === `notifications.template.${ev.event_type}.nl` || tpl.key === `notifications.template.${ev.event_type}.en`)?.allowed_variables ?? []}
+                    onSaved={async () => { setPreview(null); await load(); }} />
+                  {preview?.id === tpl.id && <NotificationTemplatePreview report={preview.report} />}
                 </article>
               ))}
             </div>
-            {preview && (
-              <pre className="mt-4 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs text-green-200">
-                {JSON.stringify(preview, null, 2)}
-              </pre>
-            )}
           </section>
         </div>
       )}
@@ -302,25 +305,25 @@ export default function PlatformNotificationsPage() {
       {tab === "events" && (
         <div className="space-y-5">
           <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-lg font-black text-navy">Event catalogue</h2>
+            <h2 className="mb-4 text-lg font-black text-navy">{c("Event_catalogue")}</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
                 <thead className="text-xs uppercase text-muted">
                   <tr>
-                    <th className="px-2 py-2">Event</th>
-                    <th className="px-2 py-2">Audience</th>
-                    <th className="px-2 py-2">In-app</th>
-                    <th className="px-2 py-2">Email</th>
-                    <th className="px-2 py-2">Reminders</th>
+                    <th className="px-2 py-2">{c("Event")}</th>
+                    <th className="px-2 py-2">{c("Audience")}</th>
+                    <th className="px-2 py-2">{c("in_app")}</th>
+                    <th className="px-2 py-2">{c("email")}</th>
+                    <th className="px-2 py-2">{c("Reminders")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {events.map((ev) => (
                     <tr key={ev.event_type} className="border-t border-slate-100">
                       <td className="px-2 py-2 font-bold text-navy">{ev.event_type}</td>
-                      <td className="px-2 py-2">{ev.audience}</td>
-                      <td className="px-2 py-2">{ev.mandatory_in_app ? "required" : "optional"}</td>
-                      <td className="px-2 py-2">{ev.mandatory_email ? "mandatory" : "optional"}</td>
+                      <td className="px-2 py-2">{c(ev.audience)}</td>
+                      <td className="px-2 py-2">{c(ev.mandatory_in_app ? "required" : "optional")}</td>
+                      <td className="px-2 py-2">{c(ev.mandatory_email ? "mandatory" : "optional")}</td>
                       <td className="px-2 py-2">
                         {ev.reminder_days.length ? ev.reminder_days.join(", ") : "—"}
                       </td>
@@ -331,14 +334,14 @@ export default function PlatformNotificationsPage() {
             </div>
           </section>
           <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-lg font-black text-navy">Failed outbox events</h2>
-            {failures.length === 0 && <p className="text-sm text-muted">Geen mislukte events.</p>}
+            <h2 className="mb-4 text-lg font-black text-navy">{c("Failed_outbox_events")}</h2>
+            {failures.length === 0 && <p className="text-sm text-muted">{c("No_failed_events")}</p>}
             {failures.map((f) => (
               <div key={f.id} className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-100 bg-red-50/40 p-3">
                 <div>
                   <p className="font-extrabold text-navy">{f.event_type}</p>
                   <p className="text-xs text-muted">
-                    {f.id} · attempts {f.attempts} · {f.error_code ?? "unknown"}
+                    {f.id} · {c("attempts")} {f.attempts} · {f.error_code ?? c("unknown")}
                   </p>
                 </div>
                 <button
@@ -347,12 +350,11 @@ export default function PlatformNotificationsPage() {
                   onClick={() =>
                     void run(async () => {
                       await retryPlatformEvent(f.id, "Reviewed outbox retry after delivery investigation");
-                    }, "Event retry queued.")
+                    }, c("Event_retry_queued"))
                   }
                   className="rounded-lg bg-brand px-3 py-2 text-xs font-extrabold text-white"
                 >
-                  Retry
-                </button>
+                  {c("Retry")}</button>
               </div>
             ))}
           </section>
@@ -361,35 +363,30 @@ export default function PlatformNotificationsPage() {
 
       {tab === "reminders" && (
         <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-black text-navy">Automatic reminders</h2>
+          <h2 className="text-lg font-black text-navy">{c("Automatic_reminders")}</h2>
           <p className="mt-1 text-sm text-muted">
-            Driven by Laravel scheduler (`shopbonus:dispatch-notifications`) and published policy.
-          </p>
+            {c("Driven_by_Laravel_scheduler_shopbonus_dispatch_notifications_and_published_policy")}</p>
           <ul className="mt-4 space-y-3 text-sm text-navy">
             <li className="flex gap-3 rounded-2xl bg-blue-50/60 p-3">
               <DashboardIcon name="ticket" size={18} className="mt-0.5 text-brand" />
               <span>
-                <strong>Voucher expiry</strong> — days{" "}
-                {(settings?.voucher_reminder_days ?? [30, 7, 1]).join(" / ")}. Only active usable vouchers.
-              </span>
+                <strong>{c("Voucher_expiry")}</strong> {c("days")}{" "}
+                {(settings?.voucher_reminder_days ?? [30, 7, 1]).join(" / ")}{c("Only_active_usable_vouchers")}</span>
             </li>
             <li className="flex gap-3 rounded-2xl bg-blue-50/60 p-3">
               <DashboardIcon name="tag" size={18} className="mt-0.5 text-brand" />
               <span>
-                <strong>Offer expiry</strong> — {settings?.offer_expiry_days ?? 7} days before active offer ends.
-              </span>
+                <strong>{c("Offer_expiry")}</strong> — {settings?.offer_expiry_days ?? 7} {c("days_before_active_offer_ends")}</span>
             </li>
             <li className="flex gap-3 rounded-2xl bg-blue-50/60 p-3">
               <DashboardIcon name="chat" size={18} className="mt-0.5 text-brand" />
               <span>
-                <strong>Support replies</strong> — event-driven when a human reply is persisted.
-              </span>
+                <strong>{c("Support_replies")}</strong> {c("event_driven_when_a_human_reply_is_persisted")}</span>
             </li>
             <li className="flex gap-3 rounded-2xl bg-blue-50/60 p-3">
               <DashboardIcon name="store" size={18} className="mt-0.5 text-brand" />
               <span>
-                <strong>Favorite merchant offers</strong> — optional, preference + consent gated.
-              </span>
+                <strong>{c("Favorite_merchant_offers")}</strong> {c("optional_preference_consent_gated")}</span>
             </li>
           </ul>
         </section>
@@ -397,19 +394,19 @@ export default function PlatformNotificationsPage() {
 
       {tab === "deliveries" && (
         <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-black text-navy">Delivery logs</h2>
+          <h2 className="mb-4 text-lg font-black text-navy">{c("Delivery_logs")}</h2>
           <div className="space-y-3">
-            {deliveries.length === 0 && <p className="text-sm text-muted">Geen deliveries.</p>}
+            {deliveries.length === 0 && <p className="text-sm text-muted">{c("No_deliveries")}</p>}
             {deliveries.map((d) => (
               <article key={d.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3">
                 <div>
                   <p className="font-extrabold text-navy">
-                    {d.channel} · {d.status}
+                    {c(d.channel)} · {c(d.status)}
                   </p>
                   <p className="text-xs text-muted">
-                    {d.id} · attempts {d.attempts}
+                    {d.id} · {c("attempts")} {d.attempts}
                     {d.error_code ? ` · ${d.error_code}` : ""}
-                    {d.sent_at ? ` · sent ${d.sent_at}` : ""}
+                    {d.sent_at ? ` · ${c("sent")} ${d.sent_at}` : ""}
                   </p>
                 </div>
                 {(d.status === "failed" || d.status === "uncertain") && (
@@ -423,12 +420,11 @@ export default function PlatformNotificationsPage() {
                           "Reviewed delivery retry after transport investigation",
                           d.status === "uncertain"
                         );
-                      }, "Delivery retry authorized.")
+                      }, c("Delivery_retry_authorized"))
                     }
                     className="rounded-lg border border-blue-100 px-3 py-2 text-xs font-extrabold text-brand"
                   >
-                    Retry
-                  </button>
+                    {c("Retry")}</button>
                 )}
               </article>
             ))}
@@ -438,14 +434,12 @@ export default function PlatformNotificationsPage() {
 
       {tab === "settings" && (
         <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-black text-navy">Notification policy</h2>
+          <h2 className="text-lg font-black text-navy">{c("Notification_policy")}</h2>
           <p className="mt-1 text-sm text-muted">
-            Saves a private draft. Use existing platform-settings review/publish for activation.
-          </p>
+            {c("Saves_a_private_draft_Use_existing_platform_settings_review_publish_for_activation")}</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-bold text-navy">
-              Voucher reminder days
-              <input
+              {c("Voucher_reminder_days")}<input
                 value={settingsDraft.voucher_reminder_days}
                 onChange={(e) => setSettingsDraft((s) => ({ ...s, voucher_reminder_days: e.target.value }))}
                 className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2"
@@ -453,24 +447,21 @@ export default function PlatformNotificationsPage() {
               />
             </label>
             <label className="text-sm font-bold text-navy">
-              Offer expiry days
-              <input
+              {c("Offer_expiry_days")}<input
                 value={settingsDraft.offer_expiry_days}
                 onChange={(e) => setSettingsDraft((s) => ({ ...s, offer_expiry_days: e.target.value }))}
                 className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2"
               />
             </label>
             <label className="text-sm font-bold text-navy">
-              Retention days
-              <input
+              {c("Retention_days")}<input
                 value={settingsDraft.retention_days}
                 onChange={(e) => setSettingsDraft((s) => ({ ...s, retention_days: e.target.value }))}
                 className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2"
               />
             </label>
             <label className="text-sm font-bold text-navy">
-              Reason
-              <input
+              {c("Reason")}<input
                 value={settingsDraft.reason}
                 onChange={(e) => setSettingsDraft((s) => ({ ...s, reason: e.target.value }))}
                 className="mt-1 w-full rounded-xl border border-blue-100 px-3 py-2"
@@ -495,12 +486,11 @@ export default function PlatformNotificationsPage() {
                   },
                   settingsDraft.reason
                 );
-              }, "Policy draft saved.")
+              }, c("Policy_draft_saved"))
             }
             className="mt-4 rounded-xl bg-brand px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-50"
           >
-            Save policy draft
-          </button>
+            {c("Save_policy_draft")}</button>
         </section>
       )}
     </DashboardShell>

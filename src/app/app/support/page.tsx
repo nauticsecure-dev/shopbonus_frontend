@@ -13,7 +13,7 @@ function SupportPageInner() {
 
 export default function ConsumerSupportPage() {
   return (
-    <Suspense fallback={<p className="p-8 text-sm text-muted">Support laden…</p>}>
+    <Suspense fallback={<p className="p-8 text-sm text-muted">Support…</p>}>
       <SupportPageInner />
     </Suspense>
   );

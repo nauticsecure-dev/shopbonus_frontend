@@ -23,6 +23,10 @@ export type HomepageContent = {
     promo_balance_example: string;
     promo_voucher_example: string;
     background_asset_id?: string | null;
+    background_mobile_asset_id?: string | null;
+    background_url?: string | null;
+    background_mobile_url?: string | null;
+    background_alt?: string;
   };
   search: { placeholder: string };
   popular_webshops: {
@@ -215,6 +219,12 @@ export const DEFAULT_HOMEPAGE_EN: HomepageContent = {
   seo_title: "ShopBonus — Save cashback for vouchers",
   seo_description:
     "Discover discounts, cashback and vouchers at your favourite webshops. Save in your ShopBonus wallet and redeem for vouchers only.",
+  nav: { logo_alt: "ShopBonus", links: [
+    { label: "Webshops", href: "/webshops" }, { label: "Discount codes", href: "/kortingscodes" },
+    { label: "How it works", href: "/hoe-werkt-het" }, { label: "About us", href: "/over-ons" },
+    { label: "FAQ", href: "/faq" }, { label: "Contact", href: "/over-ons#contact" }, { label: "For webshops", href: "/voor-webshops" },
+  ] },
+  footer: { blurb: "Cashback, discount vouchers and fair deals at participating webshops." },
   hero: {
     ...DEFAULT_HOMEPAGE_NL.hero,
     heading: "Shop the way you always do.\nSave for what you really want.",

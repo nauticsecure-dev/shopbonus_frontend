@@ -59,7 +59,7 @@ export async function fetchHomepageContentServer(
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/json", "Accept-Language": locale },
-      next: { revalidate: 30, tags: ["homepage"] },
+      cache: "no-store",
     });
     if (!res.ok) return mergeHomepageContent(null, locale);
     const json = (await res.json()) as { data?: { content?: Partial<HomepageContent> } & Partial<HomepageContent> };
@@ -75,6 +75,7 @@ export async function fetchHomepageContent(locale?: Locale): Promise<HomepageCon
     const res = await apiRequest<Data<{ content: Partial<HomepageContent> } | Partial<HomepageContent>>>({
       path: `/api/v1/content/homepage?locale=${encodeURIComponent(locale ?? "nl")}`,
       locale,
+      cache: "no-store",
     });
     const content =
       res.data && typeof res.data === "object" && "content" in res.data
@@ -89,16 +90,20 @@ export async function fetchHomepageContent(locale?: Locale): Promise<HomepageCon
 export async function fetchDiscountCodes(opts: {
   limit?: number;
   search?: string;
+  locale?: Locale;
   signal?: AbortSignal;
 } = {}): Promise<PublicDiscountCode[]> {
   const params = new URLSearchParams();
   if (opts.limit) params.set("limit", String(opts.limit));
   if (opts.search) params.set("search", opts.search);
+  if (opts.locale) params.set("locale", opts.locale);
   const qs = params.toString();
   try {
     const res = await apiRequest<Data<PublicDiscountCode[]>>({
       path: `/api/v1/public/discount-codes${qs ? `?${qs}` : ""}`,
       signal: opts.signal,
+      locale: opts.locale,
+      cache: "no-store",
     });
     return res.data ?? [];
   } catch (err) {
@@ -107,12 +112,12 @@ export async function fetchDiscountCodes(opts: {
   }
 }
 
-export async function fetchDiscountCodesServer(limit = 2): Promise<PublicDiscountCode[]> {
-  const url = `${env.apiBaseUrl.replace(/\/$/, "")}/api/v1/public/discount-codes?limit=${limit}`;
+export async function fetchDiscountCodesServer(limit = 2, locale: Locale = "nl"): Promise<PublicDiscountCode[]> {
+  const url = `${env.apiBaseUrl.replace(/\/$/, "")}/api/v1/public/discount-codes?limit=${limit}&locale=${locale}`;
   try {
     const res = await fetch(url, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 60 },
+      headers: { Accept: "application/json", "Accept-Language": locale },
+      cache: "no-store",
     });
     if (!res.ok) return [];
     const json = (await res.json()) as { data?: PublicDiscountCode[] };
@@ -221,10 +226,18 @@ export async function saveHomepageDraft(payload: {
   const res = await apiRequest<Data<{ draft_revision: number }>>({
     path: `/api/v1/admin/content/homepage`,
     method: "PUT",
-    body: payload,
+    body: { ...payload, content: homepageDraftPayload(payload.content) },
     locale: payload.locale,
   });
   return res.data;
+}
+
+function homepageDraftPayload(content: HomepageContent): HomepageContent {
+  const copy = structuredClone(content);
+  delete copy.seo_image_url;
+  delete copy.hero.background_url;
+  delete copy.hero.background_mobile_url;
+  return copy;
 }
 
 export async function previewHomepage(locale: Locale = "nl"): Promise<HomepageContent> {
@@ -247,7 +260,7 @@ export async function publishHomepage(locale: Locale = "nl"): Promise<void> {
 }
 
 export async function fetchHomepageVersions(locale?: Locale): Promise<
-  { id: string; locale: string; number: number; published_at: string }[]
+  { id: string; locale: string; number: number; published_at: string; content?: HomepageContent }[]
 > {
   const qs = locale ? `?locale=${encodeURIComponent(locale)}` : "";
   const res = await apiRequest<

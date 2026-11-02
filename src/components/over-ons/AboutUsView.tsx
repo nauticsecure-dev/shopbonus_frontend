@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { images } from "@/data/dummy";
+import type { Locale } from "@/types/locale";
+import { useLocale } from "@/i18n/LocaleContext";
 import type { AboutUsContent, ValueIcon } from "@/lib/aboutUsDefaults";
 import {
   CmsToolbar,
@@ -57,15 +58,14 @@ function hasCompanyDetails(contact: AboutUsContent["contact"]) {
 }
 
 function AboutUsSections() {
-  const { content } = useInlineCms();
+  const { content, available, mode } = useInlineCms();
+  const { locale } = useLocale();
+  if (!available) return <><section role="status" data-testid="about-unavailable" className="mx-auto max-w-7xl px-4 py-20"><h1>{locale === "en" ? "About us temporarily unavailable" : "Over ons tijdelijk niet beschikbaar"}</h1><p>{locale === "en" ? "Please try again later." : "Probeer het later opnieuw."}</p></section><CmsToolbar /></>;
   const order = content.section_order?.length
     ? content.section_order
     : ["hero", "story", "revenue_model", "values", "team", "contact", "bottom_cta"];
   const visible = content.section_visibility ?? {};
 
-  const heroImage = content.hero.image_url || images.coffeeLaptop;
-  const storyImage = content.story.image_url || images.officeImg;
-  const teamImage = content.team.image_url || images.officeImg2;
   const consumerPct = content.revenue_model.consumer_percent ?? 70;
   const platformPct = content.revenue_model.platform_percent ?? 30;
 
@@ -115,13 +115,7 @@ function AboutUsSections() {
           </div>
           <div className="relative">
             <div className="overflow-hidden rounded-[2rem] shadow-2xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={heroImage}
-                alt=""
-                className="h-96 w-full object-cover"
-                loading="eager"
-              />
+              <AboutImage slot="hero" className="h-96 w-full object-cover" />
             </div>
             <div className="absolute right-5 top-5 max-w-[230px] rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur">
               <div className="flex items-start gap-2.5">
@@ -146,8 +140,7 @@ function AboutUsSections() {
         className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8"
       >
         <div className="overflow-hidden rounded-[2rem] shadow-xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={storyImage} alt="" className="h-[28rem] w-full object-cover" loading="lazy" />
+          <AboutImage slot="story" className="h-[28rem] w-full object-cover" />
         </div>
         <div>
           <EditableText
@@ -276,8 +269,7 @@ function AboutUsSections() {
         className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-16 sm:px-6 lg:grid-cols-2 lg:px-8"
       >
         <div className="relative overflow-hidden rounded-[2rem] shadow-xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={teamImage} alt="" className="h-80 w-full object-cover" loading="lazy" />
+          <AboutImage slot="team" className="h-80 w-full object-cover" />
           {!content.team.show_profiles || !content.team.profiles?.length ? (
             <div className="absolute inset-0 grid place-items-center bg-navy/20 p-8">
               <div className="grid h-48 w-64 place-items-center rounded-2xl bg-white/90 text-center backdrop-blur">
@@ -323,6 +315,9 @@ function AboutUsSections() {
             <ul className="mt-5 space-y-4" data-testid="about-team-profiles">
               {content.team.profiles.map((profile, i) => (
                 <li key={profile.name + i} className="rounded-2xl border border-blue-100 bg-white p-4">
+                  {profile.photo_url && (
+                    <img src={profile.photo_url} alt={profile.name} className="mb-3 h-24 w-24 rounded-full object-cover" loading="lazy" />
+                  )}
                   <p className="font-extrabold text-navy">{profile.name}</p>
                   {profile.role ? <p className="text-sm text-brand">{profile.role}</p> : null}
                   {profile.bio ? <p className="mt-1 text-sm text-muted">{profile.bio}</p> : null}
@@ -472,12 +467,18 @@ function AboutUsSections() {
 
   return (
     <div>
+      <nav aria-label={locale === "en" ? "About page navigation" : "Over ons navigatie"} className="flex flex-wrap justify-center gap-5 bg-blue-50 px-4 py-3 text-sm font-bold text-navy">
+        {content.nav.links.map((link, i) => <a key={i} href={link.href}>{link.label}</a>)}
+        <Link href={content.nav.login_href}>{content.nav.login_label}</Link>
+        <Link href={content.nav.cta_href} className="text-brand">{content.nav.cta_label}</Link>
+      </nav>
       {order.map((key) => {
         if (visible[key] === false) return null;
         return sections[key] ?? null;
       })}
       <CmsToolbar />
-      <script
+      <footer className="px-4 pb-32 pt-6 text-center text-sm text-muted">{content.footer.blurb}</footer>
+      {mode === "live" && <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
@@ -489,16 +490,26 @@ function AboutUsSections() {
             ...(content.contact.address
               ? { address: { "@type": "PostalAddress", streetAddress: content.contact.address } }
               : {}),
-          }),
+          }).replace(/</g, "\\u003c"),
         }}
-      />
+      />}
     </div>
   );
 }
 
-export default function AboutUsView({ initialContent }: { initialContent: AboutUsContent }) {
+function AboutImage({ slot, className }: { slot: "hero" | "story" | "team"; className: string }) {
+  const { content } = useInlineCms();
+  const media = content.media?.[slot];
+  const src = media?.desktop_url || content[slot].image_url || media?.mobile_url;
+  if (!src) return <div className={`${className} bg-slate-100`} aria-hidden="true" />;
+  return <picture>{media?.mobile_url && <source media="(max-width: 767px)" srcSet={media.mobile_url} />}
+    <img src={src} alt={media?.alt ?? ""} className={className} loading={slot === "hero" ? "eager" : "lazy"} />
+  </picture>;
+}
+
+export default function AboutUsView({ initialContent, initialLocale }: { initialContent: AboutUsContent | null; initialLocale: Locale }) {
   return (
-    <InlineCmsProvider initialContent={initialContent}>
+    <InlineCmsProvider initialContent={initialContent} initialLocale={initialLocale}>
       <AboutUsSections />
     </InlineCmsProvider>
   );

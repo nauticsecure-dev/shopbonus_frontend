@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useLocale } from "@/i18n/LocaleContext";
+import { useEffect, type ReactNode } from "react";
 import HeroSection from "./HeroSection";
 import HomeSearchBar from "./HomeSearchBar";
 import HowItWorks from "./HowItWorks";
@@ -11,7 +12,6 @@ import PopularWebshops from "@/components/PopularWebshops";
 import {
   CmsToolbar,
   EditableText,
-  InlineCmsProvider,
   useInlineCms,
 } from "./InlineCms";
 import type { HomepageContent } from "@/lib/homepageDefaults";
@@ -47,8 +47,7 @@ function EditableHero() {
           className="max-w-md text-lg leading-relaxed text-muted"
         />
         <div className="flex flex-wrap gap-3 pt-2">
-          <Link
-            href={content.hero.primary_cta.href}
+          <div
             className="inline-flex items-center gap-2.5 rounded-2xl bg-brand px-7 py-3.5 text-[15px] font-extrabold text-white shadow-[0_14px_30px_-10px_rgba(11,116,255,0.65)]"
           >
             <EditableText path="hero.primary_cta.label" className="text-[15px] font-extrabold text-white" />
@@ -61,13 +60,12 @@ function EditableHero() {
                 strokeLinejoin="round"
               />
             </svg>
-          </Link>
-          <Link
-            href={content.hero.secondary_cta.href}
+          </div>
+          <div
             className="inline-flex items-center gap-2.5 rounded-2xl border-2 border-blue-200 bg-white/70 px-7 py-3.5 text-[15px] font-extrabold text-navy"
           >
             <EditableText path="hero.secondary_cta.label" className="text-[15px] font-extrabold text-navy" />
-          </Link>
+          </div>
         </div>
         <ul className="flex flex-wrap gap-x-5 gap-y-2">
           {content.hero.trust.map((t, i) => (
@@ -169,6 +167,7 @@ function HomepageBody({
   shopCount,
 }: Omit<Props, "initialContent">) {
   const { content } = useInlineCms();
+  const { locale } = useLocale();
   const vis = content.section_visibility;
 
   useEffect(() => {
@@ -181,14 +180,14 @@ function HomepageBody({
 
   const bgUrl = (content.hero as { background_url?: string | null }).background_url;
 
-  return (
-    <div className="relative overflow-hidden bg-[#f4f8ff]" data-testid="homepage">
+  const sections: Record<string, ReactNode> = {
+hero: <>
       {vis.hero !== false && (
         <section className="relative isolate min-h-[560px] sm:min-h-[640px]" data-testid="homepage-hero">
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-            {bgUrl ? (
+            {bgUrl || content.hero.background_mobile_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={bgUrl} alt="" className="h-full w-full object-cover opacity-40" />
+              <picture>{content.hero.background_mobile_url && <source media="(max-width: 767px)" srcSet={content.hero.background_mobile_url} />}<img src={bgUrl || content.hero.background_mobile_url || ""} alt={content.hero.background_alt ?? ""} className="h-full w-full object-cover opacity-40" /></picture>
             ) : null}
             <div
               className="absolute inset-0"
@@ -208,26 +207,39 @@ function HomepageBody({
             <EditableHero />
           </div>
 
+
+        </section>
+      )}
+
+
+</>,
+search: <>
           {vis.search !== false && (
             <div id="home-search" className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <HomeSearchBar placeholder={content.search.placeholder} />
             </div>
           )}
-        </section>
-      )}
-
+</>,
+popular_webshops: <>
       {vis.popular_webshops !== false && (
         <PopularWebshops
           initialShops={featuredShops}
           limit={content.popular_webshops.limit}
+          featuredSlugs={content.popular_webshops.mode === "featured" && content.popular_webshops.featured_slugs.length > 0 ? content.popular_webshops.featured_slugs : undefined}
           heading={content.popular_webshops.heading}
           ctaLabel={content.popular_webshops.cta_label}
           ctaHref={content.popular_webshops.cta_href}
         />
       )}
 
+
+</>,
+how_it_works: <>
       {vis.how_it_works !== false && <EditableHowItWorks />}
 
+
+</>,
+benefits: <>
       {vis.benefits !== false && content.benefits && (
         <section className="relative mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8" data-testid="homepage-benefits">
           <h2 className="text-2xl font-black tracking-tight text-navy sm:text-3xl">{content.benefits.heading}</h2>
@@ -262,26 +274,15 @@ function HomepageBody({
         </section>
       )}
 
-      <section className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-5 lg:grid-cols-2">
-          {vis.discount_codes !== false && (
-            <DiscountCodesPanel content={content.discount_codes} initialCodes={discountCodes} />
-          )}
-          {vis.wallet_preview !== false && <WalletPreviewCard content={content.wallet_preview} />}
-        </div>
-        {shopCount > 0 && (
-          <p className="mt-6 text-center text-xs text-muted">
-            {shopCount} webshops aangesloten via ShopBonus
-          </p>
-        )}
-        <p className="mt-2 text-center text-xs text-muted">
-          ShopBonus-tegoed is alleen inwisselbaar voor vouchers.{" "}
-          <Link href="/hoe-werkt-het" className="font-semibold text-brand hover:underline">
-            Meer over sparen
-          </Link>
-        </p>
-      </section>
 
+</>,
+discount_codes: <>
+{vis.discount_codes !== false && <section className="mx-auto w-full max-w-[640px] px-4 pt-8 lg:ml-auto lg:mr-0"><DiscountCodesPanel content={content.discount_codes} initialCodes={discountCodes} /></section>}
+</>,
+wallet_preview: <>
+{vis.wallet_preview !== false && <section className="mx-auto w-full max-w-[640px] px-4 pt-8 lg:ml-0 lg:mr-auto"><WalletPreviewCard content={content.wallet_preview} /></section>}
+</>,
+cta_band: <>
       {vis.cta_band !== false && content.cta_band && (
         <section className="relative mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8" data-testid="homepage-cta">
           <div className="flex flex-col items-start justify-between gap-6 rounded-[1.75rem] bg-navy px-8 py-10 text-white sm:flex-row sm:items-center">
@@ -307,6 +308,9 @@ function HomepageBody({
         </section>
       )}
 
+
+</>,
+faq_teaser: <>
       {vis.faq_teaser !== false && content.faq_teaser && (
         <section className="relative mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8" data-testid="homepage-faq">
           <div className="rounded-3xl bg-white p-8 text-center shadow-sm sm:p-10">
@@ -322,6 +326,24 @@ function HomepageBody({
         </section>
       )}
 
+
+</>,
+  };
+
+  return (
+    <div className="relative grid grid-cols-1 overflow-hidden bg-[#f4f8ff] lg:grid-cols-2" data-testid="homepage">
+      {[...new Set([...content.section_order, ...Object.keys(sections)])].map(key => <div key={key} className={key === "discount_codes" || key === "wallet_preview" ? "min-w-0" : "lg:col-span-2"} data-home-section={key}>{sections[key]}</div>)}
+      <div className="py-6 lg:col-span-2">        {shopCount > 0 && (
+          <p className="mt-6 text-center text-xs text-muted">
+            {shopCount} {locale === "en" ? "webshops participating via ShopBonus" : "webshops aangesloten via ShopBonus"}
+          </p>
+        )}
+        <p className="mt-2 text-center text-xs text-muted">
+          {locale === "en" ? "ShopBonus credit can only be redeemed for vouchers. " : "ShopBonus-tegoed is alleen inwisselbaar voor vouchers. "}
+          <Link href="/hoe-werkt-het" className="font-semibold text-brand hover:underline">
+            {locale === "en" ? "More about saving" : "Meer over sparen"}
+          </Link>
+        </p></div>
       <CmsToolbar />
     </div>
   );
@@ -329,12 +351,12 @@ function HomepageBody({
 
 export default function HomepageView(props: Props) {
   return (
-    <InlineCmsProvider initialContent={props.initialContent}>
+    <>
       <HomepageBody
         featuredShops={props.featuredShops}
         discountCodes={props.discountCodes}
         shopCount={props.shopCount}
       />
-    </InlineCmsProvider>
+    </>
   );
 }

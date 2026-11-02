@@ -91,7 +91,8 @@ test("6. Model and behavior settings save", async ({ page }) => {
   await page.goto(`${base}/app/platform/ai-support/settings`);
   await expect(page.getByRole("heading", { name: /AI Support-instellingen/i })).toBeVisible();
   await page.getByRole("button", { name: "Behavior" }).click();
-  await page.locator("select").filter({ hasText: "friendly_professional" }).first().selectOption("warm");
+  await expect(page.getByLabel(/Tone/)).toBeDisabled();
+  await page.getByLabel("Show progress updates").uncheck();
   await page.getByRole("button", { name: "Draft opslaan" }).click();
   await expect(page.getByText(/Draft opgeslagen|opgeslagen/i)).toBeVisible({ timeout: 20000 });
 });

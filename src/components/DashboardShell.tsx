@@ -1,4 +1,5 @@
 "use client";
+import { useRoleCopy } from "@/i18n/roleCopy";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -16,34 +17,35 @@ interface DashboardShellProps {
 }
 
 const merchantLinks: { href: string; label: string; icon: DashboardIconName }[] = [
-  { href: "/dashboard", label: "Overzicht", icon: "grid" },
+  { href: "/dashboard", label: "Overview", icon: "grid" },
   { href: "/dashboard/app-store", label: "App Store", icon: "store" },
   { href: "/dashboard/orders", label: "Orders", icon: "list" },
-  { href: "/dashboard/offers", label: "Aanbiedingen", icon: "tag" },
+  { href: "/dashboard/offers", label: "Offers", icon: "tag" },
   { href: "/dashboard/vouchers", label: "Vouchers", icon: "ticket" },
   { href: "/dashboard/banners", label: "Banners", icon: "cursor" },
   { href: "/dashboard/team", label: "Team", icon: "users" },
-  { href: "/dashboard/notifications", label: "Meldingen", icon: "bell" },
+  { href: "/dashboard/notifications", label: "Notifications", icon: "bell" },
   { href: "/dashboard/support", label: "Support", icon: "chat" },
-  { href: "/dashboard/settings", label: "Instellingen", icon: "settings" },
+  { href: "/dashboard/settings", label: "Settings", icon: "settings" },
 ];
 
 const adminLinks: { href: string; label: string; icon: DashboardIconName }[] = [
   { href: "/admin", label: "Cockpit", icon: "grid" },
   { href: "/admin/webshops", label: "Webshops", icon: "store" },
-  { href: "/admin/users", label: "Gebruikers", icon: "users" },
-  { href: "/admin/incidents", label: "Incidenten", icon: "alert" },
+  { href: "/admin/users", label: "Users", icon: "users" },
+  { href: "/admin/incidents", label: "Incidents", icon: "alert" },
   { href: "/admin/integrations", label: "Operations", icon: "sync" },
-  { href: "/admin/wallets", label: "Financieel", icon: "wallet" },
-  { href: "/admin/cms", label: "Content Studio", icon: "edit" },
+  { href: "/admin/wallets", label: "Finance", icon: "wallet" },
+  { href: "/admin/cms", label: "Content_Studio", icon: "edit" },
   { href: "/admin/affiliate", label: "Affiliate", icon: "coins" },
-  { href: "/admin/notifications", label: "Meldingen", icon: "bell" },
+  { href: "/admin/notifications", label: "Notifications", icon: "bell" },
   { href: "/app/platform/notifications", label: "Templates", icon: "edit" },
   { href: "/admin/audit", label: "Audit", icon: "list" },
-  { href: "/admin/settings", label: "Instellingen", icon: "settings" },
+  { href: "/admin/settings", label: "Settings", icon: "settings" },
 ];
 
 export default function DashboardShell({ children, admin = false }: DashboardShellProps) {
+  const c = useRoleCopy();
   const pathname = usePathname();
   const { session, signOut } = useSession();
   const router = useRouter();
@@ -59,7 +61,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
   const [workspaceFilter, setWorkspaceFilter] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
   // Always render the same nav on SSR + first paint; App Store page enforces role access.
-  const links = admin ? adminLinks : merchantLinks;
+  const links = (admin ? adminLinks : merchantLinks).map(item => ({ ...item, label: c(item.label) }));
 
   async function handleLogout() {
     if (loggingOut) return;
@@ -68,8 +70,10 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
     setMobileNav(false);
     try {
       await signOut();
-    } finally {
       router.replace("/account?mode=login");
+    } catch {
+      setLoggingOut(false);
+      window.alert(c("Log_out_failed_Please_try_again_you_are_still_signed_in"));
     }
   }
   const notificationsHref = admin ? "/admin/notifications" : "/dashboard/notifications";
@@ -111,7 +115,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
               type="button"
               className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-blue-100 text-navy lg:hidden"
               onClick={() => setMobileNav((v) => !v)}
-              aria-label="Dashboardnavigatie"
+              aria-label={c("Dashboard_navigation")}
               aria-expanded={mobileNav}
             >
               <DashboardIcon name={mobileNav ? "close" : "menu"} size={20} />
@@ -132,7 +136,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Zoek webshop, voucher…"
+                    placeholder={c("Search_webshop_voucher")}
                     className="min-w-0 flex-1 text-xs text-navy outline-none placeholder:text-muted/70"
                   />
                 </form>
@@ -167,7 +171,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                           <input
                             value={workspaceFilter}
                             onChange={(e) => setWorkspaceFilter(e.target.value)}
-                            placeholder="Zoek workspace…"
+                            placeholder={c("Search_workspace")}
                             className="min-w-0 flex-1 bg-transparent text-xs text-navy outline-none"
                             autoFocus
                           />
@@ -185,12 +189,12 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                           >
                             <span className="truncate">{shop.name}</span>
                             <span className={`shrink-0 text-[10px] font-extrabold uppercase ${statusBadge(shop.status)}`}>
-                              {shop.status}
+                              {c(shop.status)}
                             </span>
                           </button>
                         ))}
                         {filteredWorkspaces.length === 0 && (
-                          <p className="px-3 py-2 text-xs text-muted">Geen workspaces gevonden.</p>
+                          <p className="px-3 py-2 text-xs text-muted">{c("No_workspaces_found")}</p>
                         )}
                       </div>
                       <a
@@ -198,8 +202,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                         className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-extrabold text-brand hover:bg-blue-50"
                       >
                         <DashboardIcon name="plus" size={14} />
-                        Nieuwe webshop
-                      </a>
+                        {c("New_webshop")}</a>
                     </div>
                   )}
                 </div>
@@ -214,7 +217,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                     setShopOpen(false);
                     setProfileOpen((v) => !v);
                   }}
-                  aria-label="Accountmenu"
+                  aria-label={c("Account_menu")}
                   aria-expanded={profileOpen}
                   className="flex items-center gap-1.5 rounded-full p-0.5 transition hover:bg-blue-50 sm:gap-2 sm:p-1"
                   data-testid="dashboard-profile"
@@ -230,7 +233,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                     <button
                       type="button"
                       className="fixed inset-0 z-10 cursor-default"
-                      aria-label="Accountmenu sluiten"
+                      aria-label={c("Close_account_menu")}
                       onClick={() => setProfileOpen(false)}
                     />
                     <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-2xl border border-blue-100 bg-white p-2 shadow-xl">
@@ -239,7 +242,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                       </p>
                       {!admin && workspaces.length > 0 && (
                         <div className="mb-1 border-b border-blue-50 pb-1 sm:hidden">
-                          <p className="px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide text-muted">Workspace</p>
+                          <p className="px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide text-muted">{c("Workspace")}</p>
                           {workspaces.map((shop) => (
                             <button
                               key={shop.id}
@@ -259,15 +262,14 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                         onClick={() => setProfileOpen(false)}
                         className="block rounded-xl px-3 py-2 text-sm font-semibold text-muted hover:bg-blue-50 hover:text-brand"
                       >
-                        Instellingen
-                      </Link>
+                        {c("Settings")}</Link>
                       <button
                         type="button"
                         disabled={loggingOut}
                         onClick={() => void handleLogout()}
                         className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-500 hover:bg-red-50 disabled:opacity-60"
                       >
-                        {loggingOut ? "Uitloggen…" : "Uitloggen"}
+                        {loggingOut ? c("Logging_out") : c("Log_out")}
                       </button>
                     </div>
                   </>
@@ -280,7 +282,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
         {/* Dashboard navigation — below top navbar; keep under header dropdowns */}
         <nav
           className="relative z-10 hidden border-b border-blue-100/80 bg-white/95 backdrop-blur-xl lg:block"
-          aria-label="Dashboardnavigatie"
+          aria-label={c("Dashboard_navigation")}
           data-testid="dashboard-nav"
         >
           <div className="mx-auto max-w-[1600px] px-4 sm:px-6 xl:px-8">
@@ -307,7 +309,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
 
         {mobileNav && (
           <div className="border-b border-blue-100 bg-white px-4 py-3 lg:hidden" data-testid="dashboard-mobile-nav">
-            <nav className="mb-3 grid gap-1" aria-label="Mobiele dashboardnavigatie">
+            <nav className="mb-3 grid gap-1" aria-label={c("Mobile_dashboard_navigation")}>
               {links.map((item) => (
                 <Link
                   key={item.href}
@@ -336,7 +338,7 @@ export default function DashboardShell({ children, admin = false }: DashboardShe
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Zoek webshop, voucher…"
+                  placeholder={c("Search_webshop_voucher")}
                   className="min-w-0 flex-1 text-xs text-navy outline-none placeholder:text-muted/70"
                 />
               </form>

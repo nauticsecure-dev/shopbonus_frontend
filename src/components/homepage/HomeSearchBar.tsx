@@ -34,32 +34,35 @@ export default function HomeSearchBar({
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const ac = new AbortController();
     const term = q.trim();
+    queueMicrotask(() => {
+      if (ac.signal.aborted) return;
+      setItems([]); setActive(-1); setOpen(false);
+      setEmpty(false); setLoading(term.length >= 2);
+    });
     if (term.length < 2) {
-      setItems([]);
-      setEmpty(false);
-      setLoading(false);
-      return;
+      return () => ac.abort();
     }
-    setLoading(true);
     debounceRef.current = setTimeout(() => {
-      const ac = new AbortController();
       void searchPublic(term, { locale, limit: 8, signal: ac.signal })
         .then((res) => {
+          if (ac.signal.aborted || res.query !== term) return;
           setItems(res.suggestions ?? []);
           setEmpty((res.suggestions ?? []).length === 0);
           setOpen(true);
           setActive(-1);
         })
         .catch(() => {
+          if (ac.signal.aborted) return;
           setItems([]);
           setEmpty(true);
           setOpen(true);
         })
-        .finally(() => setLoading(false));
-      return () => ac.abort();
+        .finally(() => { if (!ac.signal.aborted) setLoading(false); });
     }, 220);
     return () => {
+      ac.abort();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [q, locale]);
@@ -127,14 +130,14 @@ export default function HomeSearchBar({
         />
         {loading && (
           <span className="pr-2 text-xs font-semibold text-muted" aria-live="polite">
-            Zoeken…
+            {locale === "en" ? "Searching…" : "Zoeken…"}
           </span>
         )}
         <button
           type="submit"
           className="shrink-0 rounded-full bg-brand px-7 py-3 text-sm font-extrabold text-white transition hover:bg-brand-dark"
         >
-          Zoeken
+          {locale === "en" ? "Search" : "Zoeken"}
         </button>
       </form>
 
@@ -145,7 +148,7 @@ export default function HomeSearchBar({
           className="absolute z-30 mt-2 max-h-80 w-full overflow-auto rounded-2xl border border-blue-100 bg-white py-2 shadow-xl"
         >
           {empty && !loading ? (
-            <li className="px-4 py-3 text-sm text-muted">Geen resultaten voor “{q.trim()}”.</li>
+            <li className="px-4 py-3 text-sm text-muted">{locale === "en" ? "No results for" : "Geen resultaten voor"} “{q.trim()}”.</li>
           ) : (
             items.map((item, i) => (
               <li key={`${item.type}-${item.href}-${item.label}`} role="option" aria-selected={i === active}>

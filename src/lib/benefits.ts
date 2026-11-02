@@ -4,8 +4,9 @@ import type { Locale } from "@/types/locale";
 export type WalletSummary = {
   available_minor: number;
   reserved_minor?: number;
+  /** Legacy field; consumer UI never presents pending cashback. */
   pending_minor?: number;
-  /** Pending affiliate cashback — visible but not spendable. */
+  /** Legacy field; consumer UI never presents pending cashback. */
   pending_cashback_minor?: number;
   total_earned_minor: number;
   total_spent_minor: number;
@@ -64,7 +65,7 @@ export type ConsumerVoucher = {
   redemption?: { at?: string; source?: string | null } | null;
 };
 
-export type LedgerFilter = "all" | "earned" | "spent" | "adjustments" | "holds" | "pending";
+export type LedgerFilter = "all" | "earned" | "spent" | "adjustments" | "holds";
 
 export type LedgerEntry = {
   id: string;

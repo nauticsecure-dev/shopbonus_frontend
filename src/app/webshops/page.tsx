@@ -14,7 +14,6 @@ import {
   type DiscoveryWebshopCard as ShopCard,
   type PageMeta,
 } from "@/lib/discovery";
-import { fetchVouchers } from "@/lib/benefits";
 import { formatMinor } from "@/lib/money";
 import { useSession } from "@/store/SessionContext";
 import { useShopBonus } from "@/store/ShopBonusContext";
@@ -73,20 +72,50 @@ function CategoryIcon({ name }: { name: (typeof PRIMARY_PILLS)[number]["icon"] }
   );
 }
 
+function parseDirectoryParams(params: URLSearchParams) {
+  const sortRaw = params.get("sort");
+  const sort: DiscoverySort =
+    sortRaw === "name" || sortRaw === "newest" || sortRaw === "most_offers" || sortRaw === "relevance"
+      ? sortRaw
+      : "relevance";
+  return {
+    q: params.get("q") ?? params.get("search") ?? "",
+    category: params.get("category") ?? params.get("cat"),
+    hasOffers: params.get("has_offers") === "1" || params.get("has_offers") === "true",
+    sort,
+    page: Math.min(10000, Math.max(1, Math.floor(Number(params.get("page") || 1)) || 1)),
+  };
+}
+
+function buildDirectoryQuery(state: {
+  q: string;
+  category: string | null;
+  hasOffers: boolean;
+  sort: DiscoverySort;
+  page: number;
+}): string {
+  const sp = new URLSearchParams();
+  if (state.q.trim()) sp.set("q", state.q.trim());
+  if (state.category) sp.set("category", state.category);
+  if (state.hasOffers) sp.set("has_offers", "1");
+  if (state.sort !== "relevance") sp.set("sort", state.sort);
+  if (state.page > 1) sp.set("page", String(state.page));
+  return sp.toString();
+}
+
 function WebshopsInner() {
   const params = useSearchParams();
   const router = useRouter();
   const { session } = useSession();
-  const { availableMinor, apiMode, refreshVouchers } = useShopBonus();
+  const { availableMinor, apiVouchers, voucherStatus } = useShopBonus();
 
-  const [qInput, setQInput] = useState(params.get("q") ?? params.get("search") ?? "");
-  const [q, setQ] = useState(qInput);
-  const [category, setCategory] = useState<string | null>(params.get("category") ?? params.get("cat") ?? null);
-  const [hasOffers, setHasOffers] = useState(
-    params.get("has_offers") === "1" || params.get("has_offers") === "true"
-  );
-  const [sort, setSort] = useState<DiscoverySort>((params.get("sort") as DiscoverySort) || "relevance");
-  const [page, setPage] = useState(Number(params.get("page") || 1) || 1);
+  const initial = parseDirectoryParams(params);
+  const [qInput, setQInput] = useState(initial.q);
+  const [q, setQ] = useState(initial.q);
+  const [category, setCategory] = useState<string | null>(initial.category);
+  const [hasOffers, setHasOffers] = useState(initial.hasOffers);
+  const [sort, setSort] = useState<DiscoverySort>(initial.sort);
+  const [page, setPage] = useState(initial.page);
 
   const [shops, setShops] = useState<ShopCard[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
@@ -94,31 +123,47 @@ function WebshopsInner() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeVoucherCount, setActiveVoucherCount] = useState(0);
 
   const requestId = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const urlQuery = params.toString();
+  const lastUrlQuery = useRef(urlQuery);
+  const pendingUrl = useRef<string | null>(null);
 
-  // Debounce search typing
+  // Apply external navigation before writing local edits to history.
   useEffect(() => {
+    if (urlQuery !== lastUrlQuery.current) {
+      lastUrlQuery.current = urlQuery;
+      if (pendingUrl.current === urlQuery) {
+        pendingUrl.current = null;
+        return;
+      }
+      pendingUrl.current = null;
+      const parsed = parseDirectoryParams(new URLSearchParams(urlQuery));
+      setQInput(parsed.q);
+      setQ(parsed.q);
+      setCategory(parsed.category);
+      setHasOffers(parsed.hasOffers);
+      setSort(parsed.sort);
+      setPage(parsed.page);
+      return;
+    }
+    const next = buildDirectoryQuery({ q, category, hasOffers, sort, page });
+    if (next !== urlQuery && next !== pendingUrl.current) {
+      pendingUrl.current = next;
+      router.push(next ? `/webshops?${next}` : "/webshops", { scroll: false });
+    }
+  }, [q, category, hasOffers, sort, page, router, urlQuery]);
+
+  useEffect(() => {
+    // Restored URLs already set q; never reset a restored page after 300 ms.
+    if (qInput === q) return;
     const t = window.setTimeout(() => {
       setQ(qInput);
       setPage(1);
     }, 300);
     return () => window.clearTimeout(t);
-  }, [qInput]);
-
-  // Sync URL
-  useEffect(() => {
-    const sp = new URLSearchParams();
-    if (q.trim()) sp.set("q", q.trim());
-    if (category) sp.set("category", category);
-    if (hasOffers) sp.set("has_offers", "1");
-    if (sort !== "relevance") sp.set("sort", sort);
-    if (page > 1) sp.set("page", String(page));
-    const next = sp.toString();
-    router.replace(next ? `/webshops?${next}` : "/webshops", { scroll: false });
-  }, [q, category, hasOffers, sort, page, router]);
+  }, [qInput, q]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -130,36 +175,24 @@ function WebshopsInner() {
     return () => ac.abort();
   }, []);
 
-  useEffect(() => {
-    if (!session || !apiMode) {
-      setActiveVoucherCount(0);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        await refreshVouchers("active");
-        const list = await fetchVouchers("active");
-        if (!cancelled) setActiveVoucherCount(list.length);
-      } catch {
-        if (!cancelled) setActiveVoucherCount(0);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [session, apiMode, refreshVouchers]);
+  const activeVoucherCount = useMemo(
+    () => apiVouchers.filter((v) => String(v.status).toUpperCase() === "ACTIVE").length,
+    [apiVouchers]
+  );
 
   useEffect(() => {
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
     const id = ++requestId.current;
-    setError(null);
-    setSearching(true);
-    setLoading(true);
-    setShops([]);
-    setMeta(null);
+    queueMicrotask(() => {
+      if (id !== requestId.current || ac.signal.aborted) return;
+      setError(null);
+      setSearching(true);
+      setLoading(true);
+      setShops([]);
+      setMeta(null);
+    });
 
     const started = performance.now();
     const effectiveSort: DiscoverySort =
@@ -261,7 +294,13 @@ function WebshopsInner() {
 
   const hasFilters = Boolean(q.trim()) || Boolean(category) || hasOffers || sort !== "relevance";
   const voucherLabel =
-    activeVoucherCount === 1 ? "1 actieve voucher" : `${activeVoucherCount} actieve vouchers`;
+    (voucherStatus === "loading" || voucherStatus === "idle")
+      ? "Vouchers laden…"
+      : voucherStatus === "error"
+        ? "Vouchers niet beschikbaar"
+        : activeVoucherCount === 1
+          ? "1 actieve voucher"
+          : `${activeVoucherCount} actieve vouchers`;
 
   return (
     <div className="relative overflow-hidden pb-16">

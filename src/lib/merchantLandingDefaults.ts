@@ -7,6 +7,7 @@ export type PlatformTile = {
   name: string;
   status: PlatformStatus;
   href: string;
+  description?: string;
   connectable?: boolean;
   blocked_reason?: string | null;
 };
@@ -26,7 +27,10 @@ export type OnboardingStep = {
 
 export type FaqItem = { question: string; answer: string };
 
+export type MediaSlot = { desktop_asset_id?: string | null; mobile_asset_id?: string | null; desktop_url?: string | null; mobile_url?: string | null; alt: string };
+
 export type MerchantLandingContent = {
+  media?: Partial<Record<"hero_background" | "hero" | "benefits" | "offers", MediaSlot>>;
   title: string;
   seo_title: string;
   seo_description: string;
@@ -96,7 +100,7 @@ export type MerchantLandingContent = {
     heading: string;
     items: FaqItem[];
   };
-  footer: { blurb: string };
+  footer: { blurb: string; links?: Cta[] };
   schedule?: { publish_at?: string | null; unpublish_at?: string | null } | null;
 };
 
@@ -453,12 +457,12 @@ export function mergeMerchantLandingContent(
     platforms: {
       ...base.platforms,
       ...(partial.platforms ?? {}),
-      tiles: partial.platforms?.tiles?.length ? partial.platforms.tiles : base.platforms.tiles,
+      tiles: partial.platforms?.tiles ?? base.platforms.tiles,
     },
     benefits: {
       ...base.benefits,
       ...(partial.benefits ?? {}),
-      items: partial.benefits?.items?.length ? partial.benefits.items : base.benefits.items,
+      items: partial.benefits?.items ?? base.benefits.items,
     },
     offer_preview: { ...base.offer_preview, ...(partial.offer_preview ?? {}) },
     onboarding: {

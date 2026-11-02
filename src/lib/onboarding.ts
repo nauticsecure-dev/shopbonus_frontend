@@ -117,6 +117,10 @@ export type OfferPayload = {
     categories?: string[];
     products?: string[];
     code_mode?: string | null;
+    price_minor?: number | null;
+    price_points?: number | null;
+    starts_at?: string | null;
+    ends_at?: string | null;
     allocation_limit?: number | null;
   };
   missing_for_activation: string[];
@@ -318,6 +322,11 @@ export async function uploadCodeImport(
   return res.data;
 }
 
+export async function fetchCodeImport(batchId: string, workspaceId = "current"): Promise<CodeImportBatch> {
+  const res = await apiRequest<Data<CodeImportBatch>>({ path: ws(`/code-imports/${batchId}`, workspaceId) });
+  return res.data;
+}
+
 export async function commitCodeImport(batchId: string, workspaceId = "current"): Promise<CodeImportBatch> {
   const res = await apiRequest<Data<CodeImportBatch>>({
     path: ws(`/code-imports/${batchId}/commit`, workspaceId),
@@ -337,6 +346,12 @@ export function offerBodyFromForm(form: {
   redemptionDays: string;
   terms: string;
   combinable?: boolean;
+  price?: string;
+  points?: string;
+  startsAt?: string;
+  endsAt?: string;
+  allocationLimit?: string;
+  codeMode?: string;
 }): Record<string, unknown> {
   const discountNum = Math.max(0, Number(form.discount) || 0);
   const body: Record<string, unknown> = {
@@ -355,6 +370,12 @@ export function offerBodyFromForm(form: {
   } else {
     body.max_discount_minor = null;
   }
+  if (form.price !== undefined) body.price_minor = form.price ? majorToMinor(Number(form.price)) : null;
+  if (form.points !== undefined) body.price_points = form.points ? Number(form.points) : null;
+  if (form.startsAt !== undefined) body.starts_at = form.startsAt ? new Date(form.startsAt).toISOString() : null;
+  if (form.endsAt !== undefined) body.ends_at = form.endsAt ? new Date(form.endsAt).toISOString() : null;
+  if (form.allocationLimit !== undefined) body.allocation_limit = form.allocationLimit ? Number(form.allocationLimit) : null;
+  if (form.codeMode !== undefined) body.code_mode = form.codeMode;
   return body;
 }
 

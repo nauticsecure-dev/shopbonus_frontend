@@ -19,8 +19,21 @@ yarn-error.log*
 .DS_Store
 *.pem
 tsconfig.tsbuildinfo
+test-results/
+playwright-report/
 next-env.d.ts
 
 # editors
 .idea/
 .vscode/
+
+# Isolated merchant CMS browser contract server
+/.next-merchant-cms/
+/test-results-merchant-cms/
+/test-results-merchant-onboarding/
+/.next-about-cms/
+/test-results-about-cms/
+/test-results-merchant-navigation/
+
+# Isolated Next.js previews are build output, never Tailwind source.
+/.next*/

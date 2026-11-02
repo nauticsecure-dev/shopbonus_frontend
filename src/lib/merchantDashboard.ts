@@ -5,6 +5,9 @@ export type DashboardGreeting = "good_morning" | "good_afternoon" | "good_evenin
 
 export type MerchantKpis = {
   active_offers: number;
+  reserved_codes: number;
+  expired_vouchers: number;
+  expired_offers: number;
   available_codes: number;
   issued_vouchers: number;
   claimed_vouchers: number;
@@ -101,10 +104,12 @@ function ws(path: string, workspaceId: string): string {
 export async function fetchMerchantDashboard(
   workspaceId: string,
   signal?: AbortSignal,
-  params?: { status?: string }
+  params?: { status?: string; page?: number; per_page?: number }
 ): Promise<MerchantDashboard> {
   const q = new URLSearchParams();
   if (params?.status && params.status !== "all") q.set("status", params.status);
+  if (params?.page) q.set("page", String(params.page));
+  if (params?.per_page) q.set("per_page", String(params.per_page));
   const qs = q.toString();
   const res = await apiRequest<Data<MerchantDashboard>>({
     path: ws(`/dashboard${qs ? `?${qs}` : ""}`, workspaceId),
@@ -123,6 +128,19 @@ export async function fetchClaimsSeries(
     signal,
   });
   return res.data;
+}
+
+/** Adjacent period derived from server business dates, preserving calendar days across DST. */
+export async function fetchPreviousClaimsSeries(workspaceId: string, current: ClaimsSeries, signal?: AbortSignal): Promise<ClaimsSeries> {
+  const shift = (value: string, days: number) => {
+    const day = new Date(value + "T00:00:00Z");
+    day.setUTCDate(day.getUTCDate() + days);
+    return day.toISOString().slice(0, 10);
+  };
+  const from = shift(current.from, -current.days.length);
+  const to = shift(current.from, -1);
+  const result = await apiRequest<Data<ClaimsSeries>>({ path: ws(`/analytics/claims?from=${from}&to=${to}`, workspaceId), signal });
+  return result.data;
 }
 
 export async function fetchMerchantNotifications(
@@ -344,7 +362,7 @@ export function notificationHref(notice: MerchantNotificationItem): string {
     case "offer_expiring":
       return subjectId ? `/dashboard/offers?offer=${encodeURIComponent(subjectId)}` : "/dashboard/offers";
     case "new_claims":
-      return "/dashboard/offers?focus=claims";
+      return "/dashboard/vouchers?claimed=1";
     case "connector_error":
       return "/dashboard/app-store";
     case "low_funding":

@@ -7,6 +7,7 @@ import AdminListPage from "@/components/AdminListPage";
 import AdminStepUpModal from "@/components/AdminStepUpModal";
 import {
   fetchFailedIntegrationEvents,
+  fetchAffiliateConnections,
   fetchIntegrations,
   retryIntegrationEvent,
 } from "@/lib/adminApi";
@@ -15,6 +16,9 @@ import { formatApiError } from "@/lib/auth";
 function IntegrationsOps() {
   const params = useSearchParams();
   const status = params.get("status") || "";
+  const attention = params.get("attention") || undefined;
+  const [affiliateFailures, setAffiliateFailures] = useState<Array<Record<string, unknown>>>([]);
+  const connectionFilter = params.get("connection") || "";
   const webshopFilter = params.get("webshop") || "";
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
   const [failed, setFailed] = useState<Array<Record<string, unknown>>>([]);
@@ -27,12 +31,14 @@ function IntegrationsOps() {
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const [conn, events] = await Promise.all([
-        fetchIntegrations(50),
-        fetchFailedIntegrationEvents(50),
+      const [conn, events, affiliates] = await Promise.all([
+        fetchIntegrations(50, connectionFilter || undefined, attention),
+        fetchFailedIntegrationEvents(50, connectionFilter || undefined),
+        fetchAffiliateConnections(),
       ]);
       if (signal?.aborted) return;
       let list = conn.data;
+      if (connectionFilter) list = list.filter((r) => r.id === connectionFilter);
       if (status) list = list.filter((r) => String(r.status) === status);
       if (webshopFilter) {
         list = list.filter((r) => {
@@ -40,6 +46,7 @@ function IntegrationsOps() {
           return shop?.id === webshopFilter;
         });
       }
+      setAffiliateFailures(affiliates.data.filter((c) => ["error", "reauthentication_required", "auth_failed", "rate_limited", "unavailable"].includes(String(c.status))));
       setRows(list);
       setFailed(events.data);
       setError(null);
@@ -48,12 +55,12 @@ function IntegrationsOps() {
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [status, webshopFilter]);
+  }, [status, webshopFilter, connectionFilter, attention]);
 
   useEffect(() => {
     const ac = new AbortController();
-    void load(ac.signal);
-    return () => ac.abort();
+    const timer = window.setTimeout(() => void load(ac.signal), 0);
+    return () => { window.clearTimeout(timer); ac.abort(); };
   }, [load]);
 
   return (
@@ -77,6 +84,7 @@ function IntegrationsOps() {
 
       {!loading && !error && (
         <>
+          {affiliateFailures.map((c) => <p key={String(c.id)} className="mb-3"><Link className="font-bold text-brand" href={`/admin/affiliate?tab=connections&connection=${c.id}`}>Affiliate · {String(c.network)} · {String(c.status)} →</Link></p>)}
           <h3 className="mb-2 text-sm font-black text-navy">Connecties</h3>
           <ul className="mb-6 divide-y divide-blue-50">
             {rows.map((row) => {
