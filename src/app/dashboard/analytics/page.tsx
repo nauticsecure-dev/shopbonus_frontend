@@ -13,37 +13,38 @@ export default function MerchantAnalyticsPage() {
   const [days, setDays] = useState(30);
   const [metric, setMetric] = useState("Omzet");
   const [currency, setCurrency] = useState("EUR");
-  const [result, setResult] = useState<{ workspaceId: string; data: MerchantAnalytics } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [result, setResult] = useState<{ key: string; data: MerchantAnalytics | null; error: string | null } | null>(null);
   const [retry, setRetry] = useState(0);
   const [drillType, setDrillType] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [drill, setDrill] = useState<AttributionOrders | null>(null);
-  const [drillError, setDrillError] = useState(false);
-  const data = result?.workspaceId === workspaceId ? result.data : null;
+  const [drillResult, setDrillResult] = useState<{ key: string; data: AttributionOrders | null; error: boolean } | null>(null);
+  const requestKey = JSON.stringify([workspaceId, revision, days, retry]);
+  const current = result?.key === requestKey ? result : null;
+  const data = current?.data ?? null;
+  const error = current?.error ?? null;
+  const loading = Boolean(workspaceId) && current === null;
+  const drillKey = JSON.stringify([requestKey, drillType, page]);
+  const drill = drillResult?.key === drillKey ? drillResult.data : null;
+  const drillError = drillResult?.key === drillKey && drillResult.error;
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-    if (!workspaceId) { setLoading(false); return () => controller.abort(); }
+    if (!workspaceId) return () => controller.abort();
     fetchMerchantAnalytics(workspaceId, days, controller.signal).then((report) => {
-      if (!controller.signal.aborted) setResult({ workspaceId, data: report });
+      if (!controller.signal.aborted) setResult({ key: requestKey, data: report, error: null });
     }).catch(() => {
-      if (!controller.signal.aborted) setError("Rapportage kon niet worden geladen. Probeer opnieuw.");
-    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+      if (!controller.signal.aborted) setResult({ key: requestKey, data: null, error: "Rapportage kon niet worden geladen. Probeer opnieuw." });
+    });
     return () => controller.abort();
-  }, [workspaceId, revision, days, retry]);
+  }, [workspaceId, days, requestKey]);
 
   useEffect(() => {
     const controller = new AbortController();
-    setDrill(null); setDrillError(false);
     if (workspaceId && data && drillType && !loading && !error) fetchAttributionOrders(workspaceId, data, drillType, page, controller.signal)
-      .then((rows) => { if (!controller.signal.aborted) setDrill(rows); })
-      .catch(() => { if (!controller.signal.aborted) setDrillError(true); });
+      .then((rows) => { if (!controller.signal.aborted) setDrillResult({ key: drillKey, data: rows, error: false }); })
+      .catch(() => { if (!controller.signal.aborted) setDrillResult({ key: drillKey, data: null, error: true }); });
     return () => controller.abort();
-  }, [workspaceId, data, drillType, page, loading, error]);
+  }, [workspaceId, data, drillType, page, loading, error, drillKey]);
 
   const currencies = Object.keys(data?.orders ?? {});
   const selectedCurrency = currencies.includes(currency) ? currency : currencies[0] ?? "EUR";

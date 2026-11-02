@@ -57,8 +57,8 @@ export type CmsRevision = {
 
 export type TranslationStatusRow = {
   page: string;
-  locale: Locale;
-  status: "missing" | "unpublished" | "draft_differs" | "published";
+  locale: Locale | "de";
+  status: "missing" | "unpublished" | "draft_differs" | "stale" | "published";
 };
 
 export type PublicCmsPage = {

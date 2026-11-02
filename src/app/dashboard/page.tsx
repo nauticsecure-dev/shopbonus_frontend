@@ -19,6 +19,7 @@ import {
   activityLabel,
   connectionHealthLabel,
   fetchClaimsSeries,
+  fetchPreviousClaimsSeries,
   fetchMerchantDashboard,
   formatChartDayLabel,
   formatMinOrder,
@@ -89,6 +90,7 @@ function MerchantOverview() {
   const { workspaceId, revision, current } = useWorkspace();
   const [dashboard, setDashboard] = useState<MerchantDashboard | null>(null);
   const [claims, setClaims] = useState<ClaimsSeries | null>(null);
+  const [previousClaims, setPreviousClaims] = useState<ClaimsSeries | null>(null);
   const [range, setRange] = useState<ClaimsRange>(30);
   const [loading, setLoading] = useState(true);
   const [claimsLoading, setClaimsLoading] = useState(true);
@@ -142,11 +144,13 @@ function MerchantOverview() {
     setClaimsError(null);
     try {
       const data = await fetchClaimsSeries(workspaceId, range, signal);
-      if (!signal?.aborted) setClaims(data);
+      const previous = await fetchPreviousClaimsSeries(workspaceId, data, signal);
+      if (!signal?.aborted) { setClaims(data); setPreviousClaims(previous); }
     } catch (err) {
       if (signal?.aborted) return;
       setClaimsError(err instanceof ApiError ? err.message : "Claimsgrafiek kon niet worden geladen.");
       setClaims(null);
+      setPreviousClaims(null);
     } finally {
       if (!signal?.aborted) setClaimsLoading(false);
     }
@@ -340,6 +344,12 @@ function MerchantOverview() {
           href="/dashboard/vouchers?claimed=1"
         />
       </section>
+
+      {dashboard && <section aria-label="Voorraad en verval" className="mt-4 grid gap-3 sm:grid-cols-3">
+        <Link href="/dashboard/offers?inventory=reserved" className="rounded-2xl border border-blue-100 bg-white p-4 text-sm font-bold text-navy">Gereserveerde codes <strong className="ml-2 text-brand">{formatCount(dashboard.kpis.reserved_codes)}</strong></Link>
+        <Link href="/dashboard/vouchers?status=expired" className="rounded-2xl border border-blue-100 bg-white p-4 text-sm font-bold text-navy">Verlopen vouchers <strong className="ml-2 text-brand">{formatCount(dashboard.kpis.expired_vouchers)}</strong></Link>
+        <Link href="/dashboard/offers?status=expired" className="rounded-2xl border border-blue-100 bg-white p-4 text-sm font-bold text-navy">Verlopen aanbiedingen <strong className="ml-2 text-brand">{formatCount(dashboard.kpis.expired_offers)}</strong></Link>
+      </section>}
 
       <div className="mt-5 grid items-start gap-5 xl:grid-cols-12">
         <Panel className="xl:col-span-7">
@@ -580,6 +590,12 @@ function MerchantOverview() {
                     {maxClaims} piek · {formatCount(claims.totals.claims)} totaal
                   </strong>
                 </div>
+                {previousClaims && <div className="mb-4 rounded-xl bg-blue-50 p-3 text-xs text-navy">
+                  <p className="font-bold">Vergelijking {claims.from}–{claims.to} met {previousClaims.from}–{previousClaims.to} ({claims.timezone})</p>
+                  <table className="mt-2 w-full text-left"><thead><tr><th>Gebeurtenis</th><th>Huidig</th><th>Vorig</th><th>Verschil</th></tr></thead>
+                    <tbody>{([ ["claims", "Claims"], ["issued", "Uitgegeven"], ["redeemed", "Ingewisseld"] ] as const).map(([key, label]) => <tr key={key}><td>{label}</td><td>{claims.totals[key]}</td><td>{previousClaims.totals[key]}</td><td>{claims.totals[key] - previousClaims.totals[key]}</td></tr>)}</tbody>
+                  </table>
+                </div>}
                 <DashboardLineChart
                   values={chartValues}
                   id="merchant-claims"
@@ -599,7 +615,7 @@ function MerchantOverview() {
 
       <details className="mt-5">
         <summary className="cursor-pointer text-sm font-bold text-brand">Operationeel overzicht en extra statistieken</summary>
-        {dashboard && <p className="my-3 text-sm text-muted">Ingewisseld: {formatCount(dashboard.kpis.redeemed_vouchers)} · Gepland: {formatCount(dashboard.kpis.scheduled_offers)} · Gepauzeerd: {formatCount(dashboard.kpis.paused_offers)} · Open geschillen: {formatCount(dashboard.kpis.open_disputes)}</p>}
+        {dashboard && <p className="my-3 text-sm text-muted">Gereserveerde codes: {formatCount(dashboard.kpis.reserved_codes)} · Verlopen vouchers: {formatCount(dashboard.kpis.expired_vouchers)} · Verlopen aanbiedingen: {formatCount(dashboard.kpis.expired_offers)} · Ingewisseld: {formatCount(dashboard.kpis.redeemed_vouchers)} · Gepland: {formatCount(dashboard.kpis.scheduled_offers)} · Gepauzeerd: {formatCount(dashboard.kpis.paused_offers)} · Open geschillen: {formatCount(dashboard.kpis.open_disputes)}</p>}
         {!loading && dashboard && !dashboard.empty && availableActions.length > 0 && (
           <div className="mb-5 flex flex-wrap gap-2">
             {availableActions.map((action) => (

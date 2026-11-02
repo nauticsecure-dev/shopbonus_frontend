@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
+import AdminOperationsOverview from "@/components/AdminOperationsOverview";
 import DashboardIcon, { type DashboardIconName } from "@/components/DashboardIcon";
 import {
   DashboardHeading,
@@ -178,6 +179,7 @@ function AdminDashboardPage() {
         accent="Cockpit"
         subtitle="Live overzicht van ShopBonus. Beheer platformprestaties en acties."
       />
+      <AdminOperationsOverview />
 
       {(error || warnings.length > 0) && (
         <div className="mb-5 space-y-2">
@@ -523,30 +525,11 @@ function AdminDashboardPage() {
               <div>
                 <h3 className="font-black text-navy">Platformstatus</h3>
                 <p className="mt-1 text-sm text-muted">
-                  {warnings.length === 0
-                    ? "Alle systemen werken normaal."
-                    : "Sommige bronnen zijn tijdelijk gedegradeerd."}
+                  Bekijk de gemeten componentstatus bovenaan dit overzicht.
                 </p>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold">
-              <div className="rounded-xl bg-white p-3 text-muted">
-                API status{" "}
-                <span className={`float-right ${error ? "text-amber-600" : "text-green-600"}`}>
-                  ● {error ? "Degraded" : "Online"}
-                </span>
-              </div>
-              <div className="rounded-xl bg-white p-3 text-muted">
-                Affiliate{" "}
-                <span
-                  className={`float-right ${
-                    summary?.sources.affiliate === "degraded" ? "text-amber-600" : "text-green-600"
-                  }`}
-                >
-                  ● {summary?.sources.affiliate === "degraded" ? "Degraded" : "Online"}
-                </span>
-              </div>
-            </div>
+            <Link href="#operations" className="mt-4 block text-sm font-extrabold text-brand hover:underline">Platform operations →</Link>
             <Link href="/admin/settings" className="mt-4 inline-block text-sm font-extrabold text-brand hover:underline">
               Platforminstellingen openen →
             </Link>

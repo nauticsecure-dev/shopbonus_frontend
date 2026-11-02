@@ -144,7 +144,7 @@ export function exportVouchersUrl(workspaceId: string, filters: Omit<VoucherList
 
 export async function redeemVoucher(
   workspaceId: string,
-  body: { code: string; reference?: string }
+  body: { code: string; voucher_id?: string; reference?: string }
 ): Promise<RedeemResult> {
   const res = await apiRequest<Data<RedeemResult>>({
     path: ws("/vouchers/redeem", workspaceId),
@@ -167,12 +167,27 @@ export async function openVoucherDispute(
   return res.data;
 }
 
-export async function listDisputes(workspaceId: string, status?: string, signal?: AbortSignal): Promise<MerchantDispute[]> {
-  const res = await apiRequest<Data<MerchantDispute[]>>({
-    path: ws(`/disputes${status && status !== "all" ? `?status=${encodeURIComponent(status)}` : ""}`, workspaceId),
+export type VoucherExport = {
+  id: string;
+  status: "queued" | "processing" | "ready" | "failed" | "expired";
+  rows: number;
+  expires_at: string | null;
+};
+
+export async function fetchVoucherExport(workspaceId: string, id: string, signal?: AbortSignal): Promise<VoucherExport> {
+  const result = await apiRequest<Data<VoucherExport>>({ path: ws(`/vouchers/exports/${id}`, workspaceId), signal });
+  return result.data;
+}
+
+export function voucherExportDownloadUrl(workspaceId: string, id: string): string {
+  return ws(`/vouchers/exports/${id}/download`, workspaceId);
+}
+
+export async function listDisputes(workspaceId: string, status?: string, signal?: AbortSignal, page = 1): Promise<{ data: MerchantDispute[]; meta: VoucherListMeta }> {
+  return apiRequest({
+    path: ws(`/disputes${queryString({ status, page, per_page: 25 })}`, workspaceId),
     signal,
   });
-  return res.data;
 }
 
 export async function respondDispute(workspaceId: string, disputeId: string, message: string): Promise<MerchantDispute> {

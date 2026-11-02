@@ -15,6 +15,9 @@ import {
   disputeReasonLabel,
   disputeStatusLabel,
   exportVouchersUrl,
+  fetchVoucherExport,
+  voucherExportDownloadUrl,
+  type VoucherExport,
   fetchVoucher,
   formatVoucherDate,
   listDisputes,
@@ -122,6 +125,13 @@ function MerchantVouchersPage() {
   const [to, setTo] = useState(params.get("to") ?? "");
   const [page, setPage] = useState(1);
 
+  const [disputePage, setDisputePage] = useState(1);
+  const [disputeMeta, setDisputeMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [exportJob, setExportJob] = useState<{ workspace: string; job: VoucherExport } | null>(null);
+  const [exportError, setExportError] = useState(false);
+  const [exportRetry, setExportRetry] = useState(0);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [redeemVoucherId, setRedeemVoucherId] = useState("");
   const [disputes, setDisputes] = useState<MerchantDispute[]>([]);
   const [disputeStatus, setDisputeStatus] = useState("all");
   const [loadingDisputes, setLoadingDisputes] = useState(false);
@@ -191,8 +201,12 @@ function MerchantVouchersPage() {
       setLoadingDisputes(true);
       setDisputeError(null);
       try {
-        const data = await listDisputes(workspaceId, disputeStatus === "all" ? undefined : disputeStatus, signal);
-        if (!signal?.aborted) setDisputes(data);
+        const data = await listDisputes(workspaceId, disputeStatus === "all" ? undefined : disputeStatus, signal, disputePage);
+        if (!signal?.aborted) {
+          setDisputes(data.data);
+          setDisputeMeta(data.meta);
+          if (disputePage > data.meta.last_page) setDisputePage(data.meta.last_page);
+        }
       } catch (err) {
         if (signal?.aborted) return;
         setDisputes([]);
@@ -201,7 +215,7 @@ function MerchantVouchersPage() {
         if (!signal?.aborted) setLoadingDisputes(false);
       }
     },
-    [workspaceId, disputeStatus]
+    [workspaceId, disputeStatus, disputePage]
   );
 
   useEffect(() => {
@@ -246,9 +260,24 @@ function MerchantVouchersPage() {
     }
   };
 
-  const exportCsv = async () => {
+  useEffect(() => {
+    if (!exportJob || exportJob.workspace !== workspaceId || !["queued", "processing"].includes(exportJob.job.status)) return;
+    const ac = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const job = await fetchVoucherExport(workspaceId, exportJob.job.id, ac.signal);
+        if (!ac.signal.aborted) { setExportJob({ workspace: workspaceId, job }); setExportError(false); }
+      } catch {
+        if (!ac.signal.aborted) setExportError(true);
+      }
+    }, 2000);
+    return () => { ac.abort(); clearTimeout(timer); };
+  }, [exportJob, workspaceId, exportRetry]);
+
+  const exportCsv = async (downloadId?: string) => {
+    setExportBusy(true);
     try {
-      const path = exportVouchersUrl(workspaceId, {
+      const path = downloadId ? voucherExportDownloadUrl(workspaceId, downloadId) : exportVouchersUrl(workspaceId, {
         claimed: claimed ? 1 : undefined,
         status: status === "all" ? undefined : status,
         offer: offerId === "all" ? undefined : offerId,
@@ -261,6 +290,11 @@ function MerchantVouchersPage() {
         headers: { Accept: "text/csv" },
       });
       if (!res.ok) throw new Error("Export geweigerd");
+      if (res.status === 202) {
+        const result = await res.json() as { data: VoucherExport };
+        setExportJob({ workspace: workspaceId, job: result.data }); setExportError(false);
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -268,13 +302,16 @@ function MerchantVouchersPage() {
       anchor.download = "shopbonus-vouchers.csv";
       anchor.click();
       URL.revokeObjectURL(url);
-      pushToast({ title: "Export gestart", message: "Gefilterde vouchers gedownload.", kind: "success" });
+      setExportJob(null);
+      pushToast({ title: "Export voltooid", message: "Gefilterde vouchers gedownload.", kind: "success" });
     } catch (err) {
       pushToast({
         title: "Export mislukt",
         message: err instanceof Error ? err.message : "Geen exportrechten of serverfout.",
         kind: "error",
       });
+    } finally {
+      setExportBusy(false);
     }
   };
 
@@ -286,6 +323,7 @@ function MerchantVouchersPage() {
     try {
       const result = await redeemVoucher(workspaceId, {
         code,
+        voucher_id: redeemVoucherId.trim() || undefined,
         reference: redeemReference.trim() || undefined,
       });
       pushToast({
@@ -295,6 +333,7 @@ function MerchantVouchersPage() {
       });
       setRedeemOpen(false);
       setRedeemCode("");
+      setRedeemVoucherId("");
       setRedeemReference("");
       await loadVouchers();
     } catch (err) {
@@ -380,7 +419,7 @@ function MerchantVouchersPage() {
             </button>
             <button
               type="button"
-              onClick={() => void exportCsv()}
+              disabled={exportBusy || (exportJob?.workspace === workspaceId && ["queued", "processing"].includes(exportJob.job.status))} onClick={() => void exportCsv()}
               className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-white px-5 py-3.5 font-extrabold text-brand hover:bg-blue-50"
             >
               <DashboardIcon name="download" size={18} /> CSV exporteren
@@ -629,7 +668,7 @@ function MerchantVouchersPage() {
             action={
               <select
                 value={disputeStatus}
-                onChange={(e) => setDisputeStatus(e.target.value)}
+                onChange={(e) => { setDisputeStatus(e.target.value); setDisputePage(1); }}
                 className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-navy outline-none focus:border-brand"
                 aria-label="Filter geschilstatus"
               >
@@ -647,6 +686,11 @@ function MerchantVouchersPage() {
           {!loadingDisputes && disputes.length === 0 && (
             <p className="py-8 text-center text-sm font-semibold text-muted">Geen geschillen.</p>
           )}
+          <nav aria-label="Paginering geschillen" className="my-4 flex items-center justify-between gap-3 text-sm">
+            <button type="button" disabled={loadingDisputes || disputeMeta.current_page <= 1} onClick={() => setDisputePage((p) => p - 1)} className="rounded-xl border px-3 py-2 disabled:opacity-40">Vorige</button>
+            <span>Pagina {disputeMeta.current_page} van {disputeMeta.last_page} · {disputeMeta.total} geschillen</span>
+            <button type="button" disabled={loadingDisputes || disputeMeta.current_page >= disputeMeta.last_page} onClick={() => setDisputePage((p) => p + 1)} className="rounded-xl border px-3 py-2 disabled:opacity-40">Volgende</button>
+          </nav>
           <div className="space-y-3">
             {disputes.map((dispute) => (
               <article key={dispute.id} className="rounded-2xl border border-blue-100 p-4">
@@ -681,6 +725,15 @@ function MerchantVouchersPage() {
             ))}
           </div>
         </Panel>
+      )}
+
+      {exportJob?.workspace === workspaceId && (
+        <div role="status" className="mt-4 rounded-xl border border-blue-100 bg-white p-4 text-sm">
+          {exportJob.job.status === "ready" ? <button type="button" disabled={exportBusy} onClick={() => void exportCsv(exportJob.job.id)} className="font-bold text-brand">Rapport gereed · Download CSV</button>
+            : exportJob.job.status === "failed" || exportJob.job.status === "expired" ? <button type="button" disabled={exportBusy} onClick={() => void exportCsv()} className="font-bold text-brand">Export mislukt of verlopen · Nieuw rapport maken</button>
+            : "Rapport wordt op de achtergrond verwerkt…"}
+          {exportError && <button type="button" onClick={() => setExportRetry((n) => n + 1)} className="ml-3 font-bold text-brand">Status ophalen mislukt · Opnieuw proberen</button>}
+        </div>
       )}
 
       {modalOpen && (
@@ -776,6 +829,10 @@ function MerchantVouchersPage() {
                     className="w-full rounded-xl border border-blue-100 px-4 py-3 font-mono text-navy outline-none focus:border-brand"
                   />
                 </div>
+                <label className="block text-sm font-bold text-navy" htmlFor="redeem-voucher-id">Volledige voucherreferentie (verplicht bij herbruikbare codes)
+                  <input id="redeem-voucher-id" value={redeemVoucherId} onChange={(e) => setRedeemVoucherId(e.target.value)} maxLength={40} className="mt-1 w-full rounded-xl border border-blue-100 px-4 py-3 font-mono text-navy" />
+                  <span className="mt-1 block text-xs font-normal text-muted">Neem de volledige voucher-ID over van de voucher van de klant.</span>
+                </label>
                 <div>
                   <label className="mb-1 block text-sm font-bold text-navy" htmlFor="redeem-ref">
                     Referentie (optioneel)
