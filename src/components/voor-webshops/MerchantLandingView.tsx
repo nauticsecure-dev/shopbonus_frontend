@@ -9,6 +9,8 @@ import {
   InlineCmsProvider,
   useInlineCms,
 } from "./MerchantInlineCms";
+import { apiUrl } from "@/config/env";
+import { useLocale } from "@/i18n/LocaleContext";
 import type { MerchantLandingContent, PlatformStatus } from "@/lib/merchantLandingDefaults";
 import PlatformIcon, { platformIconTone } from "@/components/PlatformIcon";
 
@@ -21,6 +23,12 @@ const STATUS_LABEL: Record<PlatformStatus, string> = {
 
 function BenefitIcon({ icon }: { icon: string }) {
   const common = "h-6 w-6 text-brand";
+  const paths: Record<string, string> = {
+    chart: "M4 3v17h17M8 16v-5m5 5V7m5 9V4",
+    shield: "m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Zm-4 9 3 3 5-6",
+    spark: "m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2Z",
+  };
+  if (paths[icon]) return <svg className={common} viewBox="0 0 24 24" fill="none" aria-hidden><path d={paths[icon]} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   if (icon === "tag") {
     return (
       <svg className={common} viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -53,6 +61,7 @@ function BenefitIcon({ icon }: { icon: string }) {
 }
 
 function StepIcon({ icon }: { icon?: string }) {
+  if (icon === "check" || icon === "shop") return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d={icon === "check" ? "m5 12 5 5L20 7" : "M4 10v11h16V10M3 4h18l1 6H2l1-6Zm6 17v-7h6v7"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   if (icon === "link") {
     return (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -109,105 +118,52 @@ function FaqAccordion({ items }: { items: { question: string; answer: string }[]
   );
 }
 
-function MarketplacePreview() {
-  const cards = [
-    {
-      title: "Urban Kicks",
-      badge: "Cashback",
-      badgeClass: "bg-violet-100 text-violet-700",
-      img: "https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
-    },
-    {
-      title: "Woonatelier",
-      badge: "10% kortingscode",
-      badgeClass: "bg-sky-100 text-sky-800",
-      img: "https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
-    },
-    {
-      title: "Green Nest",
-      badge: "Cashback & korting",
-      badgeClass: "bg-emerald-100 text-emerald-800",
-      img: "https://images.pexels.com/photos/1005058/pexels-photo-1005058.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
-    },
-  ];
-  const cats = ["Mode", "Wonen", "Elektronika", "Sport", "Beauty"];
-
-  return (
-    <div className="relative">
-      <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-brand/15 via-sky-100/60 to-transparent blur-xl" aria-hidden />
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/95 p-4 shadow-[0_28px_60px_-28px_rgba(10,27,63,0.45)] sm:p-5">
-        <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-mist px-4 py-3">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-muted" aria-hidden>
-            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
-            <path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <span className="text-sm font-semibold text-muted">Zoek een webshop of aanbieding…</span>
-        </div>
-        <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {cats.map((c) => (
-            <span key={c} className="shrink-0 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand">
-              {c}
-            </span>
-          ))}
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {cards.map((card) => (
-            <article key={card.title} className="overflow-hidden rounded-2xl border border-blue-50 bg-white shadow-sm">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={card.img} alt="" className="aspect-[4/3] w-full object-cover" loading="lazy" />
-              <div className="space-y-2 p-3">
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${card.badgeClass}`}>
-                  {card.badge}
-                </span>
-                <p className="text-sm font-extrabold text-navy">{card.title}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-        <p className="mt-3 text-center text-[11px] font-semibold text-muted">
-          Illustratief voorbeeld — geen live aanbiedingen
-        </p>
-      </div>
-    </div>
-  );
+function CmsVisual({ slot, fallback, legacyUrl }: { slot: "hero_background" | "hero" | "benefits" | "offers"; fallback: ReactNode; legacyUrl?: string | null }) {
+  const { content } = useInlineCms();
+  const { locale } = useLocale();
+  const media = content.media?.[slot];
+  const resolve = (id?: string | null, url?: string | null) => id ? apiUrl("/api/v1/public/content-assets/" + id) : url;
+  const desktop = resolve(media?.desktop_asset_id, media?.desktop_url) || legacyUrl;
+  const mobile = resolve(media?.mobile_asset_id, media?.mobile_url);
+  return <figure className="w-full">
+    {desktop || mobile ? <picture>
+      {mobile && <source media="(max-width: 767px)" srcSet={mobile} />}
+      <img src={desktop || mobile!} alt={media?.alt ?? ""} className="max-h-[650px] w-full rounded-3xl object-cover" loading={slot === "hero" ? "eager" : "lazy"} />
+    </picture> : fallback}
+    {(slot === "offers" || slot === "benefits" || slot === "hero") && <figcaption className="mt-3 text-center text-xs text-muted">{slot === "hero" && content.hero.artwork_note ? content.hero.artwork_note : locale === "en" ? "Illustrative example — no live offers or results" : "Illustratief voorbeeld — geen live aanbiedingen of resultaten"}</figcaption>}
+  </figure>;
 }
-
+function MarketplacePreview() {
+  const { locale } = useLocale();
+  return <div className="grid grid-cols-3 gap-3 rounded-3xl border border-blue-100 bg-white p-6 shadow-xl" aria-hidden>{["Cashback", locale === "en" ? "Discount code" : "Kortingscode", "Voucher"].map((label) => <div key={label} className="rounded-2xl bg-blue-50 p-4"><div className="mb-4 grid aspect-square place-items-center rounded-xl bg-brand/10 text-4xl text-brand">%</div><p className="text-sm font-bold text-navy">{label}</p></div>)}</div>;
+}
 function BenefitsVisual() {
+  const { locale } = useLocale();
   return (
-    <div className="relative mx-auto max-w-lg">
-      <div className="overflow-hidden rounded-[2rem] shadow-[0_28px_60px_-24px_rgba(10,27,63,0.4)]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=900&h=1100&fit=crop"
-          alt=""
-          className="aspect-[4/5] w-full object-cover"
-          loading="lazy"
-        />
-      </div>
-      <div className="absolute bottom-6 right-0 w-[46%] overflow-hidden rounded-[1.4rem] border-4 border-white bg-navy shadow-2xl sm:right-[-4%]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=400&h=700&fit=crop"
-          alt=""
-          className="aspect-[9/16] w-full object-cover opacity-90"
-          loading="lazy"
-        />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy via-navy/80 to-transparent p-3">
-          <p className="text-[10px] font-bold text-white/70">ShopBonus</p>
-          <p className="text-xs font-extrabold text-white">Webshop preview</p>
+    <div className="relative rounded-3xl bg-gradient-to-br from-blue-100 to-sky-50 p-7 sm:p-10">
+      <div className="rounded-2xl border border-white bg-white/90 p-5 shadow-xl">
+        <div className="flex items-center justify-between border-b border-blue-50 pb-4">
+          <span className="font-black text-navy">ShopBonus</span>
+          <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-bold text-brand">{locale === "en" ? "Your webshop" : "Jouw webshop"}</span>
         </div>
-      </div>
-      <div className="merchant-float absolute left-2 top-10 rounded-2xl bg-white px-3 py-2 shadow-xl">
-        <p className="flex items-center gap-2 text-xs font-extrabold text-violet-700">
-          <span className="grid h-6 w-6 place-items-center rounded-lg bg-violet-600 text-[10px] text-white">%</span>
-          Cashbackactie
-        </p>
-      </div>
-      <div className="merchant-float-delay absolute right-4 top-28 rounded-2xl bg-white px-3 py-2 shadow-xl sm:right-8">
-        <p className="flex items-center gap-2 text-xs font-extrabold text-brand">
-          <span className="grid h-6 w-6 place-items-center rounded-lg bg-brand text-[10px] text-white">#</span>
-          Kortingscode
-        </p>
+        <div className="mt-5 grid grid-cols-2 gap-4">
+          {["Cashback", locale === "en" ? "Discount code" : "Kortingscode"].map((label, i) => (
+            <div key={label} className="overflow-hidden rounded-2xl border border-blue-50">
+              <div className={`grid aspect-square place-items-center ${i ? "bg-violet-50 text-violet-500" : "bg-sky-50 text-brand"}`}>
+                <svg width="88" height="100" viewBox="0 0 88 100" fill="none" aria-hidden>
+                  <path d="M15 32h58l6 59H9l6-59Z" fill="currentColor" opacity=".14" />
+                  <path d="M15 32h58l6 59H9l6-59Z" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
+                  <path d="M29 37V23a15 15 0 0 1 30 0v14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  <path d="m34 61 7 7 14-16" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <p className="p-3 text-center text-sm font-extrabold text-navy">{label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 flex items-center gap-3 rounded-xl bg-mint p-3 text-sm font-bold text-mint-dark">
+          <span aria-hidden>✓</span>{locale === "en" ? "You set the terms" : "Jij bepaalt de voorwaarden"}
+        </div>
       </div>
     </div>
   );
@@ -215,12 +171,14 @@ function BenefitsVisual() {
 
 function LandingBody() {
   const { content } = useInlineCms();
+  const { locale } = useLocale();
   const vis = content.section_visibility;
   const order = content.section_order.length ? content.section_order : ["hero", "platforms", "benefits", "offer_preview", "onboarding", "bottom_cta", "faq"];
 
   const sections: Record<string, ReactNode> = {
     hero: vis.hero !== false && (
       <section key="hero" className="relative isolate overflow-hidden bg-[#f4f8ff]" data-testid="merchant-hero">
+        {(content.media?.hero_background?.desktop_asset_id || content.media?.hero_background?.mobile_asset_id || content.hero.background_url) && <div className="pointer-events-none absolute inset-0 -z-10 opacity-20"><CmsVisual slot="hero_background" legacyUrl={content.hero.background_url} fallback={null} /></div>}
         <div className="pointer-events-none absolute inset-0" aria-hidden>
           <div className="page-blob left-[-10%] top-[-20%] h-[420px] w-[420px] bg-brand/15" />
           <div className="page-blob bottom-[-10%] right-[-5%] h-[360px] w-[360px] bg-sky-300/25" />
@@ -273,7 +231,7 @@ function LandingBody() {
               ))}
             </ul>
           </div>
-          <HeroIllustration note={content.hero.artwork_note} />
+          <CmsVisual slot="hero" legacyUrl={content.hero.illustration_url} fallback={<HeroIllustration note={content.hero.artwork_note} />} />
         </div>
       </section>
     ),
@@ -292,6 +250,7 @@ function LandingBody() {
                     <PlatformIcon platform={tile.platform} className="h-8 w-8" title={tile.name} />
                   </span>
                   <span className="mt-3 text-sm font-extrabold text-navy">{tile.name}</span>
+                  {tile.description && <span className="mt-2 text-xs text-muted">{tile.description}</span>}
                   <span
                     className={`mt-2 rounded-full px-2.5 py-1 text-[10px] font-bold ${
                       tile.status === "AVAILABLE"
@@ -301,7 +260,7 @@ function LandingBody() {
                           : "bg-amber-50 text-amber-800"
                     }`}
                   >
-                    {STATUS_LABEL[tile.status]}
+                    {locale === "en" ? ({ AVAILABLE: "Available", BETA: "Beta", COMING_SOON: "Coming soon", MANUAL_SETUP: "Manual setup" })[tile.status] : STATUS_LABEL[tile.status]}
                   </span>
                 </>
               );
@@ -339,7 +298,7 @@ function LandingBody() {
     benefits: vis.benefits !== false && (
       <section key="benefits" id="voordelen" className="bg-[#f4f8ff] py-16 sm:py-24" data-testid="merchant-benefits">
         <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
-          <BenefitsVisual />
+          <CmsVisual slot="benefits" legacyUrl={content.benefits.image_url} fallback={<BenefitsVisual />} />
           <div className="space-y-6">
             <EditableText path="benefits.eyebrow" as="p" className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand" />
             <EditableText
@@ -388,7 +347,7 @@ function LandingBody() {
               <span aria-hidden>→</span>
             </Link>
           </div>
-          <MarketplacePreview />
+          <CmsVisual slot="offers" legacyUrl={content.offer_preview.preview_url} fallback={<MarketplacePreview />} />
         </div>
       </section>
     ),
@@ -446,7 +405,7 @@ function LandingBody() {
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <EditableText path="faq.heading" as="h2" className="mb-8 text-center text-3xl font-black tracking-tight text-navy" />
           <FaqAccordion items={content.faq.items} />
-          <p className="mt-10 text-center text-sm text-muted">{content.footer.blurb}</p>
+
         </div>
       </section>
     ),
@@ -454,7 +413,13 @@ function LandingBody() {
 
   return (
     <div className="bg-[#f4f8ff]">
+      <nav aria-label={locale === "en" ? "Merchant page" : "Webshops"} className="flex flex-wrap justify-center gap-5 bg-[#e8f2ff] px-4 py-3 text-sm font-bold text-navy">
+        {content.nav.links.map((link, i) => <a key={i} href={link.href}>{link.label}</a>)}
+        <Link href={content.nav.login_href}>{content.nav.login_label}</Link>
+        <Link href={content.nav.cta_href} className="text-brand">{content.nav.cta_label}</Link>
+      </nav>
       {order.map((key) => sections[key])}
+      <footer className="px-4 pb-28 pt-6 text-center text-sm text-muted"><p>{content.footer.blurb}</p><div className="mt-3 flex justify-center gap-4">{content.footer.links?.map((link, i) => <a key={i} href={link.href}>{link.label}</a>)}</div></footer>
       <CmsToolbar />
     </div>
   );

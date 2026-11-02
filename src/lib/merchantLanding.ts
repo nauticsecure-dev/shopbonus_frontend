@@ -25,20 +25,17 @@ export async function fetchMerchantLandingServer(
   locale: Locale = "nl"
 ): Promise<MerchantLandingContent> {
   const url = `${env.apiBaseUrl.replace(/\/$/, "")}/api/v1/content/voor-webshops?locale=${encodeURIComponent(locale)}`;
-  try {
     const res = await fetch(url, {
       headers: { Accept: "application/json", "Accept-Language": locale },
-      next: { revalidate: 30, tags: ["voor-webshops"] },
+      cache: "no-store",
     });
-    if (!res.ok) return mergeMerchantLandingContent(null, locale);
+    if (!res.ok) throw new Error("Published merchant content is unavailable");
     const json = (await res.json()) as {
       data?: { content?: Partial<MerchantLandingContent> } & Partial<MerchantLandingContent>;
     };
-    const content = json.data?.content ?? json.data;
+    const content = json.data?.content;
+    if (!content) throw new Error("No approved merchant publication is available");
     return mergeMerchantLandingContent(content as Partial<MerchantLandingContent>, locale);
-  } catch {
-    return mergeMerchantLandingContent(null, locale);
-  }
 }
 
 export async function fetchAdminMerchantLanding(
@@ -59,17 +56,17 @@ export async function saveMerchantLandingDraft(payload: {
   const res = await apiRequest<Data<{ draft_revision: number }>>({
     path: `/api/v1/admin/content/voor-webshops`,
     method: "PUT",
-    body: payload,
+    body: { ...payload, content: merchantDraftPayload(payload.content) },
     locale: payload.locale,
   });
   return res.data;
 }
 
-export async function publishMerchantLanding(locale: Locale = "nl"): Promise<void> {
+export async function publishMerchantLanding(locale: Locale = "nl", revision?: number): Promise<void> {
   await apiRequest({
     path: `/api/v1/admin/content/voor-webshops/publish`,
     method: "POST",
-    body: { locale },
+    body: { locale, revision },
     locale,
   });
 }
@@ -130,4 +127,14 @@ export async function requestMerchantLandingAiSuggest(payload: {
     if (err instanceof ApiError) throw err;
     throw err;
   }
+}
+
+// Public URLs and connector status are derived by the API, never authored into the draft.
+export function merchantDraftPayload(content: MerchantLandingContent) {
+  const draft = structuredClone(content);
+  delete draft.seo_image_url;
+  for (const slot of Object.values(draft.media ?? {})) { delete slot.desktop_url; delete slot.mobile_url; }
+  delete draft.hero.background_url; delete draft.hero.illustration_url;
+  delete draft.benefits.image_url; delete draft.offer_preview.preview_url;
+  return draft;
 }

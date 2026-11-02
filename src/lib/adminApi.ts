@@ -357,15 +357,15 @@ export async function reviewIncidentDiagnostic(
 
 /* ── Operations ──────────────────────────────────────────── */
 
-export async function fetchIntegrations(perPage = 25): Promise<{ data: Array<Record<string, unknown>>; meta?: PageMeta }> {
-  return apiRequest({ path: `/api/v1/admin/integrations${qs({ per_page: perPage })}` });
+export async function fetchIntegrations(perPage = 25, connection?: string, attention?: string): Promise<{ data: Array<Record<string, unknown>>; meta?: PageMeta }> {
+  return apiRequest({ path: `/api/v1/admin/integrations${qs({ per_page: perPage, connection, attention })}` });
 }
 
-export async function fetchFailedIntegrationEvents(perPage = 25): Promise<{
+export async function fetchFailedIntegrationEvents(perPage = 25, connection?: string): Promise<{
   data: Array<Record<string, unknown>>;
   meta?: PageMeta;
 }> {
-  return apiRequest({ path: `/api/v1/admin/integrations/failed-events${qs({ per_page: perPage })}` });
+  return apiRequest({ path: `/api/v1/admin/integrations/failed-events${qs({ per_page: perPage, connection })}` });
 }
 
 export async function retryIntegrationEvent(eventId: string, reason: string): Promise<void> {

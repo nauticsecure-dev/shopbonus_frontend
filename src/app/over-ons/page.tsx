@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import AboutUsView from "@/components/over-ons/AboutUsView";
 import { fetchAboutUsServer } from "@/lib/aboutUs";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const content = await fetchAboutUsServer("nl");
+  const locale = (await cookies()).get("shopbonus-locale")?.value === "en" ? "en" : "nl";
+  const content = await fetchAboutUsServer(locale);
+  if (!content) {
+    const title = locale === "en" ? "About us unavailable" : "Over ons niet beschikbaar";
+    return { title, description: "", robots: { index: false }, openGraph: { title, description: "", images: [] }, twitter: { title, description: "", images: [] } };
+  }
   return {
     title: content.seo_title || content.title,
     description: content.seo_description,
@@ -19,6 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function OverOnsPage() {
-  const content = await fetchAboutUsServer("nl");
-  return <AboutUsView initialContent={content} />;
+  const locale = (await cookies()).get("shopbonus-locale")?.value === "en" ? "en" : "nl";
+  const content = await fetchAboutUsServer(locale);
+  return <AboutUsView initialContent={content} initialLocale={locale} />;
 }

@@ -43,6 +43,9 @@ function AdminDashboardPage() {
   const initialQ = params.get("q") || "";
 
   const [period, setPeriod] = useState<CockpitPeriod>("30d");
+  const [from, setFrom] = useState(() => new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10));
+  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const validRange = Boolean(from && to && from <= to);
   const [summary, setSummary] = useState<CockpitSummary | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,10 +59,11 @@ function AdminDashboardPage() {
 
   const loadSummary = useCallback(
     async (signal?: AbortSignal) => {
+      if (period === "custom" && !validRange) return;
       setChartLoading(true);
       setError(null);
       try {
-        const data = await fetchCockpit(period, { signal });
+        const data = await fetchCockpit(period, { signal, from, to });
         if (!signal?.aborted) setSummary(data);
       } catch (err) {
         if (signal?.aborted) return;
@@ -72,7 +76,7 @@ function AdminDashboardPage() {
         }
       }
     },
-    [period]
+    [period, from, to, validRange]
   );
 
   const loadActivity = useCallback(async (signal?: AbortSignal) => {
@@ -88,24 +92,31 @@ function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    const ac = new AbortController();
-    void loadSummary(ac.signal);
-    return () => ac.abort();
-  }, [loadSummary]);
-
-  useEffect(() => {
-    const ac = new AbortController();
-    void loadActivity(ac.signal);
-    return () => ac.abort();
-  }, [loadActivity]);
+    let active: AbortController | null = null;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      active?.abort();
+      active = new AbortController();
+      void loadSummary(active.signal);
+      void loadActivity(active.signal);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active?.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadSummary, loadActivity]);
 
   useEffect(() => {
     const q = searchQ.trim();
     if (q.length < 2) {
-      setSearchGroups([]);
-      setSearchError(null);
-      setSearchLoading(false);
-      return;
+      const reset = window.setTimeout(() => { setSearchGroups([]); setSearchError(null); setSearchLoading(false); }, 0);
+      return () => window.clearTimeout(reset);
     }
     const ac = new AbortController();
     const timer = window.setTimeout(() => {
@@ -135,7 +146,7 @@ function AdminDashboardPage() {
   const chartValues = days.map((d) => d.vouchers_issued);
   const chartLabels = days.map((d) => formatChartDayLabel(d.date));
   const chartDates = days.map((d) => d.date);
-  const channels = summary?.affiliate_channels.channels ?? [];
+  const channels = useMemo(() => summary?.affiliate_channels.channels ?? [], [summary]);
   const channelTotal = summary?.affiliate_channels.total ?? 0;
   const openActions = summary?.attention.open_actions;
   const warnings = summary?.warnings ?? [];
@@ -254,6 +265,14 @@ function AdminDashboardPage() {
             ))}
       </div>
 
+      {period === "custom" && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+          <label>Van <input aria-label="Van" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border p-2" /></label>
+          <label>Tot <input aria-label="Tot" type="date" min={from} value={to} onChange={(e) => setTo(e.target.value)} className="rounded border p-2" /></label>
+          {!validRange && <p role="alert">Kies een geldige begin- en einddatum.</p>}
+        </div>
+      )}
+      <p className="mt-3 text-xs text-muted">Actuele totalen hebben geen historische vergelijking. Automatisch vernieuwd elke minuut zolang dit tabblad zichtbaar is.</p>
       <div className="mt-5 grid items-stretch gap-5 xl:grid-cols-12">
         <Panel className="xl:col-span-7">
           <PanelHeading
@@ -311,7 +330,7 @@ function AdminDashboardPage() {
             title="Verdeling affiliatekanalen"
             description={
               summary?.affiliate_channels.metric_label ??
-              "Affiliateconversies per netwerk (geen commissiebedragen)."
+              "Uitgegeven vouchers per geverifieerde acquisitiebron."
             }
             action={
               <label className="flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-navy">
@@ -338,13 +357,13 @@ function AdminDashboardPage() {
               <div className="grid h-[118px] w-[118px] place-items-center rounded-full bg-white text-center shadow-inner">
                 <div>
                   <p className="text-2xl font-black text-navy">{channelTotal.toLocaleString("nl-NL")}</p>
-                  <p className="text-xs font-semibold text-muted">conversies</p>
+                  <p className="text-xs font-semibold text-muted">vouchers</p>
                 </div>
               </div>
             </div>
             <div className="w-full max-w-xs space-y-4">
               {channels.length === 0 && (
-                <p className="text-sm text-muted">Geen affiliateconversies in deze periode.</p>
+                <p className="text-sm text-muted">Geen uitgegeven vouchers in deze periode.</p>
               )}
               {channels.map((ch, i) => (
                 <Link
@@ -364,7 +383,7 @@ function AdminDashboardPage() {
             </div>
           </div>
           <div className="rounded-xl bg-blue-50/70 px-4 py-3 text-xs text-muted">
-            Metric: <strong className="text-navy">{summary?.affiliate_channels.metric ?? "conversions"}</strong>
+            Metric: <strong className="text-navy">{summary?.affiliate_channels.metric ?? "vouchers"}</strong>
             {" · "}
             Gescheiden van commissiebedragen. Klik een kanaal voor gefilterde records.
           </div>
@@ -455,6 +474,9 @@ function AdminDashboardPage() {
 
         <div id="support" className="space-y-5 xl:col-span-5">
           <Panel id="actions">
+            {summary?.attention.failed_sync_items?.map((item) => (
+              <Link key={item.type + item.id} href={item.href} className="block px-5 py-2 text-xs font-bold text-brand">{item.type === "affiliate_connection" ? "Affiliate sync" : "Import / connector"} · {item.id} →</Link>
+            ))}
             <PanelHeading
               title="Actie vereist"
               description="Items die om aandacht vragen. Alleen openen — geen goedkeuring of retry."

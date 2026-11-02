@@ -101,10 +101,12 @@ function ws(path: string, workspaceId: string): string {
 export async function fetchMerchantDashboard(
   workspaceId: string,
   signal?: AbortSignal,
-  params?: { status?: string }
+  params?: { status?: string; page?: number; per_page?: number }
 ): Promise<MerchantDashboard> {
   const q = new URLSearchParams();
   if (params?.status && params.status !== "all") q.set("status", params.status);
+  if (params?.page) q.set("page", String(params.page));
+  if (params?.per_page) q.set("per_page", String(params.per_page));
   const qs = q.toString();
   const res = await apiRequest<Data<MerchantDashboard>>({
     path: ws(`/dashboard${qs ? `?${qs}` : ""}`, workspaceId),
@@ -344,7 +346,7 @@ export function notificationHref(notice: MerchantNotificationItem): string {
     case "offer_expiring":
       return subjectId ? `/dashboard/offers?offer=${encodeURIComponent(subjectId)}` : "/dashboard/offers";
     case "new_claims":
-      return "/dashboard/offers?focus=claims";
+      return "/dashboard/vouchers?claimed=1";
     case "connector_error":
       return "/dashboard/app-store";
     case "low_funding":

@@ -10,7 +10,10 @@ import Toasts from "@/components/Toasts";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
 import { ShopBonusProvider } from "@/store/ShopBonusContext";
 import { LocaleProvider } from "@/i18n/LocaleContext";
-import { DEFAULT_LOCALE } from "@/types/locale";
+import { cookies, headers } from "next/headers";
+import { fetchHomepageContentServer } from "@/lib/homepage";
+import { InlineCmsProvider } from "@/components/homepage/InlineCms";
+import { normalizeLocale } from "@/types/locale";
 
 const jakarta = localFont({
   src: "./fonts/plus-jakarta-sans-latin.woff2",
@@ -52,23 +55,27 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = normalizeLocale((await cookies()).get("shopbonus-locale")?.value ?? (await headers()).get("accept-language")?.split(",")[0], "nl");
+  const homepage = await fetchHomepageContentServer(locale);
   return (
     // suppressHydrationWarning: extensions (e.g. Loom) inject attrs on html/body before hydrate.
-    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={`${jakarta.className} min-h-screen bg-mist text-ink antialiased`}
         suppressHydrationWarning
       >
-        <LocaleProvider>
+        <LocaleProvider initialLocale={locale}>
           <SessionProvider>
             <ShopBonusProvider>
+              <InlineCmsProvider initialContent={homepage}>
               <ImpersonationBanner />
               <Header />
               <main className="min-h-[60vh]">{children}</main>
               <Footer />
               <CookieConsentBanner />
               <Toasts />
+              </InlineCmsProvider>
             </ShopBonusProvider>
           </SessionProvider>
         </LocaleProvider>

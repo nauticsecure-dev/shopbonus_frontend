@@ -1,5 +1,6 @@
 "use client";
 
+import { useInlineCms } from "@/components/homepage/InlineCms";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
@@ -8,6 +9,7 @@ import { useSession } from "@/store/SessionContext";
 import { openCookieSettings } from "@/lib/cookies";
 
 export default function Footer() {
+  const cms = useInlineCms();
   const pathname = usePathname();
   const { dictionary: t, locale } = useLocale();
   const { session, ready } = useSession();
@@ -22,7 +24,7 @@ export default function Footer() {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4 lg:px-8">
         <div>
           <Logo light />
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-blue-100/80">{t.footerTagline}</p>
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-blue-100/80">{pathname === "/" ? cms.content.footer?.blurb ?? t.footerTagline : t.footerTagline}</p>
           <div className="mt-5 flex gap-2">
             <span className="rounded-full bg-white/10 px-4 py-1.5 text-xs font-bold">{t.footerShare}</span>
             <span className="rounded-full bg-white/10 px-4 py-1.5 text-xs font-bold">{t.footerTransparent}</span>
@@ -106,11 +108,11 @@ export default function Footer() {
               {t.register}
             </Link>
             <p className="text-xs text-blue-100/60">
-              Optionele marketingcommunicatie stel je in via je{" "}
+              {locale === "en" ? "Manage optional marketing communications in your " : "Optionele marketingcommunicatie stel je in via je "}
               <Link href="/profiel" className="underline hover:text-white">
                 {t.navProfile}
               </Link>
-              . Transactionele berichten blijven altijd actief.
+              {locale === "en" ? ". Transactional messages remain active." : ". Transactionele berichten blijven altijd actief."}
             </p>
           </div>
         </div>

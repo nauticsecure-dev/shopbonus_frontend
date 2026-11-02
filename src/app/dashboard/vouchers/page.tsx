@@ -103,6 +103,7 @@ function MerchantVouchersPage() {
   const { pushToast } = useShopBonus();
   const { workspaceId, revision } = useWorkspace();
   const statusParam = params.get("status");
+  const claimed = params.get("claimed") === "1";
   const offerParam = params.get("offer");
 
   const [tab, setTab] = useState<"vouchers" | "disputes">(params.get("tab") === "disputes" ? "disputes" : "vouchers");
@@ -117,8 +118,8 @@ function MerchantVouchersPage() {
     statusParam && (VOUCHER_STATUSES as readonly string[]).includes(statusParam) ? statusParam : "all"
   );
   const [offerId, setOfferId] = useState(offerParam || "all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(params.get("from") ?? "");
+  const [to, setTo] = useState(params.get("to") ?? "");
   const [page, setPage] = useState(1);
 
   const [disputes, setDisputes] = useState<MerchantDispute[]>([]);
@@ -156,6 +157,7 @@ function MerchantVouchersPage() {
         const result = await listVouchers(
           workspaceId,
           {
+            claimed: claimed ? 1 : undefined,
             status: status === "all" ? undefined : status,
             offer: offerId === "all" ? undefined : offerId,
             search: debouncedSearch || undefined,
@@ -181,7 +183,7 @@ function MerchantVouchersPage() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [workspaceId, status, offerId, debouncedSearch, from, to, page]
+    [workspaceId, claimed, status, offerId, debouncedSearch, from, to, page, setLoading, setError, setRows, setMeta]
   );
 
   const loadDisputeList = useCallback(
@@ -216,14 +218,14 @@ function MerchantVouchersPage() {
 
   useEffect(() => {
     const ac = new AbortController();
-    void loadVouchers(ac.signal);
+    queueMicrotask(() => { if (!ac.signal.aborted) void loadVouchers(ac.signal); });
     return () => ac.abort();
   }, [loadVouchers, revision]);
 
   useEffect(() => {
     if (tab !== "disputes") return;
     const ac = new AbortController();
-    void loadDisputeList(ac.signal);
+    queueMicrotask(() => { if (!ac.signal.aborted) void loadDisputeList(ac.signal); });
     return () => ac.abort();
   }, [tab, loadDisputeList, revision]);
 
@@ -247,6 +249,7 @@ function MerchantVouchersPage() {
   const exportCsv = async () => {
     try {
       const path = exportVouchersUrl(workspaceId, {
+        claimed: claimed ? 1 : undefined,
         status: status === "all" ? undefined : status,
         offer: offerId === "all" ? undefined : offerId,
         search: debouncedSearch || undefined,
@@ -363,9 +366,9 @@ function MerchantVouchersPage() {
   return (
     <DashboardShell>
       <DashboardHeading
-        title="Vouchers"
+        title={claimed ? "Geclaimde vouchers" : "Vouchers"}
         accent="beheren"
-        subtitle="Uitgegeven vouchers van deze webshop. Geen klantgegevens."
+        subtitle={claimed ? "Succesvol geclaimde vouchers. Datumfilter op claimdatum (Europe/Amsterdam)." : "Uitgegeven vouchers van deze webshop. Geen klantgegevens."}
         action={
           <div className="flex flex-wrap gap-2">
             <button
@@ -513,7 +516,7 @@ function MerchantVouchersPage() {
                         <th className="px-4 py-3">Aanbieding</th>
                         <th className="px-3 py-3">Referentie</th>
                         <th className="px-3 py-3">Code</th>
-                        <th className="px-3 py-3">Uitgegeven</th>
+                        <th className="px-3 py-3">{claimed ? "Geclaimd" : "Uitgegeven"}</th>
                         <th className="px-3 py-3">Geldig tot</th>
                         <th className="px-3 py-3">Status</th>
                         <th className="px-3 py-3">Ingewisseld</th>
@@ -529,7 +532,7 @@ function MerchantVouchersPage() {
                           </td>
                           <td className="px-3 py-3 font-bold tracking-wide text-navy">{shortVoucherRef(row.id)}</td>
                           <td className="px-3 py-3 font-mono text-navy">{row.code ?? "—"}</td>
-                          <td className="px-3 py-3 text-muted">{formatVoucherDate(row.issued_at)}</td>
+                          <td className="px-3 py-3 text-muted">{formatVoucherDate(claimed ? row.claimed_at ?? null : row.issued_at)}</td>
                           <td className="px-3 py-3 text-muted">{formatVoucherDate(row.expires_at)}</td>
                           <td className="px-3 py-3">
                             <StatusPill status={voucherStatusLabel(row.status)} />
@@ -574,7 +577,7 @@ function MerchantVouchersPage() {
                         <StatusPill status={voucherStatusLabel(row.status)} />
                       </div>
                       <p className="mt-2 text-xs text-muted">
-                        Uitgegeven {formatVoucherDate(row.issued_at)} · tot {formatVoucherDate(row.expires_at)}
+                        {claimed ? "Geclaimd" : "Uitgegeven"} {formatVoucherDate(claimed ? row.claimed_at ?? null : row.issued_at)} · tot {formatVoucherDate(row.expires_at)}
                       </p>
                       <div className="mt-3 flex gap-3">
                         <button type="button" onClick={() => void openDetail(row)} className="text-sm font-extrabold text-brand">
@@ -888,10 +891,16 @@ function MerchantVouchersPage() {
   );
 }
 
+function ScopedVouchersPage() {
+  const params = useSearchParams();
+  const { workspaceId } = useWorkspace();
+  return <MerchantVouchersPage key={`${workspaceId}:${params.toString()}`} />;
+}
+
 export default function VouchersPage() {
   return (
     <Suspense fallback={<p className="p-8 text-muted">Vouchers laden…</p>}>
-      <MerchantVouchersPage />
+      <ScopedVouchersPage />
     </Suspense>
   );
 }

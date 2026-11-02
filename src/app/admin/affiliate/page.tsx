@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AdminListPage from "@/components/AdminListPage";
 import {
   createAffiliateRewardRule,
@@ -15,17 +15,24 @@ import {
   testAffiliateConnection,
 } from "@/lib/adminApi";
 import { formatApiError } from "@/lib/auth";
+import { fetchAdminVouchers } from "@/lib/adminCockpit";
 import { formatMinor } from "@/lib/money";
 
-type Tab = "overview" | "connections" | "programs" | "transactions" | "rules";
+type Tab = "overview" | "connections" | "programs" | "transactions" | "vouchers" | "rules";
 
 function AffiliateConsole() {
   const params = useSearchParams();
-  const initialTab = (params.get("tab") as Tab) || "overview";
+  const router = useRouter();
+  const initialTab = (params.get("tab") as Tab) || (params.has("status") || params.has("from") ? "transactions" : "overview");
   const statusFilter = params.get("status") || "";
   const networkFilter = params.get("network") || "";
+  const fromFilter = params.get("from") || "";
+  const toFilter = params.get("to") || "";
+  const connectionFilter = params.get("connection") || "";
+  const [vouchers, setVouchers] = useState<Array<Record<string, unknown>>>([]);
 
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const tab = initialTab;
+  const setTab = (value: Tab) => { const next = new URLSearchParams(params.toString()); next.set("tab", value); router.replace(`/admin/affiliate?${next}`); };
   const [connections, setConnections] = useState<Array<Record<string, unknown>>>([]);
   const [programs, setPrograms] = useState<Array<Record<string, unknown>>>([]);
   const [transactions, setTransactions] = useState<Array<Record<string, unknown>>>([]);
@@ -42,17 +49,21 @@ function AffiliateConsole() {
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const [c, p, t, r] = await Promise.all([
+      const [c, p, t, r, v] = await Promise.all([
         fetchAffiliateConnections(),
         fetchAffiliatePrograms({ unmatched: true }),
         fetchAffiliateTransactions({
           status: statusFilter || undefined,
-          network: networkFilter || undefined,
+          network: networkFilter === "other" ? undefined : networkFilter || undefined,
+          from: fromFilter || undefined,
+          to: toFilter || undefined,
         }),
         fetchAffiliateRewardRules(),
+        fetchAdminVouchers({ acquisition_network: networkFilter || undefined, from: fromFilter || undefined, to: toFilter || undefined, signal }),
       ]);
       if (signal?.aborted) return;
-      setConnections(c.data);
+      setVouchers(v.data);
+      setConnections(connectionFilter ? c.data.filter((c) => c.id === connectionFilter) : c.data);
       setPrograms(p.data);
       setTransactions(t.data);
       setTotals(t.totals ?? {});
@@ -64,13 +75,14 @@ function AffiliateConsole() {
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [statusFilter, networkFilter]);
+  }, [statusFilter, networkFilter, fromFilter, toFilter, connectionFilter]);
 
   useEffect(() => {
     const ac = new AbortController();
-    void load(ac.signal);
-    return () => ac.abort();
+    const timer = window.setTimeout(() => void load(ac.signal), 0);
+    return () => { window.clearTimeout(timer); ac.abort(); };
   }, [load]);
+
 
   const onTest = async (id: string) => {
     try {
@@ -136,6 +148,7 @@ function AffiliateConsole() {
     { id: "connections", label: "Netwerken" },
     { id: "programs", label: "Programma's" },
     { id: "transactions", label: "Conversies" },
+    { id: "vouchers", label: "Vouchers" },
     { id: "rules", label: "Reward rules" },
   ];
 
@@ -160,6 +173,8 @@ function AffiliateConsole() {
         ))}
       </div>
 
+      {(fromFilter || networkFilter || statusFilter) && <p className="mb-3 text-sm text-muted">{fromFilter} – {toFilter} · {networkFilter} · {statusFilter}</p>}
+      {!loading && tab === "vouchers" && <ul>{vouchers.map((v) => <li key={String(v.id)} className="py-3"><a className="font-bold text-brand" href={`/admin/vouchers?id=${v.id}`}>{String(v.id)}</a> · {String(v.status)} · {String(v.issued_at)}</li>)}{vouchers.length === 0 && <li>Geen vouchers gevonden.</li>}</ul>}
       {loading && <p className="text-sm text-muted">Laden…</p>}
       {notice && <p className="mb-3 text-sm font-semibold text-green-700">{notice}</p>}
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}

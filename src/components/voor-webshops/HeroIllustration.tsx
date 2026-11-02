@@ -1,7 +1,10 @@
 "use client";
+import { useLocale } from "@/i18n/LocaleContext";
 
 /** Promotional artwork only — not a live performance dashboard. */
 export default function HeroIllustration({ note }: { note?: string }) {
+  const { locale } = useLocale();
+  const nl = locale === "nl";
   return (
     <div className="relative mx-auto w-full max-w-[520px]" aria-hidden>
       <span className="sr-only">{note || "Promotionele illustratie"}</span>
@@ -11,7 +14,7 @@ export default function HeroIllustration({ note }: { note?: string }) {
 
       {/* Floating chart */}
       <div className="merchant-float absolute -left-2 top-8 z-20 hidden w-36 rounded-2xl border border-white/80 bg-white/95 p-3 shadow-[0_18px_40px_-18px_rgba(10,27,63,0.45)] sm:block">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Bereik</p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted">{nl ? "Bereik" : "Reach"}</p>
         <svg viewBox="0 0 120 48" className="mt-1 h-12 w-full text-brand" fill="none">
           <path
             d="M4 40 C24 36, 28 22, 44 24 S72 38, 88 18 S108 10, 116 8"
@@ -39,8 +42,8 @@ export default function HeroIllustration({ note }: { note?: string }) {
           </svg>
         </span>
         <div>
-          <p className="text-xs font-extrabold text-navy">Nieuwe bestelling</p>
-          <p className="text-[10px] font-semibold text-muted">Illustratief voorbeeld</p>
+          <p className="text-xs font-extrabold text-navy">{nl ? "Nieuwe bestelling" : "New order"}</p>
+          <p className="text-[10px] font-semibold text-muted">{nl ? "Illustratief voorbeeld" : "Illustrative example"}</p>
         </div>
       </div>
 
@@ -65,26 +68,21 @@ export default function HeroIllustration({ note }: { note?: string }) {
         <div className="space-y-3 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-brand">Jouw webshop</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-brand">{nl ? "Jouw webshop" : "Your webshop"}</p>
               <p className="text-lg font-extrabold text-navy">Studio & Co</p>
             </div>
             <span className="rounded-full bg-brand/10 px-3 py-1 text-[11px] font-bold text-brand">ShopBonus</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop"
-              alt=""
-              className="aspect-square rounded-2xl object-cover"
-              loading="lazy"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop"
-              alt=""
-              className="aspect-square rounded-2xl object-cover"
-              loading="lazy"
-            />
+            {[false, true].map((alternate) => (
+              <div key={String(alternate)} className={"grid aspect-square place-items-center rounded-2xl " + (alternate ? "bg-violet-50 text-violet-500" : "bg-sky-50 text-brand")}>
+                <svg width="82" height="90" viewBox="0 0 88 100" fill="none" aria-hidden>
+                  <path d="M15 32h58l6 59H9l6-59Z" fill="currentColor" opacity=".14" />
+                  <path d="M15 32h58l6 59H9l6-59Z M29 37V23a15 15 0 0 1 30 0v14" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
+                  <path d="m34 61 7 7 14-16" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            ))}
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-[11px] font-bold text-violet-700">
@@ -93,7 +91,7 @@ export default function HeroIllustration({ note }: { note?: string }) {
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-[11px] font-bold text-sky-800">
               <span className="grid h-4 w-4 place-items-center rounded-full bg-brand text-[9px] text-white">#</span>
-              Kortingscode
+              {nl ? "Kortingscode" : "Discount code"}
             </span>
           </div>
         </div>

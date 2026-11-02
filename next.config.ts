@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const apiOrigin = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8010";
 
 const nextConfig: NextConfig = {
+  distDir: process.env.SHOPBONUS_NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {

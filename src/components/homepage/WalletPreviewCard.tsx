@@ -1,7 +1,7 @@
 "use client";
 
+import { useLocale } from "@/i18n/LocaleContext";
 import Link from "next/link";
-import { formatMinor } from "@/lib/money";
 import { useSession } from "@/store/SessionContext";
 import { useShopBonus } from "@/store/ShopBonusContext";
 import type { HomepageContent } from "@/lib/homepageDefaults";
@@ -10,11 +10,13 @@ type Props = {
   content: HomepageContent["wallet_preview"];
 };
 
-const DEFAULT_GOAL_MINOR = 5000;
+
 
 export default function WalletPreviewCard({ content }: Props) {
   const { session, ready } = useSession();
-  const { availableMinor, savingsGoal, walletReady } = useShopBonus();
+  const { locale, intlLocale } = useLocale();
+  const money = (n: number) => new Intl.NumberFormat(intlLocale, { style: "currency", currency: "EUR" }).format(n / 100);
+  const { availableMinor, savingsGoal, walletReady, walletError } = useShopBonus();
 
   if (!ready) {
     return (
@@ -39,17 +41,17 @@ export default function WalletPreviewCard({ content }: Props) {
             <ArrowIcon />
           </Link>
           <p className="mt-4 text-xs font-semibold text-muted">
-            Cashback spaar je uitsluitend voor vouchers bij aangesloten webshops.
+            {locale === "en" ? "Save cashback for vouchers at participating webshops." : "Cashback spaar je uitsluitend voor vouchers bij aangesloten webshops."}
           </p>
         </div>
       </div>
     );
   }
 
-  const goalMinor = savingsGoal?.target_minor ?? DEFAULT_GOAL_MINOR;
+  const goalMinor = savingsGoal?.target_minor ?? 0;
   const remaining = Math.max(0, goalMinor - availableMinor);
   const progress = Math.min(100, Math.round((availableMinor / Math.max(goalMinor, 1)) * 100));
-  const goalLabel = savingsGoal?.label ?? `cadeaubon van ${formatMinor(goalMinor)}`;
+  const goalLabel = savingsGoal?.label ?? "";
 
   return (
     <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-7" data-testid="wallet-preview-auth">
@@ -75,9 +77,9 @@ export default function WalletPreviewCard({ content }: Props) {
               </svg>
             </span>
             <div>
-              <p className="text-sm font-bold text-muted">Huidig saldo</p>
+              <p className="text-sm font-bold text-muted">{locale === "en" ? "Available balance" : "Huidig saldo"}</p>
               <p className="text-3xl font-black tracking-tight text-navy" data-testid="wallet-available">
-                {walletReady ? formatMinor(availableMinor) : "…"}
+                {walletError ? (locale === "en" ? "Unavailable" : "Niet beschikbaar") : walletReady ? money(availableMinor) : "…"}
               </p>
             </div>
           </div>
@@ -90,13 +92,14 @@ export default function WalletPreviewCard({ content }: Props) {
           </Link>
         </div>
 
-        {goalMinor > 0 && (
+        {walletReady && !walletError && goalMinor > 0 && (
           <div className="mt-5">
             <div className="flex items-center gap-2 text-sm font-semibold text-navy">
               <GiftIcon />
+              <span>{locale === "en" ? "Personal savings target" : "Persoonlijk spaardoel"}: {goalLabel}</span>
               {remaining > 0
-                ? `Nog ${formatMinor(remaining)} sparen voor een ${goalLabel}`
-                : `Je hebt genoeg voor een ${goalLabel}`}
+                ? (locale === "en" ? `${money(remaining)} remaining` : `Nog ${money(remaining)} sparen`)
+                : (locale === "en" ? "Target reached" : "Spaardoel bereikt")}
             </div>
             <div className="mt-2.5 flex items-center gap-3">
               <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/80">

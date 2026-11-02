@@ -73,6 +73,7 @@ export function onCookieSettingsRequest(handler: () => void): () => void {
 export async function fetchCookiePolicy(locale: Locale): Promise<CookiePolicy> {
   const res = await apiRequest<Data<CookiePolicy>>({
     path: `/api/v1/public/cookie-policy?locale=${encodeURIComponent(locale)}`,
+    cache: "no-store",
     locale,
   });
   return res.data;
@@ -111,50 +112,85 @@ export function analyticsAllowed(allowed?: string[] | null): boolean {
   return allowed.some((t) => t !== "session");
 }
 
-/**
- * Consent-aware allowlisted script loader. Only loads scripts whose tracker
- * key was returned by the API — never pastes arbitrary code.
- */
+/** Optional SDKs register an actual shutdown hook (listeners, timers, queued work). */
+export type TrackerLifecycle = {
+  enable?: () => void;
+  disable: () => void;
+  cookiePrefixes?: string[];
+  storagePrefixes?: string[];
+};
+const lifecycles = new Map<string, TrackerLifecycle>();
+export function registerConsentTracker(key: string, lifecycle: TrackerLifecycle): () => void {
+  lifecycles.set(key, lifecycle);
+  if (!window.__shopbonusAllowedTrackers?.includes(key)) lifecycle.disable();
+  return () => { lifecycle.disable(); lifecycles.delete(key); };
+}
+
+/** Apply permission before notifying SDKs; reload a running script without a shutdown contract. */
 export function applyAllowedTrackers(allowed: string[]): void {
   if (typeof window === "undefined") return;
+  const previous = window.__shopbonusAllowedTrackers ?? [];
+  window.ShopBonusConsent = { getConsentId: readStoredConsentId };
   window.__shopbonusAnalyticsAllowed = analyticsAllowed(allowed);
-  window.__shopbonusAllowedTrackers = allowed;
+  window.__shopbonusAllowedTrackers = [...allowed];
+  let reload = false;
+  const revoked = new Set(previous.filter((key) => !allowed.includes(key)));
+  document.querySelectorAll<HTMLScriptElement>("script[data-consent-tracker]").forEach((el) => {
+    const key = el.dataset.consentTracker;
+    if (key && !allowed.includes(key) && el.dataset.consentLoaded === "1") revoked.add(key);
+  });
+  for (const key of revoked) {
+    const lifecycle = lifecycles.get(key);
+    try { lifecycle?.disable(); } catch { reload = true; }
+    clearOptionalStorage(lifecycle?.storagePrefixes, lifecycle?.cookiePrefixes);
+    // Removing a tag cannot terminate JavaScript. A fresh document terminates the old SDK.
+    if (!lifecycle) reload = true;
+  }
+  for (const [key, lifecycle] of lifecycles) {
+    if (allowed.includes(key) && !previous.includes(key)) lifecycle.enable?.();
+  }
   document.querySelectorAll<HTMLScriptElement>("script[data-consent-tracker]").forEach((el) => {
     const key = el.dataset.consentTracker;
     if (!key) return;
     if (allowed.includes(key)) {
       if (el.dataset.consentLoaded === "1") return;
       const src = el.dataset.src;
-      if (src) {
-        el.src = src;
-        el.dataset.consentLoaded = "1";
-      }
-    } else if (el.dataset.consentLoaded === "1") {
-      el.remove();
+      if (src) { el.src = src; el.dataset.consentLoaded = "1"; }
+    } else if (el.dataset.consentLoaded === "1" && !lifecycles.has(key)) {
+      el.removeAttribute("src");
+      delete el.dataset.consentLoaded;
     }
   });
-  if (!analyticsAllowed(allowed)) {
-    clearOptionalStorage();
-  }
+  if (revoked.size || !analyticsAllowed(allowed)) clearOptionalStorage();
+  window.dispatchEvent(new CustomEvent("shopbonus:consent-changed"));
+  if (reload) window.location.reload();
 }
 
-/** Best-effort clear of controlled optional client storage after withdraw/reject. */
-export function clearOptionalStorage(): void {
-  try {
-    const keys: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && (k.startsWith("_ga") || k.startsWith("_gid") || k.startsWith("sb_mkt_"))) keys.push(k);
-    }
-    keys.forEach((k) => localStorage.removeItem(k));
-  } catch {
-    /* ignore */
+const optionalPrefixes = ["_ga", "_gid", "_gat", "_gcl_", "_fbp", "_fbc", "sb_mkt_"];
+/** Clear controlled optional cookies at host/parent-domain and path scopes, plus browser storage. */
+export function clearOptionalStorage(storagePrefixes = optionalPrefixes, cookiePrefixes = optionalPrefixes): void {
+  for (const storage of [() => localStorage, () => sessionStorage]) {
+    try {
+      const target = storage();
+      const keys = Array.from({ length: target.length }, (_, i) => target.key(i));
+      keys.forEach((key) => { if (key && storagePrefixes.some((prefix) => key.startsWith(prefix))) target.removeItem(key); });
+    } catch { /* storage may be blocked */ }
   }
+  const domains = ["", ...location.hostname.split(".").map((_, i, parts) => parts.slice(i).join(".")).filter((domain) => domain.includes("."))];
+  const paths = ["/", ...location.pathname.split("/").map((_, i, parts) => parts.slice(0, i + 1).join("/")).filter(Boolean)];
+  document.cookie.split(";").forEach((cookie) => {
+    const name = cookie.split("=")[0].trim();
+    if (!cookiePrefixes.some((prefix) => name.startsWith(prefix))) return;
+    for (const domain of domains) for (const path of paths) {
+      document.cookie = `${name}=; Max-Age=0; Path=${path};${domain ? ` Domain=${domain};` : ""} SameSite=Lax`;
+    }
+  });
 }
 
 declare global {
   interface Window {
     __shopbonusAnalyticsAllowed?: boolean;
     __shopbonusAllowedTrackers?: string[];
+    ShopBonusConsent?: { getConsentId: () => string | null };
   }
 }

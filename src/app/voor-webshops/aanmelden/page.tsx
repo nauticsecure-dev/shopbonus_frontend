@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eyebrow } from "@/components/Cards";
-import { images } from "@/data/dummy";
+import { activateOffer } from "@/lib/merchantOffers";
 import { useShopBonus } from "@/store/ShopBonusContext";
 import { useSession } from "@/store/SessionContext";
 import { hasApprovedWorkspace } from "@/lib/auth";
@@ -14,6 +14,8 @@ import {
   createOffer,
   createWorkspace,
   fetchOffer,
+  fetchCodeImport,
+  fetchBusinessProfile,
   fetchOnboarding,
   fetchPublicProfile,
   formatEuroMinor,
@@ -35,17 +37,13 @@ import { complianceResumePath } from "@/lib/workspaceCompliance";
 
 type DiscountType = "percentage" | "fixed";
 
-const DEMO_SHOP = {
-  name: "Woon & Co",
-  website: "https://woonenco.nl",
-  categories: ["Wonen", "Interieur", "Lifestyle"],
-  description:
-    "Alles voor een stijlvol thuis. Van meubels en decoratie tot verlichting en woonaccessoires.",
-  shortDescription: "Alles voor een stijlvol thuis",
+const EMPTY_SHOP = {
+  name: "", website: "", categories: [] as string[], description: "", shortDescription: "",
+  logoUrl: null as string | null, coverUrl: null as string | null,
 };
 
 function bpsToPercent(bps: number): string {
-  return String(Math.round(bps / 100));
+  return String(bps / 100);
 }
 
 function minorToEuroInput(minor: number | null | undefined): string {
@@ -55,13 +53,31 @@ function minorToEuroInput(minor: number | null | undefined): string {
 
 export default function VoorWebshopsPage() {
   const router = useRouter();
+  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("platform");
+    if (requested && /^[a-z0-9_]{1,40}$/.test(requested)) {
+      sessionStorage.setItem("shopbonus-onboarding-platform", requested);
+      queueMicrotask(() => setSelectedIntegration(requested));
+    } else {
+      queueMicrotask(() => setSelectedIntegration(sessionStorage.getItem("shopbonus-onboarding-platform")));
+    }
+  }, []);
   const { pushToast } = useShopBonus();
   const { session, ready: sessionReady, refresh } = useSession();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [offerId, setOfferId] = useState<string | null>(null);
+  const offerIdRef = useRef<string | null>(null);
+  const saveFlight = useRef<Promise<OfferPayload | null> | null>(null);
+  const [savedKey, setSavedKey] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [domainLocked, setDomainLocked] = useState(false);
+  const [requirementsKnown, setRequirementsKnown] = useState(false);
+  const [pollError, setPollError] = useState(false);
   const [localWorkspaceId, setLocalWorkspaceId] = useState<string | null>(null);
   const [blockers, setBlockers] = useState<ActivationBlocker[]>([]);
   const [costPreview, setCostPreview] = useState<CostPreview | null>(null);
@@ -71,8 +87,8 @@ export default function VoorWebshopsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [shop, setShop] = useState(DEMO_SHOP);
-  const [categoryKeys, setCategoryKeys] = useState<string[]>(["home_living"]);
+  const [shop, setShop] = useState(EMPTY_SHOP);
+  const [categoryKeys, setCategoryKeys] = useState<string[]>([]);
 
   const [discountType, setDiscountType] = useState<DiscountType>("percentage");
   const [discount, setDiscount] = useState("10");
@@ -105,7 +121,7 @@ export default function VoorWebshopsPage() {
       return;
     }
     router.replace("/onboarding");
-  }, [session?.user, refresh, router]);
+  }, [session, refresh, router]);
 
   const codesFound = useMemo(() => {
     const pasted = codes.split("\n").map((c) => c.trim()).filter(Boolean);
@@ -126,7 +142,6 @@ export default function VoorWebshopsPage() {
       : `Vanaf €${minOrder || 0}`;
 
   const journeyHeadline =
-    serverPreview?.journey.headline ??
     `Besteed minimaal €${minOrder || 0} en verdien €${rewardEstimate.toLocaleString("nl-NL", {
       maximumFractionDigits: 2,
     })} voor je volgende aankoop.`;
@@ -141,6 +156,7 @@ export default function VoorWebshopsPage() {
   const categoryLabels = serverPreview?.categories.map((c) => c.label.nl) ?? shop.categories;
 
   const hydrateFromOffer = useCallback((offer: OfferPayload) => {
+    offerIdRef.current = offer.id;
     setOfferId(offer.id);
     setDiscountType(offer.terms.discount_type);
     setDiscount(
@@ -159,33 +175,41 @@ export default function VoorWebshopsPage() {
 
   useEffect(() => {
     if (!sessionReady || !apiMode) {
-      setLoading(false);
       return;
     }
     let cancelled = false;
 
     (async () => {
       setLoading(true);
+      setLoadError(false);
+      offerIdRef.current = null;
+      setOfferId(null);
+      setRequirementsKnown(false);
       try {
-        const [onboarding, profile, offers] = await Promise.all([
+        const [onboarding, profile, offers, business] = await Promise.all([
           fetchOnboarding(workspaceId),
           fetchPublicProfile(workspaceId),
           listOffers(workspaceId),
+          fetchBusinessProfile(workspaceId),
         ]);
         if (cancelled) return;
 
-        const cats = profile.categories?.length ? profile.categories : ["home_living"];
+        const cats = profile.categories ?? [];
+        setDomainLocked(business.domain_locked);
         setCategoryKeys(cats);
         setShop({
-          name: profile.display_name || DEMO_SHOP.name,
-          website: profile.website_url || DEMO_SHOP.website,
+          name: profile.display_name || "",
+          website: profile.website_url || "",
           categories: (profile.categories || []).map((k) => k.replace(/_/g, " ")),
-          description: profile.description || DEMO_SHOP.description,
-          shortDescription: profile.short_description || DEMO_SHOP.shortDescription,
+          description: profile.description || "",
+          shortDescription: profile.short_description || "",
+          logoUrl: profile.logo_url ?? null,
+          coverUrl: profile.cover_url ?? null,
         });
 
         setBranchNote(onboarding.registration.branch_defaults.rationale || null);
         setBlockers(onboarding.registration.activation_blockers || []);
+        setRequirementsKnown(true);
         setCommittedCodes(onboarding.registration.available_codes || 0);
 
         const suggestion = onboarding.registration.branch_defaults.suggestion;
@@ -202,19 +226,7 @@ export default function VoorWebshopsPage() {
           setRedemptionDays(String(suggestion.redemption_validity_days));
         }
 
-        // Compliance (#16) must finish before commercial dashboard / voucher activation.
-        const complianceIncomplete =
-          onboarding.webshop_status !== "approved" &&
-          onboarding.next_step !== null &&
-          onboarding.next_step !== "activation";
-        if (complianceIncomplete) {
-          router.replace(complianceResumePath(onboarding.next_step, onboarding.webshop_status));
-          return;
-        }
-        if (onboarding.webshop_status !== "approved" && onboarding.next_step === "activation") {
-          router.replace("/onboarding?step=activation");
-          return;
-        }
+        // Draft setup precedes approval; activation retains all server-side gates.
 
         const activateDone = onboarding.registration.steps.some(
           (s) => s.key === "activate" && s.status === "complete"
@@ -229,7 +241,22 @@ export default function VoorWebshopsPage() {
         const draft = existingId
           ? await fetchOffer(existingId, workspaceId)
           : offers.find((o) => o.status === "draft") ?? offers[0];
-        if (draft && !cancelled) hydrateFromOffer(draft);
+        if (!cancelled) {
+          if (draft) hydrateFromOffer(draft);
+          try {
+            const recovery = JSON.parse(sessionStorage.getItem("onboarding-draft:" + workspaceId) || "null");
+            if (recovery && (!recovery.offerId || recovery.offerId === draft?.id)
+              && ["percentage", "fixed"].includes(recovery.discountType)
+              && ["discount", "minOrder", "maxDiscount", "claimDays", "redemptionDays", "terms", "codes"].every(key => typeof recovery[key] === "string")) {
+              setDiscountType(recovery.discountType);
+              setDiscount(recovery.discount); setMinOrder(recovery.minOrder); setMaxDiscount(recovery.maxDiscount);
+              setClaimDays(recovery.claimDays); setRedemptionDays(recovery.redemptionDays);
+              setTerms(recovery.terms); setCodes(recovery.codes);
+            }
+            const batchId = draft ? sessionStorage.getItem("onboarding-import:" + workspaceId + ":" + draft.id) : null;
+            if (batchId) setImportBatch({ id: batchId, status: "committing", source: "recovered", totals: { submitted: 0, valid: 0, invalid: 0, duplicate_in_upload: 0, duplicate_existing: 0 }, rejections: [] });
+          } catch { /* Storage may be disabled; server draft remains authoritative. */ }
+        }
 
         const uiStep = onboarding.registration.current_step;
         if (uiStep === "voucher_setup") setStep(2);
@@ -237,6 +264,7 @@ export default function VoorWebshopsPage() {
         else setStep(1);
       } catch (err) {
         if (!cancelled) {
+          setLoadError(true);
           const message = err instanceof ApiError ? err.message : "Kon onboarding niet laden.";
           pushToast({ title: "Laden mislukt", message, kind: "error" });
         }
@@ -252,59 +280,133 @@ export default function VoorWebshopsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionReady, apiMode, workspaceId]);
 
-  const persistOffer = useCallback(async (): Promise<OfferPayload | null> => {
-    if (!apiMode) return null;
-    const termsBody = offerBodyFromForm({
-      name: `${shop.name}: ${discountType === "percentage" ? `${discountNum}%` : `€${discountNum}`} volgende aankoop`,
-      discountType,
-      discount,
-      minOrder,
-      maxDiscount,
-      claimDays,
-      redemptionDays,
-      terms,
-    });
+  const termsBody = offerBodyFromForm({
+    name: shop.name + ": " + discount + (discountType === "percentage" ? "%" : " euro") + " volgende aankoop",
+    discountType, discount, minOrder, maxDiscount, claimDays, redemptionDays, terms,
+  });
+  const editKey = JSON.stringify([workspaceId, shop.name, discountType, discount, minOrder, maxDiscount, claimDays, redemptionDays, terms]);
+  const latest = useRef({ key: editKey, body: termsBody, workspaceId });
+  useLayoutEffect(() => { latest.current = { key: editKey, body: termsBody, workspaceId }; });
+  const dirty = apiMode && editKey !== savedKey;
+
+  const persistOffer = useCallback((): Promise<OfferPayload | null> => {
+    if (!apiMode) return Promise.resolve(null);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (saveFlight.current) return saveFlight.current;
     setSaving(true);
-    try {
-      const offer = offerId
-        ? await updateOffer(offerId, termsBody, workspaceId)
-        : await createOffer({ ...termsBody, acquisition: "merchant_reward" }, workspaceId);
-      hydrateFromOffer(offer);
-      return offer;
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Opslaan mislukt.";
-      pushToast({ title: "Aanbieding niet opgeslagen", message, kind: "error" });
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  }, [
-    apiMode,
-    shop.name,
-    discountType,
-    discountNum,
-    discount,
-    minOrder,
-    maxDiscount,
-    claimDays,
-    redemptionDays,
-    terms,
-    offerId,
-    workspaceId,
-    hydrateFromOffer,
-    pushToast,
-  ]);
+    setSaveError(null);
+    const work = async () => {
+      let result: OfferPayload | null = null;
+      let persistedKey = "";
+      try {
+        do {
+          const snapshot = latest.current;
+          result = offerIdRef.current
+            ? await updateOffer(offerIdRef.current, snapshot.body, snapshot.workspaceId)
+            : await createOffer({ ...snapshot.body, acquisition: "merchant_reward" }, snapshot.workspaceId);
+          if (snapshot.workspaceId !== latest.current.workspaceId) return null;
+          persistedKey = snapshot.key;
+          // Retain the ID before queued edits can save; a response never rewrites typing.
+          offerIdRef.current = result.id;
+          setOfferId(result.id);
+          if (snapshot.key === latest.current.key) {
+            setCostPreview(result.cost_preview);
+            setServerPreview(result.preview);
+            setSavedKey(snapshot.key);
+            const progress = await fetchOnboarding(snapshot.workspaceId);
+            if (snapshot.key === latest.current.key) {
+              setBlockers(progress.registration.activation_blockers);
+              setCommittedCodes(progress.registration.available_codes);
+              setRequirementsKnown(true);
+            }
+          }
+        } while (persistedKey !== latest.current.key);
+        return result;
+      } catch (err) {
+        setSaveError(err instanceof ApiError ? err.message : "Opslaan mislukt. Probeer opnieuw.");
+        return null;
+      } finally {
+        setSaving(false);
+        saveFlight.current = null;
+      }
+    };
+    saveFlight.current = work();
+    return saveFlight.current;
+  }, [apiMode]);
 
   useEffect(() => {
-    if (!apiMode || step !== 2 || loading) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      void persistOffer();
-    }, 700);
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (!apiMode || step !== 2 || loading || loadError) return;
+    saveTimer.current = setTimeout(() => { void persistOffer(); }, 700);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [editKey, apiMode, step, loading, loadError, persistOffer]);
+
+  useEffect(() => {
+    if (!dirty && !saving && !codes.trim()) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const navigate = (event: MouseEvent) => {
+      const link = (event.target as Element).closest?.("a[href]");
+      if (!link || event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      if (!window.confirm("Er zijn niet-opgeslagen wijzigingen of codes. Deze pagina toch verlaten?")) { event.preventDefault(); event.stopPropagation(); }
     };
-  }, [discountType, discount, minOrder, maxDiscount, claimDays, redemptionDays, terms, apiMode, step, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("click", navigate, true);
+    return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", navigate, true); };
+  }, [dirty, saving, codes]);
+
+  // Recover edits even when browser history navigation unmounts the page before autosave.
+  useEffect(() => {
+    if (!apiMode || loading || loadError || step !== 2) return;
+    try {
+      const key = "onboarding-draft:" + workspaceId;
+      if (dirty || codes.trim()) sessionStorage.setItem(key, JSON.stringify({ offerId, discountType, discount, minOrder, maxDiscount, claimDays, redemptionDays, terms, codes }));
+      else sessionStorage.removeItem(key);
+    } catch { /* Browser storage is optional; departure warnings still apply. */ }
+  }, [apiMode, loading, loadError, step, dirty, workspaceId, offerId, discountType, discount, minOrder, maxDiscount, claimDays, redemptionDays, terms, codes]);
+
+  const refreshRequirements = useCallback(async () => {
+    const progress = await fetchOnboarding(workspaceId);
+    setBlockers(progress.registration.activation_blockers);
+    setCommittedCodes(progress.registration.available_codes);
+    setRequirementsKnown(true);
+    return progress;
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (!importBatch || !["committing", "committed"].includes(importBatch.status) || pollError) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        if (importBatch.status === "committed") { await refreshRequirements(); return; }
+        const batch = await fetchCodeImport(importBatch.id, workspaceId);
+        if (!cancelled) setImportBatch(batch);
+      } catch { if (!cancelled) setPollError(true); }
+    }, 1500);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [importBatch, workspaceId, refreshRequirements, pollError]);
+
+  useEffect(() => {
+    if (!offerId || !importBatch) return;
+    try {
+      const key = "onboarding-import:" + workspaceId + ":" + offerId;
+      if (importBatch.status === "committing") sessionStorage.setItem(key, importBatch.id);
+      else sessionStorage.removeItem(key);
+    } catch { /* Import continues on the server even when storage is disabled. */ }
+  }, [importBatch, offerId, workspaceId]);
+
+  const completeActivation = async () => {
+    if (!offerId) return;
+    setSaving(true);
+    try {
+      const progress = await refreshRequirements();
+      if (progress.registration.activation_blockers.length > 0) return;
+      await activateOffer(offerId, workspaceId);
+      setActivated(true);
+      await goToDashboard();
+    } catch (err) {
+      pushToast({ title: "Activatie niet voltooid", message: err instanceof ApiError ? err.message : "Probeer opnieuw.", kind: "error" });
+      await refreshRequirements().catch(() => setRequirementsKnown(false));
+    } finally { setSaving(false); }
+  };
 
   const saveStep1 = async () => {
     if (!shop.name.trim() || !shop.website.trim()) {
@@ -333,7 +435,7 @@ export default function VoorWebshopsPage() {
           legal_name: shop.name.trim(),
           trading_name: shop.name.trim(),
           website_url: shop.website.trim(),
-          business_category: categoryKeys[0] || "home_living",
+          business_category: categoryKeys[0] || "other",
           contact_email: session.user.email,
           main_contact_name: session.user.first_name,
           country_code: "NL",
@@ -356,10 +458,10 @@ export default function VoorWebshopsPage() {
       await refresh();
       pushToast({
         title: "Webshop aangemaakt",
-        message: "Rond eigendom en overeenkomst af om je workspace te activeren.",
+        message: "Stel je eerste voucher in. Goedkeuring is nodig vóór activatie.",
         kind: "success",
       });
-      router.replace("/onboarding?step=business_details");
+      setStep(2);
       return;
     } catch (err) {
       pushToast({
@@ -388,8 +490,9 @@ export default function VoorWebshopsPage() {
           if (preview.totals.valid > 0) {
             const committed = await commitCodeImport(preview.id, workspaceId);
             setImportBatch(committed);
-            setCommittedCodes((n) => n + (committed.totals.imported ?? preview.totals.valid));
-            setCodes("");
+            setPollError(false);
+            setCodes(current => current === codes ? "" : current);
+            if (committed.status === "committing") return;
           } else if (committedCodes === 0) {
             pushToast({
               title: "Geen geldige codes",
@@ -418,9 +521,11 @@ export default function VoorWebshopsPage() {
         });
         return;
       }
-      const onboarding = await fetchOnboarding(workspaceId);
-      setBlockers(onboarding.registration.activation_blockers);
-      setCommittedCodes(onboarding.registration.available_codes);
+      try { await refreshRequirements(); } catch {
+        setRequirementsKnown(false);
+        pushToast({ title: "Controle mislukt", message: "Controleer je verbinding en probeer opnieuw.", kind: "error" });
+        return;
+      }
     } else if (codesFound === 0) {
       pushToast({
         title: "Korting ontbreekt",
@@ -438,7 +543,7 @@ export default function VoorWebshopsPage() {
       pushToast({ title: "Login vereist", message: "Log in om CSV/Excel te importeren.", kind: "info" });
       return;
     }
-    const offer = offerId ? { id: offerId } : await persistOffer();
+    const offer = await persistOffer();
     if (!offer) return;
     setImporting(true);
     try {
@@ -452,7 +557,7 @@ export default function VoorWebshopsPage() {
       if (preview.totals.valid > 0) {
         const committed = await commitCodeImport(preview.id, workspaceId);
         setImportBatch(committed);
-        setCommittedCodes((n) => n + (committed.totals.imported ?? preview.totals.valid));
+        setPollError(false);
       }
     } catch (err) {
       pushToast({
@@ -465,8 +570,10 @@ export default function VoorWebshopsPage() {
     }
   };
 
-  const fee = costPreview?.per_voucher;
-  const displayCodes = importBatch?.totals.valid ?? (committedCodes || codesFound);
+  const fee = !dirty && !saveError ? costPreview?.per_voucher : undefined;
+  const displayCodes = committedCodes;
+  const importPending = importBatch?.status === "committing";
+  const activationReady = apiMode && requirementsKnown && !dirty && !saving && !saveError && !importPending && blockers.length === 0;
 
   const stepMeta = (n: number, key: RegistrationStepKey) => {
     const done = step > n;
@@ -490,6 +597,7 @@ export default function VoorWebshopsPage() {
         <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
           <div>
             <Eyebrow>Stap {step} van 3</Eyebrow>
+            {selectedIntegration && <p className="mt-3 text-sm font-bold text-brand">Geselecteerde integratie: {selectedIntegration}. <Link href={"/dashboard/app-store?platform=" + encodeURIComponent(selectedIntegration)}>Bekijk integratie en aansluitvoorwaarden →</Link></p>}
             <h1 className="mt-2 text-[clamp(2.4rem,5vw,3.8rem)] font-black leading-none tracking-tight">
               <span className="text-navy">Je webshop</span>{" "}
               <span className="text-brand">aanmelden</span>
@@ -542,19 +650,21 @@ export default function VoorWebshopsPage() {
           </div>
         </div>
 
+        {loadError && <p role="alert" className="mt-5">Gegevens konden niet worden geladen. <button className="underline" onClick={() => window.location.reload()}>Opnieuw laden</button></p>}
         {loading && (
           <p className="mt-8 rounded-2xl bg-white p-6 font-semibold text-muted shadow-sm">Gegevens laden…</p>
         )}
 
-        {!loading && step === 1 && (
+        {!loading && !loadError && step === 1 && (
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
             <div className="rounded-[1.75rem] bg-white p-7 shadow-sm sm:p-8">
               <h2 className="text-2xl font-black text-navy">Webshopgegevens</h2>
-              <p className="mt-1 text-muted">Controleer of vul je gegevens in. Domains wijzigen triggert opnieuw verificatie.</p>
+              <p className="mt-1 text-muted">Een geverifieerd domein is vergrendeld. Vraag support om een domeinwijziging te beoordelen; eigendom en integratie moeten opnieuw worden geverifieerd.</p>
               <div className="mt-6 space-y-4">
                 <div>
                   <label className="mb-1.5 block font-bold text-navy">Naam webshop</label>
                   <input
+                    aria-label="Naam webshop"
                     value={shop.name}
                     onChange={(e) => setShop({ ...shop, name: e.target.value })}
                     className="w-full rounded-2xl border border-blue-100 px-5 py-3.5 font-medium focus:border-brand focus:outline-none"
@@ -563,6 +673,8 @@ export default function VoorWebshopsPage() {
                 <div>
                   <label className="mb-1.5 block font-bold text-navy">Website</label>
                   <input
+                    disabled={domainLocked}
+                    aria-label="Website"
                     value={shop.website}
                     onChange={(e) => setShop({ ...shop, website: e.target.value })}
                     className="w-full rounded-2xl border border-blue-100 px-5 py-3.5 font-medium focus:border-brand focus:outline-none"
@@ -571,6 +683,7 @@ export default function VoorWebshopsPage() {
                 <div>
                   <label className="mb-1.5 block font-bold text-navy">Beschrijving</label>
                   <textarea
+                    aria-label="Beschrijving"
                     value={shop.description}
                     onChange={(e) => setShop({ ...shop, description: e.target.value })}
                     rows={3}
@@ -609,7 +722,13 @@ export default function VoorWebshopsPage() {
           </div>
         )}
 
-        {!loading && step === 2 && (
+        {!loading && !loadError && step === 2 && <div role="status" aria-live="polite" className="mt-5 rounded-2xl bg-white p-4 text-sm font-bold">
+          {saveError ? "Niet opgeslagen: " + saveError : saving ? "Opslaan…" : dirty ? "Niet-opgeslagen wijzigingen · prijsberekening in afwachting" : costPreview?.available === false ? "Concept opgeslagen · prijsberekening niet beschikbaar" : "Concept opgeslagen · prijsberekening bijgewerkt"}
+          {saveError && <button className="ml-3 text-brand underline" onClick={() => void persistOffer()}>Opnieuw opslaan</button>}
+          {!dirty && costPreview?.available === false && <p>{costPreview.note || costPreview.reason || "Prijsberekening niet beschikbaar. Controleer de aanbiedingsvoorwaarden."}</p>}
+          {(dirty || saveError) && <p>Definitieve merchant-kosten worden na succesvol opslaan berekend.</p>}
+        </div>}
+        {!loading && !loadError && step === 2 && (
           <div className="mt-8 grid items-start gap-6 lg:grid-cols-2">
             <div className="rounded-[1.75rem] bg-white p-7 shadow-sm sm:p-8">
               <div className="flex items-start gap-3">
@@ -634,14 +753,12 @@ export default function VoorWebshopsPage() {
                 <p className="font-extrabold">Klantreis</p>
                 <p className="mt-1 font-medium">{journeyHeadline}</p>
                 <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted">
-                  {(serverPreview?.journey.steps?.length
-                    ? serverPreview.journey.steps
-                    : [
-                        "Klant plaatst een qualifying order.",
-                        "Universal Order Adapter verifieert de order.",
-                        "Eligibility bepaalt de beloning; voucher wordt uitgegeven.",
+                  {([
+                        "Klant plaatst een bestelling die aan de voorwaarden voldoet.",
+                        "De webshop bevestigt de bestelling.",
+                        "Na controle wordt de voucher uitgegeven.",
                         "Klant claimt via een geverifieerd ShopBonus-account.",
-                        "Klant wisselt in op een latere qualifying order.",
+                        "Klant wisselt in bij een latere bestelling die aan de voorwaarden voldoet.",
                       ]
                   ).map((line) => (
                     <li key={line}>{line}</li>
@@ -654,7 +771,8 @@ export default function VoorWebshopsPage() {
                   <label className="mb-1.5 block font-bold text-navy">Kortingssoort</label>
                   <div className="relative">
                     <select
-                      value={discountType}
+                      aria-label="Kortingssoort"
+                    value={discountType}
                       onChange={(e) => setDiscountType(e.target.value as DiscountType)}
                       className="w-full appearance-none rounded-2xl border border-blue-100 bg-white py-3.5 pl-12 pr-10 font-medium focus:border-brand focus:outline-none"
                     >
@@ -673,7 +791,8 @@ export default function VoorWebshopsPage() {
                     <input
                       type="number"
                       min={0}
-                      value={discount}
+                      aria-label="Korting"
+                    value={discount}
                       onChange={(e) => setDiscount(e.target.value)}
                       className="w-full rounded-2xl border border-blue-100 py-3.5 pl-5 pr-14 font-medium focus:border-brand focus:outline-none"
                     />
@@ -688,7 +807,8 @@ export default function VoorWebshopsPage() {
                     <input
                       type="number"
                       min={0}
-                      value={minOrder}
+                      aria-label="Minimale bestelwaarde"
+                    value={minOrder}
                       onChange={(e) => setMinOrder(e.target.value)}
                       className="w-full rounded-2xl border border-blue-100 py-3.5 pl-14 pr-4 font-medium focus:border-brand focus:outline-none"
                     />
@@ -702,7 +822,8 @@ export default function VoorWebshopsPage() {
                       <input
                         type="number"
                         min={0}
-                        value={maxDiscount}
+                        aria-label="Maximale korting"
+                    value={maxDiscount}
                         onChange={(e) => setMaxDiscount(e.target.value)}
                         className="w-full rounded-2xl border border-blue-100 py-3.5 pl-14 pr-4 font-medium focus:border-brand focus:outline-none"
                       />
@@ -718,7 +839,8 @@ export default function VoorWebshopsPage() {
                   <p className="mb-1 text-xs text-muted">Hoe lang om een uitgegeven voucher te claimen</p>
                   <div className="relative">
                     <select
-                      value={claimDays}
+                      aria-label="Claimtermijn"
+                    value={claimDays}
                       onChange={(e) => setClaimDays(e.target.value)}
                       className="w-full appearance-none rounded-2xl border border-blue-100 bg-white py-3.5 pl-12 pr-24 font-medium focus:border-brand focus:outline-none"
                     >
@@ -742,7 +864,8 @@ export default function VoorWebshopsPage() {
                   <p className="mb-1 text-xs text-muted">Hoe lang een geclaimde voucher geldig blijft</p>
                   <div className="relative">
                     <select
-                      value={redemptionDays}
+                      aria-label="Inwisseltermijn"
+                    value={redemptionDays}
                       onChange={(e) => setRedemptionDays(e.target.value)}
                       className="w-full appearance-none rounded-2xl border border-blue-100 bg-white py-3.5 pl-12 pr-24 font-medium focus:border-brand focus:outline-none"
                     >
@@ -767,6 +890,7 @@ export default function VoorWebshopsPage() {
                 <label className="mb-1.5 block font-bold text-navy">Aanvullende voorwaarden (tekst)</label>
                 <div className="relative">
                   <textarea
+                    aria-label="Aanvullende voorwaarden"
                     value={terms}
                     maxLength={500}
                     onChange={(e) => setTerms(e.target.value)}
@@ -778,7 +902,7 @@ export default function VoorWebshopsPage() {
                 <p className="mt-1 text-xs text-muted">Beschrijvende tekst overschrijft geen backend eligibility-checks.</p>
               </div>
 
-              {(fee || !apiMode) && (
+              {fee && (
                 <div className="mt-4 rounded-2xl bg-mist/70 p-4 text-sm">
                   <p className="font-extrabold text-navy">Geschatte merchant-kosten (geen afschrijving)</p>
                   <dl className="mt-2 space-y-1 text-navy">
@@ -818,7 +942,7 @@ export default function VoorWebshopsPage() {
                       <circle cx="12" cy="12" r="10" fill="currentColor" />
                       <path d="m8 12.5 2.7 2.7L16 10" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    {displayCodes} codes gevonden
+                    {displayCodes} codes beschikbaar
                   </span>
                 </div>
                 <p className="mt-2 font-extrabold text-navy">Plak codes of upload Excel/CSV</p>
@@ -826,9 +950,10 @@ export default function VoorWebshopsPage() {
                   Unieke codes in inventaris. Checkout-compatibiliteit vereist aparte verificatie.
                 </p>
                 <textarea
-                  value={codes}
+                  aria-label="Kortingscodes"
+                    value={codes}
                   onChange={(e) => setCodes(e.target.value)}
-                  placeholder={"WOON10-AAAA\nWOON10-BBBB\n…"}
+                  placeholder={"CODE-AAAA\nCODE-BBBB\n…"}
                   rows={2}
                   className="mt-3 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 font-mono text-sm focus:border-brand focus:outline-none"
                 />
@@ -846,7 +971,7 @@ export default function VoorWebshopsPage() {
                   />
                   <button
                     type="button"
-                    disabled={importing}
+                    disabled={importing || importPending}
                     onClick={() => fileRef.current?.click()}
                     className="rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-brand shadow-sm hover:bg-mist disabled:opacity-60"
                   >
@@ -859,6 +984,10 @@ export default function VoorWebshopsPage() {
                     </span>
                   )}
                 </div>
+                <p className="mt-2 text-xs text-muted">{codesFound} geplakte codes nog niet geïmporteerd. Automatisch genereren is voor deze integraties niet beschikbaar.</p>
+                {importPending && <p role="status">Import wordt verwerkt. Voorraad wordt na bevestiging bijgewerkt.</p>}
+                {importBatch?.status === "failed" && <p role="alert">Import mislukt. Controleer je codes en start een nieuwe import.</p>}
+                {pollError && <button className="text-brand underline" onClick={() => setPollError(false)}>Importstatus ophalen mislukt — opnieuw controleren</button>}
                 {committedCodes > 0 && (
                   <p className="mt-2 text-xs font-bold text-amber-700">Verification required — codes zijn nog niet checkout-geverifieerd.</p>
                 )}
@@ -866,37 +995,34 @@ export default function VoorWebshopsPage() {
             </div>
 
             <div className="rounded-[1.75rem] bg-white/70 p-7 shadow-sm backdrop-blur sm:p-8">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
                 <div>
                   <h2 className="text-2xl font-black text-navy">Live preview van je voucher</h2>
                   <p className="mt-1 text-muted">Concept — niet openbaar tot activatie.</p>
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-mint px-4 py-2 text-sm font-extrabold text-green-700">
-                  <span className="h-2.5 w-2.5 rounded-full bg-green-600" /> Klaar om te activeren
+                <span className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-extrabold ${activationReady ? "bg-mint text-green-700" : "bg-amber-50 text-amber-800"}`}>
+                  <span className={`h-2.5 w-2.5 rounded-full ${activationReady ? "bg-green-600" : "bg-amber-600"}`} /> {activationReady ? "Klaar om te activeren" : dirty || saving ? "Wacht op opslaan" : importPending ? "Import wordt verwerkt" : "Activatiepunten open"}
                 </span>
               </div>
 
               <div className="mt-5 overflow-hidden rounded-3xl bg-white shadow-md">
                 <div className="relative">
-                  <img
-                    src={serverPreview?.webshop.cover_url || images.livingRoom}
-                    alt="Preview"
-                    className="h-44 w-full object-cover"
-                  />
+                  {shop.coverUrl ? <img src={shop.coverUrl} onError={() => setShop(current => ({ ...current, coverUrl: null }))} alt="Omslag webshop" className="h-44 w-full object-cover" /> : <div className="grid h-44 place-items-center bg-mist text-muted">Nog geen omslagafbeelding</div>}
                   <span className="absolute right-4 top-4 rounded-2xl bg-green-100/95 px-4 py-2 text-lg font-black text-green-700 shadow">
-                    {serverPreview?.badge_label || localBadge}
+                    {localBadge}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 p-5">
                   <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-[#f6f1e8] text-lg font-black">
-                    {initials || "W"}
+                    {shop.logoUrl ? <img src={shop.logoUrl} onError={() => setShop(current => ({ ...current, logoUrl: null }))} alt={"Logo " + shop.name} className="h-16 w-16 rounded-full object-contain" /> : initials || "Logo ontbreekt"}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-lg font-black text-navy">{shop.name || "Jouw webshop"}</p>
                     <p className="truncate text-sm text-muted">
-                      {shop.shortDescription || shop.description.split(".")[0]}.
+                      {shop.shortDescription || shop.description.split(".")[0] || "Beschrijving ontbreekt"}
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {categoryLabels.length === 0 && <span className="text-xs text-muted">Categorieën ontbreken</span>}
                       {categoryLabels.map((c) => (
                         <span key={c} className="rounded-full bg-mist px-3 py-0.5 text-xs font-bold text-navy">
                           {c}
@@ -909,8 +1035,8 @@ export default function VoorWebshopsPage() {
                       %
                     </span>
                     <div>
-                      <p className="text-lg font-black leading-none text-brand">{serverPreview?.badge_label || localBadge}</p>
-                      <p className="mt-1 text-xs font-bold text-navy">{serverPreview?.offer_line || localOfferLine}</p>
+                      <p className="text-lg font-black leading-none text-brand">{localBadge}</p>
+                      <p className="mt-1 text-xs font-bold text-navy">{localOfferLine}</p>
                     </div>
                   </div>
                 </div>
@@ -942,7 +1068,7 @@ export default function VoorWebshopsPage() {
                   </div>
                   <div className="flex gap-3">
                     <dt className="w-32 shrink-0 text-muted">Website</dt>
-                    <dd className="font-bold text-brand">{shop.website}</dd>
+                    <dd className="font-bold text-brand">{shop.website || "Website ontbreekt"}</dd>
                   </div>
                   <div className="flex gap-3">
                     <dt className="w-32 shrink-0 text-muted">Categorieën</dt>
@@ -956,14 +1082,14 @@ export default function VoorWebshopsPage() {
                   </div>
                   <div className="flex gap-3">
                     <dt className="w-32 shrink-0 text-muted">Beschrijving</dt>
-                    <dd className="text-navy">{shop.description}</dd>
+                    <dd className="text-navy">{shop.description || "Beschrijving ontbreekt"}</dd>
                   </div>
                 </dl>
               </div>
 
               <button
                 onClick={() => void goActivate()}
-                disabled={importing || saving}
+                disabled={importing || saving || importPending}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-brand py-4 text-[16px] font-extrabold text-white shadow-[0_14px_30px_-10px_rgba(11,116,255,0.7)] hover:bg-brand-dark disabled:opacity-60"
               >
                 Volgende: Activeren
@@ -975,7 +1101,7 @@ export default function VoorWebshopsPage() {
           </div>
         )}
 
-        {!loading && step === 3 && (
+        {!loading && !loadError && step === 3 && (
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
             <div className="rounded-[1.75rem] bg-white p-7 shadow-sm sm:p-8">
               <h2 className="text-2xl font-black text-navy">Controleer je aanmelding</h2>
@@ -986,7 +1112,7 @@ export default function VoorWebshopsPage() {
                   ["Aanbieding", `${localBadge} — ${localOfferLine}`],
                   ["Claim / inwisselen", `${claimDays} / ${redemptionDays} dagen`],
                   ["Voorwaarden", terms || "—"],
-                  ["Codes", `${committedCodes || codesFound} codes (verificatie vereist)`],
+                  ["Codes", `${committedCodes} codes beschikbaar (verificatie vereist)`],
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-4 rounded-2xl bg-mist/70 px-5 py-3.5">
                     <span className="font-bold text-muted">{k}</span>
@@ -1000,7 +1126,9 @@ export default function VoorWebshopsPage() {
                   <p className="font-extrabold text-amber-900">Nog nodig vóór activatie</p>
                   <ul className="mt-2 space-y-1 text-sm text-amber-900">
                     {blockers.map((b) => (
-                      <li key={b.code}>• {b.message}</li>
+                      <li key={b.code}>• {b.message}{" "}
+                        {b.code.startsWith("offer_") || b.code === "codes_missing" ? <button className="underline" onClick={() => setStep(2)}>Voucher aanpassen</button> : <Link className="underline" href={b.code === "funding_insufficient" ? "/dashboard#wallet" : b.code === "connection_unverified" ? "/dashboard/app-store" : complianceResumePath(b.code === "webshop_unverified" ? "ownership" : "activation", "draft")}>Nu oplossen</Link>}
+                      </li>
                     ))}
                   </ul>
                   <p className="mt-2 text-xs text-amber-800">
@@ -1011,27 +1139,16 @@ export default function VoorWebshopsPage() {
 
               <button
                 type="button"
-                disabled={saving}
-                onClick={() => {
-                  setActivated(true);
-                  setSaving(true);
-                  pushToast({
-                    title: "Aanmelding afgerond",
-                    message:
-                      blockers.length > 0
-                        ? "Je concept is bewaard. Vervolg in het merchant dashboard."
-                        : "Welkom op je merchant dashboard.",
-                    kind: "success",
-                  });
-                  void goToDashboard().finally(() => setSaving(false));
-                }}
+                disabled={saving || !activationReady}
+                onClick={() => void completeActivation()}
                 className="mt-5 w-full rounded-2xl bg-green-600 py-4 font-extrabold text-white shadow-lg transition hover:bg-green-700 disabled:opacity-60"
               >
-                {saving || activated ? "Doorsturen naar dashboard…" : "Afronden en naar dashboard →"}
+                {saving || activated ? "Activeren…" : "Aanbieding activeren en naar dashboard →"}
               </button>
+              <button className="mt-3 font-bold text-brand underline" onClick={() => void refreshRequirements().catch(() => setRequirementsKnown(false))}>Activatiepunten opnieuw controleren</button>
               {blockers.length > 0 && (
                 <p className="mt-3 text-center text-xs text-muted">
-                  Openstaande activatiepunten kun je later in het dashboard afronden.
+                  Je concept is opgeslagen. Los de punten op en controleer opnieuw.
                 </p>
               )}
             </div>

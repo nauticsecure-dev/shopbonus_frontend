@@ -1,10 +1,12 @@
 "use client";
 
+import { useLocale } from "@/i18n/LocaleContext";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   categoryLabelNl,
   fetchDiscoveryWebshops,
+  fetchDiscoveryWebshop,
   initialsFromName,
   isDiscoveryAbort,
   resolveCoverUrl,
@@ -16,6 +18,7 @@ type Props = {
   /** Preloaded shops from the server (optional). */
   initialShops?: DiscoveryWebshopCard[];
   limit?: number;
+  featuredSlugs?: string[];
   heading?: string;
   ctaLabel?: string;
   ctaHref?: string;
@@ -24,29 +27,36 @@ type Props = {
 export default function PopularWebshops({
   initialShops = [],
   limit = 4,
+  featuredSlugs,
   heading = "Populaire webshops",
   ctaLabel = "Bekijk alle webshops",
   ctaHref = "/webshops",
 }: Props) {
+  const { locale } = useLocale();
+  const slugsKey = featuredSlugs?.join(",");
   const [shops, setShops] = useState<DiscoveryWebshopCard[]>(initialShops.slice(0, limit));
   const [loading, setLoading] = useState(initialShops.length === 0);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (initialShops.length > 0) {
-      setShops(initialShops.slice(0, limit));
-      setLoading(false);
-      return;
-    }
     const ac = new AbortController();
+    if (initialShops.length > 0 && slugsKey === undefined) {
+      queueMicrotask(() => { if (!ac.signal.aborted) { setShops(initialShops.slice(0, limit)); setLoading(false); } });
+      return () => ac.abort();
+    }
     const timeout = window.setTimeout(() => ac.abort(), 8000);
-    setLoading(true);
-    void fetchDiscoveryWebshops({ sort: "most_offers", per_page: limit, page: 1, signal: ac.signal })
+    queueMicrotask(() => { if (!ac.signal.aborted) setLoading(true); });
+    const request = slugsKey !== undefined
+      ? Promise.all(slugsKey.split(",").filter(Boolean).slice(0, limit).map(slug => fetchDiscoveryWebshop(slug, ac.signal))).then(data => ({ data }))
+      : fetchDiscoveryWebshops({ sort: "most_offers", per_page: limit, page: 1, signal: ac.signal });
+    void request
       .then((res) => {
+        if (ac.signal.aborted) return;
         setShops(res.data.slice(0, limit));
         setError(false);
       })
       .catch((err) => {
+        if (ac.signal.aborted) return;
         if (isDiscoveryAbort(err)) {
           setError(true);
           setShops([]);
@@ -63,7 +73,7 @@ export default function PopularWebshops({
       window.clearTimeout(timeout);
       ac.abort();
     };
-  }, [initialShops, limit]);
+  }, [initialShops, limit, slugsKey, locale]);
 
   return (
     <section className="relative mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8" data-testid="popular-webshops">
@@ -92,10 +102,10 @@ export default function PopularWebshops({
       ) : error || shops.length === 0 ? (
         <div className="mt-6 rounded-3xl bg-white p-8 text-center shadow-sm">
           <p className="font-bold text-navy">
-            {error ? "Webshops konden niet worden geladen." : "Nog geen gepubliceerde webshops."}
+            {error ? (locale === "en" ? "Webshops could not be loaded." : "Webshops konden niet worden geladen.") : (locale === "en" ? "No published webshops yet." : "Nog geen gepubliceerde webshops.")}
           </p>
           <Link href="/webshops" className="mt-4 inline-flex rounded-2xl bg-brand px-5 py-2.5 text-sm font-extrabold text-white">
-            Naar webshops
+            {locale === "en" ? "View webshops" : "Naar webshops"}
           </Link>
         </div>
       ) : (
@@ -103,7 +113,7 @@ export default function PopularWebshops({
           {shops.map((shop) => {
             const cover = resolveCoverUrl(shop);
             const badge = shopBadgeLabel(shop);
-            const category = shop.categories[0] ? categoryLabelNl(shop.categories[0]) : "Webshop";
+            const category = shop.categories[0] ? (locale === "en" ? shop.categories[0].label?.en || shop.categories[0].key : categoryLabelNl(shop.categories[0])) : "Webshop";
             return (
               <Link
                 key={shop.slug}

@@ -318,6 +318,11 @@ export async function uploadCodeImport(
   return res.data;
 }
 
+export async function fetchCodeImport(batchId: string, workspaceId = "current"): Promise<CodeImportBatch> {
+  const res = await apiRequest<Data<CodeImportBatch>>({ path: ws(`/code-imports/${batchId}`, workspaceId) });
+  return res.data;
+}
+
 export async function commitCodeImport(batchId: string, workspaceId = "current"): Promise<CodeImportBatch> {
   const res = await apiRequest<Data<CodeImportBatch>>({
     path: ws(`/code-imports/${batchId}/commit`, workspaceId),

@@ -127,6 +127,7 @@ export async function fetchPublicPage(
 ): Promise<PublicCmsPage> {
   const res = await apiRequest<Data<PublicCmsPage>>({
     path: `/api/v1/public/pages/${encodeURIComponent(locale)}/${encodeURIComponent(slug)}`,
+    cache: "no-store",
     locale,
   });
   return res.data;
@@ -141,6 +142,7 @@ export async function fetchPublicFaq(
     : `?locale=${encodeURIComponent(locale)}`;
   const res = await apiRequest<Data<PublicFaqCategory[]>>({
     path: `/api/v1/public/faq${q}`,
+    cache: "no-store",
     locale,
   });
   return res.data;
@@ -212,9 +214,9 @@ export async function saveCmsDraft(opts: {
 export async function previewCmsDraft(
   pageId: string,
   locale: Locale
-): Promise<{ locale: string; slug: string; content: CmsPageContent; preview: true }> {
+): Promise<{ locale: string; slug: string; content: CmsPageContent; draft_revision: number; preview: true }> {
   const res = await apiRequest<
-    Data<{ locale: string; slug: string; content: CmsPageContent; preview: true }>
+    Data<{ locale: string; slug: string; content: CmsPageContent; draft_revision: number; preview: true }>
   >({
     path: `/api/v1/admin/cms/pages/${encodeURIComponent(pageId)}/locales/${locale}/preview`,
     locale,
@@ -225,6 +227,7 @@ export async function previewCmsDraft(
 export async function publishCmsLocale(opts: {
   pageId: string;
   locale: Locale;
+  revision: number;
   legal_version?: string;
   effective_date?: string;
   approve?: boolean;
@@ -233,6 +236,7 @@ export async function publishCmsLocale(opts: {
     path: `/api/v1/admin/cms/pages/${encodeURIComponent(opts.pageId)}/locales/${opts.locale}/publish`,
     method: "POST",
     body: {
+      revision: opts.revision,
       legal_version: opts.legal_version,
       effective_date: opts.effective_date,
       approve: opts.approve,

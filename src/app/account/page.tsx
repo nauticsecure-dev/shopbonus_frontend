@@ -9,7 +9,9 @@ import { useSession } from "@/store/SessionContext";
 import { useLocale } from "@/i18n/LocaleContext";
 import { authCopy } from "@/i18n/authCopy";
 import {
+  completeTwoFactorChallenge,
   fetchLegalRequirements,
+  fieldErrorsFromApi,
   formatApiError,
   loginAccount,
   maskEmail,
@@ -24,6 +26,8 @@ import {
   type MeUser,
 } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+
+type FieldKey = "name" | "email" | "password" | "consent" | "code" | "recovery";
 
 function strengthLabel(copy: ReturnType<typeof authCopy>, label: string) {
   if (label === "strong") return copy.strengthStrong;
@@ -50,8 +54,12 @@ function AccountForm() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [marketing, setMarketing] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [useRecovery, setUseRecovery] = useState(false);
   const [code, setCode] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [loading, setLoading] = useState(false);
   const [legal, setLegal] = useState<LegalRequirements | null>(null);
   const [resendIn, setResendIn] = useState(0);
@@ -87,6 +95,11 @@ function AccountForm() {
     return () => window.clearTimeout(t);
   }, [resendIn]);
 
+  function clearErrors() {
+    setError("");
+    setFieldErrors({});
+  }
+
   function applyUser(user: MeUser, toastTitle: string, toastMessage?: string) {
     setUser(user);
     updateProfile({
@@ -99,6 +112,7 @@ function AccountForm() {
     }
     if (user.destination === "verify_email" || !user.email_verified) {
       setVerifying(true);
+      setTwoFactor(false);
       return;
     }
     // Existing shop → merchant dashboard on every login.
@@ -110,20 +124,42 @@ function AccountForm() {
   }
 
   useEffect(() => {
-    if (!ready || verifying || loading) return;
+    if (!ready || verifying || loading || twoFactor) return;
     const user = session?.user;
     if (!user?.email_verified) return;
     if (merchantHasShop(user) || user.destination === "workspace" || user.destination === "admin") {
       router.replace(pathForDestination(user.destination, params.get("next"), user));
     }
-  }, [ready, session, verifying, loading, router, params]);
+  }, [ready, session, verifying, loading, twoFactor, router, params]);
+
+  function mapCaughtError(err: unknown) {
+    const mapped = fieldErrorsFromApi(err);
+    setFieldErrors(mapped);
+    if (err instanceof ApiError && err.status === 401) {
+      setError(copy.genericLoginError);
+    } else if (err instanceof ApiError && err.status === 422 && login && !twoFactor && !verifying) {
+      setError(Object.values(mapped)[0] || copy.genericLoginError);
+    } else {
+      setError(Object.values(mapped)[0] || formatApiError(err, copy.genericLoginError));
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (loading) return;
-    setError("");
+    clearErrors();
     setLoading(true);
     try {
+      if (twoFactor) {
+        const user = useRecovery
+          ? await completeTwoFactorChallenge({ recovery_code: recoveryCode.trim() }, locale)
+          : await completeTwoFactorChallenge({ code: code.replace(/\D/g, "").slice(0, 6) }, locale);
+        const me = (await fetchMe(locale)) ?? user;
+        setTwoFactor(false);
+        applyUser(me, copy.welcomeLogin, copy.welcomeLogin);
+        return;
+      }
+
       if (verifying) {
         const user = await verifyEmailCode(code, locale);
         // Prefer fresh /me so workspace membership is authoritative.
@@ -135,7 +171,10 @@ function AccountForm() {
       if (login) {
         const result = await loginAccount(form.email.trim(), form.password, locale);
         if (result.twoFactor) {
-          setError(copy.twoFactor);
+          setTwoFactor(true);
+          setUseRecovery(false);
+          setCode("");
+          setRecoveryCode("");
           return;
         }
         if (result.user) {
@@ -150,7 +189,10 @@ function AccountForm() {
         return;
       }
       if (!acceptTerms) {
-        setError(locale === "en" ? "Please accept the Terms and Privacy Policy." : "Accepteer de voorwaarden om door te gaan.");
+        const msg =
+          locale === "en" ? "Please accept the Terms and Privacy Policy." : "Accepteer de voorwaarden om door te gaan.";
+        setFieldErrors({ consent: msg });
+        setError(msg);
         return;
       }
 
@@ -169,15 +211,9 @@ function AccountForm() {
         locale
       );
       setResendIn(60);
-      applyUser(user, copy.welcomeRegister , copy.verifyBody );
+      applyUser(user, copy.welcomeRegister, copy.verifyBody);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setError(copy.genericLoginError );
-      } else if (err instanceof ApiError && err.status === 422 && login) {
-        setError(copy.genericLoginError );
-      } else {
-        setError(formatApiError(err, copy.genericLoginError ));
-      }
+      mapCaughtError(err);
     } finally {
       setLoading(false);
     }
@@ -185,19 +221,19 @@ function AccountForm() {
 
   async function onResend() {
     if (resendIn > 0 || loading) return;
-    setError("");
+    clearErrors();
     setLoading(true);
     try {
       if (!session?.user) await refresh();
       const data = await resendEmailCode(locale);
       setResendIn(data.resend_available_in_seconds || 60);
       pushToast({
-        title: copy.resend ,
+        title: copy.resend,
         message: locale === "en" ? "A new code was sent." : "Er is een nieuwe code verstuurd.",
         kind: "info",
       });
     } catch (err) {
-      setError(formatApiError(err, copy.genericLoginError ));
+      mapCaughtError(err);
     } finally {
       setLoading(false);
     }
@@ -206,8 +242,11 @@ function AccountForm() {
   function changeMode(value: string) {
     setMode(value);
     setVerifying(false);
-    setError("");
+    setTwoFactor(false);
+    setUseRecovery(false);
+    clearErrors();
     setCode("");
+    setRecoveryCode("");
   }
 
   const termsHref = legal?.documents.terms.document_url || "/hoe-werkt-het";
@@ -218,7 +257,7 @@ function AccountForm() {
   return (
     <section className="account-page mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <p className="text-xs font-extrabold uppercase tracking-[.19em] text-brand">{copy.eyebrow }</p>
+        <p className="text-xs font-extrabold uppercase tracking-[.19em] text-brand">{copy.eyebrow}</p>
         <div className="ml-auto flex rounded-lg border border-blue-100 bg-white p-1 text-xs font-bold" role="group" aria-label="Language">
           {(["nl", "en"] as const).map((l) => (
             <button
@@ -260,7 +299,7 @@ function AccountForm() {
           </>
         )}
       </h1>
-      <p className="mt-3 text-lg text-muted sm:text-xl">{copy.subtitle }</p>
+      <p className="mt-3 text-lg text-muted sm:text-xl">{copy.subtitle}</p>
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1.05fr_1fr] lg:gap-8">
         <div className="surface p-5 sm:p-8">
           <div className="segmented" aria-label="Accountactie">
@@ -277,11 +316,11 @@ function AccountForm() {
                 aria-pressed={mode === value}
                 className={mode === value ? "selected" : ""}
               >
-                {label }
+                {label}
               </button>
             ))}
           </div>
-          {!verifying && !login && (
+          {!verifying && !twoFactor && !login && (
             <div className="mt-4 space-y-2" aria-label={copy.rolePickerLabel}>
               <p className="text-xs font-extrabold uppercase tracking-wide text-muted">{copy.rolePickerLabel}</p>
               <div className="grid grid-cols-2 gap-2">
@@ -316,19 +355,97 @@ function AccountForm() {
             </div>
           )}
           <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
-            {verifying ? (
+            {twoFactor ? (
               <>
                 <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-brand">
                   <Icon name="check" size={28} />
                 </span>
                 <div>
-                  <h2 className="text-2xl font-extrabold text-navy">{copy.verifyTitle }</h2>
+                  <h2 className="text-2xl font-extrabold text-navy">{copy.twoFactorTitle}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{copy.twoFactorBody}</p>
+                </div>
+                {useRecovery ? (
+                  <div>
+                    <label className="field-label" htmlFor="recovery">
+                      {copy.twoFactorRecoveryLabel}
+                    </label>
+                    <input
+                      id="recovery"
+                      autoFocus
+                      autoComplete="off"
+                      required
+                      value={recoveryCode}
+                      onChange={(e) => setRecoveryCode(e.target.value)}
+                      className="form-input"
+                      aria-invalid={!!fieldErrors.recovery || !!error}
+                      aria-describedby={fieldErrors.recovery ? "recovery-error" : undefined}
+                    />
+                    {fieldErrors.recovery && (
+                      <p id="recovery-error" role="alert" className="mt-1 text-sm text-red-700">
+                        {fieldErrors.recovery}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="field-label" htmlFor="totp">
+                      {copy.twoFactorCodeLabel}
+                    </label>
+                    <input
+                      id="totp"
+                      autoFocus
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      required
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onPaste={(e) => {
+                        const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                        if (pasted) {
+                          e.preventDefault();
+                          setCode(pasted);
+                        }
+                      }}
+                      className="form-input text-center text-2xl tracking-[.5em]"
+                      placeholder="000000"
+                      aria-invalid={!!fieldErrors.code || !!error}
+                      aria-describedby={fieldErrors.code ? "totp-error" : undefined}
+                    />
+                    {fieldErrors.code && (
+                      <p id="totp-error" role="alert" className="mt-1 text-sm text-red-700">
+                        {fieldErrors.code}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseRecovery((v) => !v);
+                    setCode("");
+                    setRecoveryCode("");
+                    clearErrors();
+                  }}
+                  className="text-sm font-bold text-brand"
+                >
+                  {useRecovery ? copy.twoFactorUseTotp : copy.twoFactorUseRecovery}
+                </button>
+              </>
+            ) : verifying ? (
+              <>
+                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-brand">
+                  <Icon name="check" size={28} />
+                </span>
+                <div>
+                  <h2 className="text-2xl font-extrabold text-navy">{copy.verifyTitle}</h2>
                   <p className="mt-2 text-sm leading-relaxed text-muted">
-                    {copy.verifyBody } <strong>{maskEmail(form.email || session?.email || "")}</strong>.
+                    {copy.verifyBody} <strong>{maskEmail(form.email || session?.email || "")}</strong>.
                   </p>
                 </div>
                 <label className="field-label" htmlFor="verification">
-                  {copy.verifyLabel }
+                  {copy.verifyLabel}
                 </label>
                 <input
                   id="verification"
@@ -349,17 +466,21 @@ function AccountForm() {
                   }}
                   className="form-input text-center text-2xl tracking-[.5em]"
                   placeholder="000000"
-                  aria-invalid={!!error}
+                  aria-invalid={!!fieldErrors.code || !!error}
+                  aria-describedby={fieldErrors.code ? "verification-error" : undefined}
                 />
+                {fieldErrors.code && (
+                  <p id="verification-error" role="alert" className="mt-1 text-sm text-red-700">
+                    {fieldErrors.code}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => void onResend()}
                   disabled={resendIn > 0 || loading}
                   className="text-sm font-bold text-brand disabled:text-muted"
                 >
-                  {resendIn > 0
-                    ? `${copy.resendIn } ${resendIn}${copy.seconds }`
-                    : (copy.resend )}
+                  {resendIn > 0 ? `${copy.resendIn} ${resendIn}${copy.seconds}` : copy.resend}
                 </button>
               </>
             ) : (
@@ -367,7 +488,7 @@ function AccountForm() {
                 {!login && (
                   <div>
                     <label className="field-label" htmlFor="name">
-                      {copy.firstName }
+                      {copy.firstName}
                     </label>
                     <input
                       id="name"
@@ -376,13 +497,20 @@ function AccountForm() {
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                       className="form-input"
-                      placeholder={copy.firstNamePlaceholder }
+                      placeholder={copy.firstNamePlaceholder}
+                      aria-invalid={!!fieldErrors.name}
+                      aria-describedby={fieldErrors.name ? "name-error" : undefined}
                     />
+                    {fieldErrors.name && (
+                      <p id="name-error" role="alert" className="mt-1 text-sm text-red-700">
+                        {fieldErrors.name}
+                      </p>
+                    )}
                   </div>
                 )}
                 <div>
                   <label className="field-label" htmlFor="email">
-                    {copy.email }
+                    {copy.email}
                   </label>
                   <input
                     id="email"
@@ -392,12 +520,19 @@ function AccountForm() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="form-input"
-                    placeholder={copy.emailPlaceholder }
+                    placeholder={copy.emailPlaceholder}
+                    aria-invalid={!!fieldErrors.email}
+                    aria-describedby={fieldErrors.email ? "email-error" : undefined}
                   />
+                  {fieldErrors.email && (
+                    <p id="email-error" role="alert" className="mt-1 text-sm text-red-700">
+                      {fieldErrors.email}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="field-label" htmlFor="password">
-                    {copy.password }
+                    {copy.password}
                   </label>
                   <div className="relative">
                     <input
@@ -409,11 +544,13 @@ function AccountForm() {
                       value={form.password}
                       onChange={(e) => setForm({ ...form, password: e.target.value })}
                       className="form-input pr-14"
-                      placeholder={copy.passwordPlaceholder }
+                      placeholder={copy.passwordPlaceholder}
+                      aria-invalid={!!fieldErrors.password}
+                      aria-describedby={fieldErrors.password ? "password-error" : undefined}
                     />
                     <button
                       type="button"
-                      aria-label={showPassword ? (copy.hidePassword ) : (copy.showPassword )}
+                      aria-label={showPassword ? copy.hidePassword : copy.showPassword}
                       aria-pressed={showPassword}
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-muted"
@@ -421,6 +558,11 @@ function AccountForm() {
                       <Icon name="eye" size={21} />
                     </button>
                   </div>
+                  {fieldErrors.password && (
+                    <p id="password-error" role="alert" className="mt-1 text-sm text-red-700">
+                      {fieldErrors.password}
+                    </p>
+                  )}
                   {!login && form.password && (
                     <div className="mt-2" aria-live="polite">
                       <div className="flex gap-1">
@@ -432,7 +574,7 @@ function AccountForm() {
                         ))}
                       </div>
                       <p className="mt-1 text-xs text-muted">
-                        {strengthLabel(copy, strength.label)} · {copy.strengthHint }
+                        {strengthLabel(copy, strength.label)} · {copy.strengthHint}
                       </p>
                     </div>
                   )}
@@ -440,7 +582,7 @@ function AccountForm() {
                 {login && (
                   <div className="text-right">
                     <Link href="/forgot-password" className="text-sm font-bold text-brand hover:underline">
-                      {copy.forgot }
+                      {copy.forgot}
                     </Link>
                   </div>
                 )}
@@ -448,24 +590,32 @@ function AccountForm() {
                   <>
                     <label className="flex items-start gap-3 text-sm leading-relaxed text-muted">
                       <input
+                        id="consent"
                         required
                         type="checkbox"
                         checked={acceptTerms}
                         onChange={(e) => setAcceptTerms(e.target.checked)}
                         className="mt-1 h-4 w-4 shrink-0 accent-blue-600"
+                        aria-invalid={!!fieldErrors.consent}
+                        aria-describedby={fieldErrors.consent ? "consent-error" : undefined}
                       />
                       <span>
-                        {copy.acceptTermsPrefix }{" "}
+                        {copy.acceptTermsPrefix}{" "}
                         <a href={termsHref} target="_blank" rel="noreferrer" className="font-bold text-brand hover:underline">
-                          {copy.terms }
+                          {copy.terms}
                         </a>{" "}
-                        {copy.and }{" "}
+                        {copy.and}{" "}
                         <a href={privacyHref} target="_blank" rel="noreferrer" className="font-bold text-brand hover:underline">
-                          {copy.privacy }
+                          {copy.privacy}
                         </a>
                         .
                       </span>
                     </label>
+                    {fieldErrors.consent && (
+                      <p id="consent-error" role="alert" className="-mt-3 text-sm text-red-700">
+                        {fieldErrors.consent}
+                      </p>
+                    )}
                     <label className="flex items-start gap-3 text-sm leading-relaxed text-muted">
                       <input
                         type="checkbox"
@@ -473,46 +623,53 @@ function AccountForm() {
                         onChange={(e) => setMarketing(e.target.checked)}
                         className="mt-1 h-4 w-4 shrink-0 accent-blue-600"
                       />
-                      <span>{copy.marketing }</span>
+                      <span>{copy.marketing}</span>
                     </label>
                   </>
                 )}
               </>
             )}
-            {error && (
+            {error && !Object.keys(fieldErrors).length && (
+              <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+            {error && Object.keys(fieldErrors).length > 0 && error !== Object.values(fieldErrors)[0] && (
               <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
                 {error}
               </p>
             )}
             <button type="submit" className="primary-button w-full" disabled={loading} aria-busy={loading}>
               {loading
-                ? (copy.submitting )
-                : verifying
-                  ? (copy.verifySubmit )
-                  : login
-                    ? (copy.submitLogin )
-                    : (copy.submitRegister )}
+                ? copy.submitting
+                : twoFactor
+                  ? copy.twoFactorSubmit
+                  : verifying
+                    ? copy.verifySubmit
+                    : login
+                      ? copy.submitLogin
+                      : copy.submitRegister}
               {!loading && <Icon name="arrow" size={20} />}
             </button>
             <p className="text-center text-sm text-muted">
-              {login ? (copy.noAccount ) : (copy.haveAccount )}{" "}
+              {login ? copy.noAccount : copy.haveAccount}{" "}
               <button
                 type="button"
                 onClick={() => changeMode(login ? "register" : "login")}
                 className="font-bold text-brand hover:underline"
               >
-                {login ? (copy.tabRegister ) : (copy.tabLogin )}
+                {login ? copy.tabRegister : copy.tabLogin}
               </button>
             </p>
           </form>
           <p className="mt-6 border-t border-blue-50 pt-4 text-center text-xs leading-relaxed text-muted">
-            {copy.footerNote }
+            {copy.footerNote}
           </p>
         </div>
         <aside className="space-y-5">
           <div className="account-benefits relative overflow-hidden rounded-3xl border border-white p-6 sm:p-9">
             <span className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-brand">
-              <Icon name="check" size={14} /> {copy.benefitsFree }
+              <Icon name="check" size={14} /> {copy.benefitsFree}
             </span>
             <h2 className="text-3xl font-extrabold tracking-tight text-navy">
               {locale === "nl" ? (
@@ -526,7 +683,7 @@ function AccountForm() {
               )}
             </h2>
             <p className="mt-3 max-w-sm leading-relaxed text-muted">
-              {role === "merchant" ? (copy.benefitsMerchant ) : (copy.benefitsConsumer )}
+              {role === "merchant" ? copy.benefitsMerchant : copy.benefitsConsumer}
             </p>
             <ul className="my-7 space-y-4">
               {steps.map((t) => (
@@ -565,7 +722,7 @@ function AccountForm() {
             </ol>
           </div>
           <Link href="/webshops" className="flex items-center justify-center gap-2 py-2 text-sm font-semibold text-muted hover:text-brand">
-            {copy.browseShops } <Icon name="arrow" size={16} />
+            {copy.browseShops} <Icon name="arrow" size={16} />
           </Link>
         </aside>
       </div>

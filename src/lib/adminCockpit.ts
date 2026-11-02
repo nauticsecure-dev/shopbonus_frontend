@@ -60,6 +60,7 @@ export type CockpitSummary = {
     degraded?: boolean;
   };
   attention: {
+    failed_sync_items?: Array<{ id: string; type: string; href: string }>;
     open_actions: {
       pending_approvals: OpenActionItem;
       failed_syncs: OpenActionItem;
@@ -140,6 +141,8 @@ export async function searchCockpit(
 
 export async function fetchAdminVouchers(params: {
   status?: string;
+  usable?: string;
+  acquisition_network?: string;
   issued_on?: string;
   id?: string;
   from?: string;
@@ -188,4 +191,5 @@ export const PERIOD_OPTIONS: { value: CockpitPeriod; label: string }[] = [
   { value: "7d", label: "7 dagen" },
   { value: "30d", label: "30 dagen" },
   { value: "90d", label: "90 dagen" },
+  { value: "custom", label: "Eigen periode" },
 ];

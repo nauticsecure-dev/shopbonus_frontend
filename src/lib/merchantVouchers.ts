@@ -24,6 +24,7 @@ export type VoucherOrigin = "merchant_reward" | "answer24_claim" | "wallet_purch
 
 /** Merchant list row. Code is masked (****last4). No consumer identity. */
 export type MerchantVoucher = {
+  claimed_at?: string | null;
   id: string;
   status: VoucherStatus;
   origin: VoucherOrigin;
@@ -64,6 +65,7 @@ export type VoucherListMeta = {
 };
 
 export type VoucherListFilters = {
+  claimed?: number;
   status?: string;
   offer?: string;
   search?: string;

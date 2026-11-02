@@ -38,10 +38,15 @@ export type BannerTrigger =
       negate?: boolean;
     };
 
+export type BannerLayer = { type: "text" | "image" | "cta"; visible: boolean; align: "left" | "center" | "right"; font_size: number; width_pct: number };
+
 export type BannerConfig = {
+  layers?: BannerLayer[];
   template: BannerTemplate;
   placement: {
     anchor: BannerAnchor;
+    width?: number;
+    height?: number;
     offset_x?: number;
     offset_y?: number;
     selector_hint?: string | null;

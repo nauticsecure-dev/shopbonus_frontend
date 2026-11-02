@@ -18,21 +18,22 @@ export type AdminAboutUsState = {
 
 export { isSuperAdmin };
 
-export async function fetchAboutUsServer(locale: Locale = "nl"): Promise<AboutUsContent> {
+export async function fetchAboutUsServer(locale: Locale = "nl"): Promise<AboutUsContent | null> {
   const url = `${env.apiBaseUrl.replace(/\/$/, "")}/api/v1/content/over-ons?locale=${encodeURIComponent(locale)}`;
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/json", "Accept-Language": locale },
-      next: { revalidate: 30, tags: ["over-ons"] },
+      cache: "no-store",
     });
-    if (!res.ok) return mergeAboutUsContent(null, locale);
+    if (!res.ok) return null;
     const json = (await res.json()) as {
       data?: { content?: Partial<AboutUsContent> } & Partial<AboutUsContent>;
     };
-    const content = json.data?.content ?? json.data;
-    return mergeAboutUsContent(content as Partial<AboutUsContent>, locale);
+    const content = json.data?.content;
+    if (!content || typeof content.title !== "string" || !content.hero || !content.story) return null;
+    return mergeAboutUsContent(content, locale, true);
   } catch {
-    return mergeAboutUsContent(null, locale);
+    return null;
   }
 }
 
@@ -58,21 +59,21 @@ export async function saveAboutUsDraft(payload: {
   return res.data;
 }
 
-export async function publishAboutUs(locale: Locale = "nl"): Promise<void> {
+export async function publishAboutUs(locale: Locale = "nl", revision?: number): Promise<void> {
   await apiRequest({
     path: `/api/v1/admin/content/over-ons/publish`,
     method: "POST",
-    body: { locale },
+    body: { locale, revision },
     locale,
   });
 }
 
 export async function fetchAboutUsVersions(
   locale?: Locale
-): Promise<{ id: string; locale: string; number: number; published_at: string }[]> {
+): Promise<{ id: string; locale: string; number: number; published_at: string; content: AboutUsContent }[]> {
   const qs = locale ? `?locale=${encodeURIComponent(locale)}` : "";
   const res = await apiRequest<
-    Data<{ id: string; locale: string; number: number; published_at: string }[]>
+    Data<{ id: string; locale: string; number: number; published_at: string; content: AboutUsContent }[]>
   >({
     path: `/api/v1/admin/content/over-ons/versions${qs}`,
     locale,

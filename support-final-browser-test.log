@@ -1,0 +1,31 @@
+
+Running 3 tests using 1 worker
+
+  x  1 [chromium] › e2e\support-repair.spec.ts:34:5 › refresh restores and recovers a pending answer (1.7m)
+  ok 2 [chromium] › e2e\support-repair.spec.ts:35:5 › missed human reply recovers on focus (27.9s)
+  ok 3 [chromium] › e2e\support-repair.spec.ts:36:5 › missed answer catches up on browser reconnect (15.6s)
+
+
+  1) [chromium] › e2e\support-repair.spec.ts:34:5 › refresh restores and recovers a pending answer ─
+
+    Test timeout of 90000ms exceeded.
+
+    Error: page.goto: net::ERR_ABORTED; maybe frame was detached?
+    Call log:
+      - navigating to "http://localhost:3000/app/support?conversation=01j00000000000000000000001", waiting until "load"
+
+
+      32 | test("verified empty balance is explicit", async ({ page }) => { const s = await setup(page); s.available = 0; s.reserved = 0; await page.goto("/app/support"); await expect(wallet(page).getByText("No available or reserved balance.")).toBeVisible(); });
+      33 | test("reserved balance has no reward or release promise", async ({ page }) => { await setup(page); await page.goto("/app/support"); await expect(wallet(page).getByText("This is the reserved portion of your wallet balance.")).toBeVisible(); await expect(wallet(page)).not.toContainText(/reward|once available|beloning/); });
+    > 34 | test("refresh restores and recovers a pending answer", async ({ page }) => { const s = await setup(page); await page.goto("/app/support?conversation=" + conversation); await expect(page.getByLabel("Message", { exact: true })).toBeDisabled(); await page.reload(); await expect(page.getByLabel("Message", { exact: true })).toBeDisabled(); s.status = "VERIFIED"; await expect(page.getByRole("log")).toContainText("EUR 10.00", { timeout: 15000 }); await expect(page.getByLabel("Message", { exact: true })).toBeEnabled(); });
+         |                                                                                                                      ^
+      35 | test("missed human reply recovers on focus", async ({ page }) => { const s = await setup(page); s.status = "VERIFIED"; await page.goto("/app/support?conversation=" + conversation); await expect(page.getByRole("log")).toContainText("EUR 10.00"); s.reply = true; await page.evaluate(() => window.dispatchEvent(new Event("focus"))); await expect(page.getByRole("log")).toContainText("A human has reviewed your order."); await expect(page.getByText("A human has reviewed your order.")).toHaveCount(1); });
+      36 | test("missed answer catches up on browser reconnect", async ({ page }) => { const s = await setup(page); await page.goto("/app/support?conversation=" + conversation); await expect(page.getByLabel("Message", { exact: true })).toBeDisabled(); s.status = "VERIFIED"; await page.evaluate(() => window.dispatchEvent(new Event("online"))); await expect(page.getByRole("log")).toContainText("EUR 10.00"); });
+      37 | test("no optimistic online claim", async ({ page }) => { await setup(page); await page.goto("/app/support"); await expect(page.getByText("Periodic updates", { exact: true })).toBeVisible(); await expect(page.getByText("Online", { exact: true })).toHaveCount(0); });
+        at C:\wamp64\www\shopbonus\shopbonus_frontend\e2e\support-repair.spec.ts:34:118
+
+    Error Context: test-results\support-repair-refresh-res-16a2d-d-recovers-a-pending-answer-chromium\error-context.md
+
+  1 failed
+    [chromium] › e2e\support-repair.spec.ts:34:5 › refresh restores and recovers a pending answer ──
+  2 passed (4.2m)

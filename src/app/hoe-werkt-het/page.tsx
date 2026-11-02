@@ -17,7 +17,7 @@ const steps = [
   {
     n: "3",
     title: "Verdien geverifieerde punten",
-    desc: "Punten komen uit goedgekeurde activiteiten via de centrale wallet. Pending of onbevestigde affiliate-activiteit is nooit besteedbaar.",
+    desc: "Punten worden na een geverifieerde, kwalificerende conversie direct bijgeschreven op je ShopBonus-wallet. Alleen beschikbaar tegoed is inwisselbaar.",
     icon: "M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7ZM3 10h18M16.5 14.5h.01",
   },
   {
@@ -54,7 +54,7 @@ const faqs = [
   ],
   [
     "Wanneer zijn punten besteedbaar?",
-    "Alleen geverifieerd, beschikbaar tegoed in je ShopBonus-wallet. Pending of onbevestigde activiteit telt niet mee.",
+    "Direct na een geverifieerde, kwalificerende conversie. Alleen beschikbaar tegoed is inwisselbaar; checkout-reserveringen blijven apart tot de voucher is afgerond.",
   ],
   [
     "Krijg ik automatisch een voucher na een bestelling?",

@@ -1,0 +1,18 @@
+
+> dev
+> next dev --port 3021
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3021
+- Network:       http://10.172.59.233:3021
+- Environments: .env.local
+✓ Ready in 5.6s
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next-affiliate-review/types/**/*.ts'
+  	- include was updated to add '.next-affiliate-review/dev/types/**/*.ts'
+
+
+○ Compiling /webshops/[slug] ...

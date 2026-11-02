@@ -158,6 +158,8 @@ export default function AppStorePage() {
         setOrders(orderPage.data ?? []);
         setSelectedPlatform((currentPlat) => {
           if (currentPlat) return currentPlat;
+          const requested = new URLSearchParams(window.location.search).get("platform") ?? sessionStorage.getItem("shopbonus-onboarding-platform");
+          if (requested && plats.some((p) => p.platform === requested)) return requested;
           return (
             conns.find((c) => c.status !== "disconnected")?.platform ??
             plats.find((p) => p.available)?.platform ??
@@ -266,10 +268,12 @@ export default function AppStorePage() {
     };
   }, [current?.id, refreshOrders, allowed]);
 
-  const selectPlatform = (platform: string) => {
+  const selectPlatform = (platform: string, stayOnConnections = false) => {
     setSelectedPlatform(platform);
     setSecrets(null);
-    setMainTab("discover");
+    if (!stayOnConnections) {
+      setMainTab("discover");
+    }
   };
 
   const onConnect = async () => {
@@ -584,7 +588,7 @@ export default function AppStorePage() {
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => selectPlatform(c.platform)}
+                    onClick={() => selectPlatform(c.platform, true)}
                     className="rounded-2xl border border-blue-100 bg-white p-4 text-left hover:border-brand/40"
                   >
                     <div className="flex items-start gap-3">
@@ -995,8 +999,9 @@ export default function AppStorePage() {
                   </div>
                 </div>
                 <p className="mb-3 text-xs font-semibold text-muted">
-                  Native coupons ≠ ShopBonus wallet vouchers. Sync only succeeds where CatalogCapable is
-                  implemented (today: WooCommerce). Others return UNSUPPORTED — never shown as green.
+                  Native coupons ≠ ShopBonus wallet vouchers. Sync uses CatalogReader (Woo, Shopify,
+                  Wix, BigCommerce, Ecwid, PrestaShop, Shopware, Magento). Lightspeed C / OpenCart /
+                  roadmap platforms stay UNSUPPORTED — never shown as green.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>

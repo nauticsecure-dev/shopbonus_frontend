@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import React, {
   createContext,
   useCallback,
@@ -12,11 +13,11 @@ import { getDictionary, type Dictionary } from "@/i18n/dictionaries";
 import {
   DEFAULT_LOCALE,
   isLocale,
-  normalizeLocale,
   type Locale,
 } from "@/types/locale";
 
 const STORAGE_KEY = "shopbonus-locale";
+const EXPLICIT_KEY = "shopbonus-locale-explicit";
 
 interface LocaleState {
   locale: Locale;
@@ -30,21 +31,6 @@ interface LocaleState {
 
 const Ctx = createContext<LocaleState | null>(null);
 
-function detectBrowserLocale(): Locale {
-  if (typeof navigator === "undefined") return DEFAULT_LOCALE;
-  const candidates = [
-    ...(navigator.languages ?? []),
-    navigator.language,
-  ].filter(Boolean);
-  for (const candidate of candidates) {
-    const normalized = normalizeLocale(candidate, DEFAULT_LOCALE);
-    if (isLocale(normalized) && candidate.toLowerCase().startsWith(normalized)) {
-      return normalized;
-    }
-  }
-  return DEFAULT_LOCALE;
-}
-
 function readStoredLocale(): Locale | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -54,18 +40,19 @@ function readStoredLocale(): Locale | null {
   }
 }
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+export function LocaleProvider({ children, initialLocale = DEFAULT_LOCALE }: { children: React.ReactNode; initialLocale?: Locale }) {
+  const router = useRouter();
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const [ready, setReady] = useState(false);
   const [accountSynced, setAccountSynced] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => {
       const stored = readStoredLocale();
-      setLocaleState(stored ?? detectBrowserLocale());
+      setLocaleState(stored ?? initialLocale);
       setReady(true);
     });
-  }, []);
+  }, [initialLocale]);
 
   useEffect(() => {
     if (!ready) return;
@@ -75,10 +62,16 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
       /* ignore */
     }
     document.documentElement.lang = locale;
-  }, [locale, ready]);
+    document.cookie = `shopbonus-locale=${locale}; Path=/; SameSite=Lax; Max-Age=31536000`;
+    router.refresh();
+  }, [locale, ready, router]);
 
   const setLocale = useCallback((next: Locale) => {
     if (!isLocale(next)) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+      localStorage.setItem(EXPLICIT_KEY, "1");
+    } catch { /* storage can be unavailable */ }
     setLocaleState(next);
     setAccountSynced(true);
   }, []);
@@ -87,7 +80,9 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     (value: string | null | undefined) => {
       if (!ready || accountSynced) return;
       if (!isLocale(value)) return;
-      const stored = readStoredLocale();
+      let explicit = false;
+      try { explicit = localStorage.getItem(EXPLICIT_KEY) === "1"; } catch { /* ignore */ }
+      const stored = explicit ? readStoredLocale() : null;
       // Prefer explicit localStorage choice; otherwise hydrate from /me.
       if (stored) {
         setAccountSynced(true);

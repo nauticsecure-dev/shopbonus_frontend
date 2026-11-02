@@ -1,0 +1,6 @@
+
+Running 1 test using 1 worker
+
+  ok 1 [chromium] › e2e\support-repair.spec.ts:34:5 › refresh restores and recovers a pending answer (27.6s)
+
+  1 passed (1.5m)

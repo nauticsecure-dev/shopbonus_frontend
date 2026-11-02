@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Eyebrow } from "@/components/Cards";
 import SupportChatPanel from "@/components/SupportChatPanel";
 import { ApiError } from "@/lib/api";
@@ -25,8 +25,14 @@ import { useSession } from "@/store/SessionContext";
 import { useShopBonus } from "@/store/ShopBonusContext";
 
 type VoucherFilter = "alle" | "actief" | "used" | "verlopen" | "geannuleerd";
-type TxFilter = "all" | "earned" | "spent" | "pending" | "adjustments";
+type TxFilter = "all" | "earned" | "spent" | "adjustments" | "holds";
 type BenefitsTab = "vouchers" | "transacties" | "aankopen";
+
+function signedMinorLabel(amountMinor: number, sign?: "credit" | "debit"): string {
+  const credit = sign ? sign === "credit" : amountMinor >= 0;
+  const abs = Math.abs(amountMinor);
+  return `${credit ? "+" : "−"} ${formatMinor(abs)}`;
+}
 
 const DISPUTE_REASONS: { value: DisputeReason; label: string }[] = [
   { value: "code_invalid", label: "Code ongeldig bij afrekenen" },
@@ -87,13 +93,13 @@ function MijnVoordelenInner() {
   const { session, ready: sessionReady } = useSession();
   const {
     availableMinor,
-    pendingCashbackMinor,
     reservedMinor,
     totalEarnedMinor,
     totalSpentMinor,
     savingsGoal,
     walletReady,
     walletError,
+    financialRevision,
     apiMode,
     apiVouchers,
     vouchers: demoVouchers,
@@ -118,10 +124,14 @@ function MijnVoordelenInner() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [ledgerMeta, setLedgerMeta] = useState({ current_page: 1, last_page: 1, per_page: 25, total: 0 });
   const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerError, setLedgerError] = useState<string | null>(null);
+  const [ledgerMayBeStale, setLedgerMayBeStale] = useState(false);
+  const ledgerReqId = useRef(0);
   const [selectedTx, setSelectedTx] = useState<LedgerEntry | null>(null);
   const [affiliateRows, setAffiliateRows] = useState<AffiliateActivityItem[]>([]);
   const [affiliateNotice, setAffiliateNotice] = useState<string | null>(null);
   const [affiliateLoading, setAffiliateLoading] = useState(false);
+  const [affiliateEpoch, setAffiliateEpoch] = useState(0);
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportVoucher, setSupportVoucher] = useState<ConsumerVoucher | null>(null);
   const [conditionsId, setConditionsId] = useState<string | null>(null);
@@ -163,11 +173,13 @@ function MijnVoordelenInner() {
     return () => {
       cancelled = true;
     };
-  }, [session?.user, apiMode, locale]);
+  }, [session?.user, apiMode, locale, financialRevision]);
 
   const loadLedger = useCallback(async () => {
     if (!apiMode) return;
+    const reqId = ++ledgerReqId.current;
     setLedgerLoading(true);
+    setLedgerError(null);
     try {
       const res = await fetchTransactions(
         {
@@ -178,22 +190,32 @@ function MijnVoordelenInner() {
         },
         locale
       );
+      if (reqId !== ledgerReqId.current) return;
       setLedger(res.data);
       setLedgerMeta(res.meta);
+      setLedgerMayBeStale(false);
     } catch (err) {
+      if (reqId !== ledgerReqId.current) return;
+      const message = err instanceof ApiError ? err.message : "Probeer opnieuw.";
+      setLedgerError(message);
+      setLedgerMayBeStale(true);
       pushToast({
         title: "Transacties laden mislukt",
-        message: err instanceof ApiError ? err.message : "Probeer opnieuw.",
+        message,
         kind: "error",
       });
     } finally {
-      setLedgerLoading(false);
+      if (reqId === ledgerReqId.current) setLedgerLoading(false);
     }
   }, [apiMode, txFilter, txQuery, txPage, locale, pushToast]);
 
   useEffect(() => {
     if (tab === "transacties" && apiMode) void loadLedger();
-  }, [tab, apiMode, loadLedger]);
+  }, [tab, apiMode, loadLedger, financialRevision]);
+
+  useEffect(() => {
+    if (financialRevision > 0) setAffiliateEpoch((n) => n + 1);
+  }, [financialRevision]);
 
   useEffect(() => {
     if (tab !== "aankopen" || !apiMode) return;
@@ -220,7 +242,7 @@ function MijnVoordelenInner() {
     return () => {
       cancelled = true;
     };
-  }, [tab, apiMode, locale, pushToast]);
+  }, [tab, apiMode, locale, pushToast, affiliateEpoch]);
 
   useEffect(() => {
     if (!apiMode) return;
@@ -379,9 +401,7 @@ function MijnVoordelenInner() {
                 ? `Welkom terug, ${dashboard.first_name}. `
                 : ""}
               Gebruik je ShopBonus-tegoed voor exclusieve kortingsvouchers bij deelnemende webshops.
-              {dashboard && dashboard.pending_minor > 0
-                ? " Pending activiteit telt niet mee als besteedbaar tegoed."
-                : ""}
+              Cashback wordt na een geverifieerde, kwalificerende conversie direct bijgeschreven.
             </p>
             {dashboard && (
               <p className="mt-2 text-sm font-semibold text-muted">
@@ -443,13 +463,10 @@ function MijnVoordelenInner() {
                   </p>
                   <p className="mt-1 text-sm font-semibold text-navy">
                     {formatMinor(availableMinor)} beschikbaar
-                    {pendingCashbackMinor > 0
-                      ? ` · ${formatMinor(pendingCashbackMinor)} cashback in behandeling`
-                      : ""}
                   </p>
                   <p className="mt-1 text-sm text-muted">
-                    Alleen beschikbaar tegoed is inwisselbaar voor vouchers. Cashback hangt af van tracking,
-                    eligibility, adverteerder-validatie en settlement.
+                    Alleen beschikbaar tegoed is inwisselbaar voor vouchers. Geverifieerde cashback wordt
+                    direct bijgeschreven — geen consumenten-pending saldo.
                   </p>
                 </div>
               </div>
@@ -458,24 +475,26 @@ function MijnVoordelenInner() {
               </span>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid grid-cols-3 gap-3">
               <div className="rounded-2xl bg-mist/80 px-3 py-3">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Beschikbaar</p>
                 <p className="mt-1 text-lg font-black text-navy">{formatMinor(availableMinor)}</p>
-              </div>
-              <div className="rounded-2xl bg-amber-50 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">In behandeling</p>
-                <p className="mt-1 text-lg font-black text-navy">{formatMinor(pendingCashbackMinor)}</p>
-              </div>
-              <div className="rounded-2xl bg-mist/80 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Gereserveerd</p>
-                <p className="mt-1 text-lg font-black text-navy">{formatMinor(reservedMinor)}</p>
               </div>
               <div className="rounded-2xl bg-mist/80 px-3 py-3">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Totaal verdiend</p>
                 <p className="mt-1 text-lg font-black text-navy">{formatMinor(totalEarnedMinor)}</p>
               </div>
+              <div className="rounded-2xl bg-mist/80 px-3 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Totaal besteed</p>
+                <p className="mt-1 text-lg font-black text-navy">{formatMinor(totalSpentMinor)}</p>
+              </div>
             </div>
+            {reservedMinor > 0 && (
+              <p className="mt-3 rounded-2xl bg-blue-50 px-3 py-2 text-sm font-semibold text-navy">
+                {formatMinor(reservedMinor)} gereserveerd voor een lopende checkout — dit is geen pending
+                cashback.
+              </p>
+            )}
 
             {progress !== null && goalTarget !== null && (
               <div className="mt-5 flex items-center gap-3">
@@ -506,61 +525,6 @@ function MijnVoordelenInner() {
             )}
           </div>
         </div>
-
-        {dashboard &&
-        ((dashboard.recent_activity?.length ?? 0) > 0 || (dashboard.relevant_offers?.length ?? 0) > 0) ? (
-          <div className="mt-8 grid gap-5 lg:grid-cols-2">
-            {(dashboard.recent_activity?.length ?? 0) > 0 && (
-              <section className="rounded-3xl bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-black text-navy">Recente puntenactiviteit</h2>
-                <ul className="mt-4 space-y-3">
-                  {dashboard.recent_activity.slice(0, 5).map((row) => (
-                    <li key={row.id} className="flex items-start justify-between gap-3 text-sm">
-                      <span>
-                        <span className="font-bold text-navy">{row.reason || row.type}</span>
-                        {row.at && (
-                          <span className="mt-0.5 block text-xs text-muted">
-                            {formatNlDate(row.at)}
-                          </span>
-                        )}
-                      </span>
-                      <strong className={row.amount >= 0 ? "text-mint-dark" : "text-navy"}>
-                        {row.amount >= 0 ? "+" : ""}
-                        {formatMinor(Math.abs(row.amount))}
-                      </strong>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {(dashboard.relevant_offers?.length ?? 0) > 0 && (
-              <section className="rounded-3xl bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-black text-navy">Relevante aanbiedingen</h2>
-                <ul className="mt-4 space-y-3">
-                  {dashboard.relevant_offers.slice(0, 5).map((offer) => (
-                    <li key={offer.slug || offer.title}>
-                      {offer.slug ? (
-                        <Link
-                          href={`/aanbiedingen/${encodeURIComponent(offer.slug)}`}
-                          className="block rounded-2xl bg-mist/70 px-4 py-3 hover:bg-brand-light"
-                        >
-                          <span className="font-extrabold text-navy">{offer.title}</span>
-                          {offer.webshop?.name && (
-                            <span className="mt-0.5 block text-xs text-muted">{offer.webshop.name}</span>
-                          )}
-                        </Link>
-                      ) : (
-                        <div className="rounded-2xl bg-mist/70 px-4 py-3">
-                          <span className="font-extrabold text-navy">{offer.title}</span>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </div>
-        ) : null}
 
         <div className="mt-8 flex flex-wrap gap-3" role="tablist" aria-label="Mijn voordelen secties">
           <button
@@ -615,7 +579,8 @@ function MijnVoordelenInner() {
           </button>
         </div>
 
-        <div className="mt-6 pb-16">
+        <div className="mt-6 grid gap-6 pb-16 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+          <div className="min-w-0">
           {tab === "vouchers" ? (
             <>
               <div className="mb-4 flex flex-wrap gap-2">
@@ -861,7 +826,7 @@ function MijnVoordelenInner() {
                 <h3 className="text-lg font-black text-navy">Affiliate-aankopen</h3>
                 <p className="text-sm text-muted">
                   {affiliateNotice ||
-                    "Beloningen hangen af van goedgekeurde, bevestigde aankopen. Pending tegoed is niet besteedbaar."}
+                    "Na een geverifieerde, kwalificerende conversie wordt cashback direct bijgeschreven. Aankoopstatus kan apart zichtbaar blijven."}
                 </p>
               </div>
               {affiliateLoading && <p className="px-6 py-8 text-sm text-muted">Laden…</p>}
@@ -870,7 +835,7 @@ function MijnVoordelenInner() {
               )}
               {affiliateRows.map((row) => {
                 const reward = row.reward;
-                const pending = row.status === "pending" || reward?.status === "pending";
+                const credited = reward?.status === "credited";
                 return (
                   <div key={row.id} className="border-b border-slate-50 px-6 py-4 last:border-0">
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -884,8 +849,8 @@ function MijnVoordelenInner() {
                       </div>
                       <div className="text-right">
                         {reward ? (
-                          <p className={`text-lg font-black ${pending ? "text-amber-600" : "text-green-600"}`}>
-                            {pending ? "Pending " : "+"}
+                          <p className={`text-lg font-black ${credited ? "text-green-600" : "text-navy"}`}>
+                            {credited ? "+" : ""}
                             {reward.unit === "points"
                               ? `${reward.amount} pt`
                               : formatMinor(reward.amount)}
@@ -913,7 +878,7 @@ function MijnVoordelenInner() {
                         ["all", "Alles"],
                         ["earned", "Verdiend"],
                         ["spent", "Besteed"],
-                        ["pending", "Pending"],
+                        ["holds", "Reserveringen"],
                         ["adjustments", "Correcties"],
                       ] as const
                     ).map(([k, label]) => (
@@ -946,13 +911,28 @@ function MijnVoordelenInner() {
 
               {apiMode ? (
                 <>
+                  {ledgerError && (
+                    <div className="mx-6 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700">
+                      <span>
+                        {ledgerMayBeStale
+                          ? "Laden mislukt. Onderstaande rijen kunnen bij een eerdere zoekopdracht horen."
+                          : ledgerError}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void loadLedger()}
+                        className="font-extrabold text-brand hover:underline"
+                      >
+                        Opnieuw proberen
+                      </button>
+                    </div>
+                  )}
                   {ledgerLoading && <p className="px-6 py-8 text-sm text-muted">Laden…</p>}
-                  {!ledgerLoading && ledger.length === 0 && (
+                  {!ledgerLoading && !ledgerError && ledger.length === 0 && (
                     <p className="px-6 py-8 text-sm text-muted">Geen transacties voor dit filter.</p>
                   )}
                   {ledger.map((t) => {
                     const credit = t.sign === "credit" || t.amount_minor > 0;
-                    const amount = Math.abs(t.amount_minor);
                     return (
                       <button
                         key={t.id}
@@ -974,7 +954,7 @@ function MijnVoordelenInner() {
                           </p>
                         </div>
                         <p className={`text-lg font-black ${credit ? "text-green-600" : "text-navy"}`}>
-                          {credit ? "+" : "−"} {formatMinor(amount)}
+                          {signedMinorLabel(t.amount_minor, t.sign)}
                         </p>
                       </button>
                     );
@@ -1025,6 +1005,58 @@ function MijnVoordelenInner() {
               )}
             </div>
           )}
+          </div>
+
+          <aside className="space-y-5 lg:sticky lg:top-24">
+            <section className="rounded-3xl bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-black text-navy">Recente activiteit</h2>
+              {(dashboard?.recent_activity?.length ?? 0) === 0 ? (
+                <p className="mt-3 text-sm text-muted">Nog geen recente walletbewegingen.</p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {dashboard!.recent_activity.slice(0, 6).map((row) => (
+                    <li key={row.id} className="flex items-start justify-between gap-3 text-sm">
+                      <span>
+                        <span className="font-bold text-navy">{row.reason || row.type}</span>
+                        {row.at && (
+                          <span className="mt-0.5 block text-xs text-muted">{formatNlDate(row.at)}</span>
+                        )}
+                      </span>
+                      <strong className={row.amount >= 0 ? "text-green-600" : "text-navy"}>
+                        {signedMinorLabel(row.amount)}
+                      </strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            {(dashboard?.relevant_offers?.length ?? 0) > 0 && (
+              <section className="rounded-3xl bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-black text-navy">Relevante aanbiedingen</h2>
+                <ul className="mt-4 space-y-3">
+                  {dashboard!.relevant_offers.slice(0, 5).map((offer) => (
+                    <li key={offer.slug || offer.title}>
+                      {offer.slug ? (
+                        <Link
+                          href={`/aanbiedingen/${encodeURIComponent(offer.slug)}`}
+                          className="block rounded-2xl bg-mist/70 px-4 py-3 hover:bg-brand-light"
+                        >
+                          <span className="font-extrabold text-navy">{offer.title}</span>
+                          {offer.webshop?.name && (
+                            <span className="mt-0.5 block text-xs text-muted">{offer.webshop.name}</span>
+                          )}
+                        </Link>
+                      ) : (
+                        <div className="rounded-2xl bg-mist/70 px-4 py-3">
+                          <span className="font-extrabold text-navy">{offer.title}</span>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </aside>
         </div>
       </section>
 
@@ -1037,7 +1069,9 @@ function MijnVoordelenInner() {
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Bedrag</dt>
-                <dd className="font-extrabold text-navy">{formatMinor(Math.abs(selectedTx.amount_minor))}</dd>
+                <dd className="font-extrabold text-navy">
+                  {signedMinorLabel(selectedTx.amount_minor, selectedTx.sign)}
+                </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Type</dt>

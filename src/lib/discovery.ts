@@ -89,6 +89,11 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v === undefined || v === null || v === "") continue;
+    // Laravel `boolean` validation accepts 1/0 (and "1"/"0"); avoid `true`/`false` strings.
+    if (typeof v === "boolean") {
+      sp.set(k, v ? "1" : "0");
+      continue;
+    }
     sp.set(k, String(v));
   }
   const s = sp.toString();

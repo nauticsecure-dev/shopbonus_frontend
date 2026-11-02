@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test:e2e:support": "playwright test e2e/support-chat.spec.ts",
     "test:e2e:cms": "playwright test e2e/cms-i18n-consent.spec.ts",
+    "test:e2e:profile": "playwright test e2e/consumer-profile.spec.ts",
     "install:clean": "npm ci"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "4.1.17",
     "@types/node": "22.19.15",
     "@types/pg": "8.18.0",

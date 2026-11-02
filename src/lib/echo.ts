@@ -7,6 +7,8 @@ type EchoLike = {
   private: (channel: string) => {
     listen: (event: string, cb: (payload: unknown) => void) => unknown;
     stopListening: (event?: string) => unknown;
+    subscribed?: (cb: () => void) => unknown;
+    error?: (cb: () => void) => unknown;
   };
   leave: (channel: string) => void;
   disconnect: () => void;
@@ -73,10 +75,21 @@ export function walletChannelName(userPublicId: string): string {
   return `shopbonus.user.${userPublicId}.wallet`;
 }
 
+type WalletSubscriptionOptions = {
+  onInvalidate: (reason?: string) => void;
+  /** Called after the websocket recovers so clients can re-fetch authoritative HTTP state. */
+  onReconnect?: () => void;
+};
+
 export async function subscribeWalletInvalidation(
   userPublicId: string,
-  onInvalidate: (reason?: string) => void
+  onInvalidateOrOptions: ((reason?: string) => void) | WalletSubscriptionOptions
 ): Promise<() => void> {
+  const options: WalletSubscriptionOptions =
+    typeof onInvalidateOrOptions === "function"
+      ? { onInvalidate: onInvalidateOrOptions }
+      : onInvalidateOrOptions;
+
   const echo = await getEcho();
   if (!echo) return () => undefined;
 
@@ -87,13 +100,33 @@ export async function subscribeWalletInvalidation(
       payload && typeof payload === "object" && "reason" in payload
         ? String((payload as { reason?: unknown }).reason ?? "")
         : undefined;
-    onInvalidate(reason || undefined);
+    options.onInvalidate(reason || undefined);
   };
   channel.listen(".WalletBalanceChanged", handler);
   channel.listen("WalletBalanceChanged", handler);
 
+  // Recover missed events after a transport drop while the tab stays focused.
+  let sawDisconnect = false;
+  const connector = (echo as unknown as { connector?: { pusher?: { connection?: {
+    bind: (event: string, cb: (states: { previous: string; current: string }) => void) => void;
+    unbind: (event: string, cb?: (states: { previous: string; current: string }) => void) => void;
+  } } } }).connector;
+  const connection = connector?.pusher?.connection;
+  const onStateChange = (states: { previous: string; current: string }) => {
+    if (states.current === "disconnected" || states.current === "unavailable" || states.current === "failed") {
+      sawDisconnect = true;
+      return;
+    }
+    if (states.current === "connected" && sawDisconnect) {
+      sawDisconnect = false;
+      options.onReconnect?.();
+    }
+  };
+  connection?.bind("state_change", onStateChange);
+
   return () => {
     try {
+      connection?.unbind("state_change", onStateChange);
       channel.stopListening(".WalletBalanceChanged");
       channel.stopListening("WalletBalanceChanged");
       echo.leave(name);
@@ -236,13 +269,27 @@ export async function subscribeNotifications(
 
 export async function subscribeSupportConversation(
   conversationId: string,
-  onEvent: (event: string, payload: SupportProgressPayload) => void
+  onEvent: (event: string, payload: SupportProgressPayload) => void,
+  onConnection?: (connected: boolean) => void
 ): Promise<() => void> {
   const echo = await getEcho();
   if (!echo || !conversationId) return () => undefined;
 
+  onConnection?.(false);
   const name = supportConversationChannelName(conversationId);
   const channel = echo.private(name);
+  let active = true;
+  channel.subscribed?.(() => { if (active) onConnection?.(true); });
+  const connection = (echo as unknown as { connector?: { pusher?: { connection?: {
+    bind: (event: string, cb: (states: { current: string }) => void) => void;
+    unbind: (event: string, cb: (states: { current: string }) => void) => void;
+  } } } }).connector?.pusher?.connection;
+  const onState = (states: { current: string }) => {
+    if (active && states.current !== "connected") onConnection?.(false);
+    // Subscription acknowledgement confirms authorization after reconnect.
+  };
+  connection?.bind("state_change", onState);
+  channel.error?.(() => onConnection?.(false));
   const cleaners: Array<() => void> = [];
 
   for (const eventName of SUPPORT_EVENTS) {
@@ -264,6 +311,8 @@ export async function subscribeSupportConversation(
   }
 
   return () => {
+    active = false;
+    connection?.unbind("state_change", onState);
     cleaners.forEach((fn) => fn());
     try {
       echo.leave(name);

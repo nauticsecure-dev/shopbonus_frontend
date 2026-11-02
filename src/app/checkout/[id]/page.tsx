@@ -1,4 +1,5 @@
 "use client";
+import { useRoleCopy } from "@/i18n/roleCopy";
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -15,6 +16,7 @@ import { useShopBonus } from "@/store/ShopBonusContext";
  * Frontend redirect alone never issues a voucher — we poll verified status.
  */
 export default function CheckoutStatusPage() {
+  const c = useRoleCopy();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const router = useRouter();
@@ -44,12 +46,12 @@ export default function CheckoutStatusPage() {
         await refreshVouchers("all");
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Checkout kon niet worden geladen.");
+      setError(err instanceof ApiError ? err.message : c("Checkout_could_not_be_loaded"));
     }
-  }, [id, session?.user, locale, refreshWallet, refreshVouchers]);
+  }, [id, session?.user, locale, refreshWallet, refreshVouchers, c]);
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => void load());
   }, [load]);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function CheckoutStatusPage() {
     if (polls >= 40) return;
     const t = window.setTimeout(() => {
       setPolls((p) => p + 1);
-      void load();
+      queueMicrotask(() => void load());
     }, 2500);
     return () => window.clearTimeout(t);
   }, [checkout, polls, load]);
@@ -66,24 +68,22 @@ export default function CheckoutStatusPage() {
     if (checkout?.state === "completed" && checkout.voucher_id) {
       pushToast({ title: "Betaling geslaagd", message: "Je voucher staat klaar.", kind: "success" });
     }
-  }, [checkout?.state, checkout?.voucher_id, pushToast]);
+  }, [checkout?.state, checkout?.voucher_id, pushToast, c]);
 
   if (!ready || !session) {
     return (
       <div className="grid min-h-[50vh] place-items-center text-muted" role="status">
-        Checkout laden…
-      </div>
+        {c("Loading_checkout")}</div>
     );
   }
 
   if (error && !checkout) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <h1 className="text-2xl font-black text-navy">Checkout niet gevonden</h1>
+        <h1 className="text-2xl font-black text-navy">{c("Checkout_not_found")}</h1>
         <p className="mt-2 text-muted">{error}</p>
         <Link href="/mijn-voordelen" className="mt-6 inline-flex rounded-2xl bg-brand px-6 py-3 font-extrabold text-white">
-          Naar Mijn vouchers
-        </Link>
+          {c("Go_to_My_vouchers")}</Link>
       </div>
     );
   }
@@ -91,43 +91,43 @@ export default function CheckoutStatusPage() {
   const state = checkout?.state ?? "pending_payment";
   const title =
     state === "completed"
-      ? "Voucher klaar"
+      ? c("Voucher_ready")
       : state === "pending_payment"
-        ? "Betaling verwerken…"
+        ? c("Processing_payment")
         : state === "paid_unfulfilled"
-          ? "Betaling ontvangen — oplossing volgt"
+          ? c("Payment_received_resolution_pending")
           : state === "expired"
-            ? "Checkout verlopen"
-            : "Betaling niet afgerond";
+            ? c("Checkout_expired")
+            : c("Payment_incomplete");
 
   const body =
     state === "completed"
-      ? "Je betaling is bevestigd en de voucher is uitgegeven. De code vind je in Mijn vouchers."
+      ? c("Your_payment_is_confirmed_and_your_voucher_has_been_issued_Find_the_code_in_My_vouchers")
       : state === "pending_payment"
-        ? "We wachten op bevestiging van Mollie. Deze pagina vernieuwt automatisch. Een redirect is geen bewijs van betaling."
+        ? c("We_are_waiting_for_confirmation_from_Mollie_This_page_refreshes_automatically_A_redirect_is_not_proof_of_payment")
         : state === "paid_unfulfilled"
-          ? "Je betaling is gelukt, maar de voucher kon niet meteen worden toegekend. Ons team lost dit gecontroleerd op (terugbetaling of compensatie). Je hoeft niets opnieuw te betalen."
+          ? c("Your_payment_succeeded_but_the_voucher_could_not_be_issued_immediately_Our_team_will_arrange_a_refund_or_compensation_You_do_not_need_to_pay_again")
           : state === "expired"
-            ? "Deze checkout is verlopen. Er is geen voucher uitgegeven en gereserveerd tegoed is vrijgegeven."
-            : `De betaling is ${checkout?.payment?.status ?? "mislukt"}. Er is geen voucher uitgegeven.`;
+            ? c("This_checkout_has_expired_No_voucher_was_issued_and_reserved_credit_has_been_released")
+            : (locale === "en" ? "The payment was not completed. No voucher was issued." : "De betaling is niet afgerond. Er is geen voucher uitgegeven.");
 
   return (
     <div className="relative overflow-hidden">
       <div className="page-blob left-[-60px] top-[-30px] h-64 w-64 bg-blue-200/40" />
       <div className="relative mx-auto max-w-lg px-4 py-16 sm:px-6">
         <div className="rounded-[1.75rem] bg-white p-8 text-center shadow-[0_10px_36px_-16px_rgba(10,27,63,0.22)]">
-          <p className="text-sm font-bold uppercase tracking-wide text-brand">ShopBonus checkout</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-brand">{c("ShopBonus_checkout")}</p>
           <h1 className="mt-2 text-3xl font-black text-navy">{title}</h1>
           <p className="mt-3 text-muted">{body}</p>
 
           {checkout && (
             <dl className="mt-6 space-y-2 rounded-2xl bg-mist px-4 py-3 text-left text-sm">
               <div className="flex justify-between gap-3">
-                <dt className="text-muted">Referentie</dt>
+                <dt className="text-muted">{c("Reference")}</dt>
                 <dd className="truncate font-mono text-xs font-semibold text-navy">{checkout.id}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-muted">Tegoed</dt>
+                <dt className="text-muted">{c("Credit")}</dt>
                 <dd className="font-extrabold text-navy">{formatMinor(checkout.wallet_part_minor)}</dd>
               </div>
               <div className="flex justify-between gap-3">
@@ -136,7 +136,7 @@ export default function CheckoutStatusPage() {
               </div>
               {checkout.offer?.title && (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Aanbieding</dt>
+                  <dt className="text-muted">{c("Offer")}</dt>
                   <dd className="font-semibold text-navy">{checkout.offer.title}</dd>
                 </div>
               )}
@@ -153,38 +153,33 @@ export default function CheckoutStatusPage() {
                 }
                 className="rounded-2xl bg-brand py-3.5 font-extrabold text-white"
               >
-                Bekijk voucher
-              </Link>
+                {c("View_voucher")}</Link>
             )}
             {state === "pending_payment" && checkout?.payment?.checkout_url && (
               <a
                 href={checkout.payment.checkout_url}
                 className="rounded-2xl bg-brand py-3.5 font-extrabold text-white"
               >
-                Terug naar Mollie
-              </a>
+                {c("Back_to_Mollie")}</a>
             )}
             {(state === "failed" || state === "expired") && checkout?.offer?.slug && (
               <Link
                 href={`/afrekenen/${encodeURIComponent(checkout.offer.slug)}`}
                 className="rounded-2xl bg-brand py-3.5 font-extrabold text-white"
               >
-                Opnieuw proberen
-              </Link>
+                {c("Try_again")}</Link>
             )}
             <Link
               href="/mijn-voordelen"
               className="rounded-2xl border border-blue-100 py-3 font-extrabold text-navy hover:bg-mist"
             >
-              Mijn vouchers
-            </Link>
+              {c("My_vouchers")}</Link>
             <button
               type="button"
               onClick={() => void load()}
               className="text-sm font-bold text-brand hover:underline"
             >
-              Status vernieuwen
-            </button>
+              {c("Refresh_status")}</button>
           </div>
         </div>
       </div>

@@ -35,7 +35,17 @@
     "src/**/*.tsx",
     "next.config.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-homepage-cms/types/**/*.ts",
+    ".next-homepage-cms/dev/types/**/*.ts",
+    ".next-about-cms/types/**/*.ts",
+    ".next-about-cms/dev/types/**/*.ts",
+    ".next-homepage-live/types/**/*.ts",
+    ".next-homepage-live/dev/types/**/*.ts",
+    ".next-homepage-live-webpack/types/**/*.ts",
+    ".next-homepage-live-webpack/dev/types/**/*.ts",
+    ".next-affiliate-review/types/**/*.ts",
+    ".next-affiliate-review/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

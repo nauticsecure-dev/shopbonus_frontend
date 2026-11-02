@@ -1,9 +1,9 @@
 "use client";
 
+import { useLocale } from "@/i18n/LocaleContext";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchDiscountCodes, type PublicDiscountCode } from "@/lib/homepage";
-import { formatNlDate } from "@/lib/money";
 import { useShopBonus } from "@/store/ShopBonusContext";
 import type { HomepageContent } from "@/lib/homepageDefaults";
 
@@ -13,38 +13,49 @@ type Props = {
 };
 
 export default function DiscountCodesPanel({ content, initialCodes = [] }: Props) {
+  const { locale, intlLocale } = useLocale();
   const { copyCode, justCopied } = useShopBonus();
   const [codes, setCodes] = useState(initialCodes);
   const [loading, setLoading] = useState(initialCodes.length === 0);
   const [error, setError] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const nextExpiry = Math.min(...codes.map(code => code.ends_at ? new Date(code.ends_at).getTime() : Infinity).filter(time => time > now));
+    if (!Number.isFinite(nextExpiry)) return;
+    const timeout = window.setTimeout(() => setNow(Date.now()), Math.min(2147483647, Math.max(0, nextExpiry - Date.now() + 1)));
+    return () => window.clearTimeout(timeout);
+  }, [codes, now]);
 
   useEffect(() => {
-    if (initialCodes.length > 0) {
-      setCodes(initialCodes.slice(0, content.limit));
-      setLoading(false);
-      return;
-    }
     const ac = new AbortController();
+    queueMicrotask(() => {
+      if (ac.signal.aborted) return;
+      if (initialCodes.length > 0) setCodes(initialCodes.slice(0, content.limit));
+      setLoading(initialCodes.length === 0);
+    });
     const timeout = window.setTimeout(() => ac.abort(), 8000);
-    setLoading(true);
-    void fetchDiscountCodes({ limit: content.limit, signal: ac.signal })
+    void fetchDiscountCodes({ limit: content.limit, locale, signal: ac.signal })
       .then((rows) => {
+        if (ac.signal.aborted) return;
         setCodes(rows);
         setError(false);
       })
       .catch(() => {
+        if (ac.signal.aborted) return;
         setError(true);
         setCodes([]);
       })
       .finally(() => {
         window.clearTimeout(timeout);
-        setLoading(false);
+        if (!ac.signal.aborted) setLoading(false);
       });
     return () => {
       window.clearTimeout(timeout);
       ac.abort();
     };
-  }, [initialCodes, content.limit]);
+  }, [initialCodes, content.limit, locale]);
+
+  const activeCodes = codes.filter(c => !c.ends_at || new Date(c.ends_at).getTime() > now);
 
   return (
     <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-7" data-testid="discount-codes-panel">
@@ -75,21 +86,21 @@ export default function DiscountCodesPanel({ content, initialCodes = [] }: Props
 
         {!loading && error && (
           <p className="rounded-2xl bg-slate-50 p-4 text-sm text-muted">
-            Kortingscodes konden niet worden geladen. Probeer het later opnieuw.
+            {locale === "en" ? "Discount codes could not be loaded. Please try again later." : "Kortingscodes konden niet worden geladen. Probeer het later opnieuw."}
           </p>
         )}
 
-        {!loading && !error && codes.length === 0 && (
+        {!loading && !error && activeCodes.length === 0 && (
           <p className="rounded-2xl bg-slate-50 p-4 text-sm text-muted">
-            Momenteel geen actieve publieke kortingscodes. Bekijk wel de actuele aanbiedingen.
+            {locale === "en" ? "No active public discount codes. Browse the current offers." : "Momenteel geen actieve publieke kortingscodes. Bekijk wel de actuele aanbiedingen."}
           </p>
         )}
 
         {!loading &&
-          codes.map((c, index) => {
+          activeCodes.map((c, index) => {
             const copied = justCopied === c.code;
             const image = c.webshop.cover_url || c.webshop.logo_url;
-            const metaParts = [c.terms || c.summary, c.ends_at ? `Geldig tot ${formatNlDate(c.ends_at)}` : null]
+            const metaParts = [c.terms || c.summary, c.ends_at ? `${locale === "en" ? "Valid until" : "Geldig tot"} ${new Date(c.ends_at).toLocaleDateString(intlLocale)}` : null]
               .filter(Boolean)
               .join(" · ");
             const rowKey = c.id || c.slug || `${c.code}-${c.webshop.slug}-${index}`;
@@ -122,9 +133,9 @@ export default function DiscountCodesPanel({ content, initialCodes = [] }: Props
                     type="button"
                     onClick={() => copyCode(c.code)}
                     className="flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3.5 py-2.5 font-black tracking-wider text-navy transition hover:border-brand"
-                    aria-label={`Kopieer code ${c.code}`}
+                    aria-label={`${locale === "en" ? "Copy code" : "Kopieer code"} ${c.code}`}
                   >
-                    {c.code}
+                    {copied ? (locale === "en" ? "Copied!" : "Gekopieerd!") : c.code}
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-muted" aria-hidden>
                       <rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" strokeWidth="2" />
                       <path
@@ -138,7 +149,7 @@ export default function DiscountCodesPanel({ content, initialCodes = [] }: Props
                     href={c.href || `/webshops/${c.webshop.slug}`}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-brand-dark"
                   >
-                    {copied ? "Gekopieerd!" : "Naar webshop"}
+                    {locale === "en" ? "View webshop details" : "Bekijk webshopdetails"}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
                       <path
                         d="M14 5h5v5M19 5 10 14"

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { fetchPublicPage, type PublicCmsPage } from "@/lib/cms";
 import { useLocale } from "@/i18n/LocaleContext";
@@ -11,6 +11,8 @@ import PageInlineCms, { PageBody } from "@/components/cms/PageInlineCms";
 export default function CmsPublicPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
+  const router = useRouter();
+  const currentPage = useRef<PublicCmsPage | null>(null);
   const { locale, dictionary: t } = useLocale();
   const [page, setPage] = useState<PublicCmsPage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +20,33 @@ export default function CmsPublicPage() {
 
   useEffect(() => {
     if (!slug) return;
+    const previous = currentPage.current;
+    const alternate = previous?.slug === slug ? previous.alternates[locale] : undefined;
+    if (alternate && alternate !== slug) {
+      router.replace(`/pagina/${encodeURIComponent(alternate)}`);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
     void fetchPublicPage(locale, slug)
       .then((data) => {
-        if (!cancelled) setPage(data);
+        if (!cancelled) { currentPage.current = data; setPage(data); }
       })
-      .catch((err) => {
+      .catch(async (err) => {
+        if (cancelled) return;
+        // Locale hydration can happen before the first request resolves.
+        // Resolve a valid slug in the other language before reporting a 404.
+        if (err instanceof ApiError && err.status === 404) {
+          try {
+            const source = await fetchPublicPage(locale === "en" ? "nl" : "en", slug);
+            const target = source.alternates[locale];
+            if (!cancelled && target && target !== slug) {
+              router.replace(`/pagina/${encodeURIComponent(target)}`);
+              return;
+            }
+          } catch { /* retain the original not-found response */ }
+        }
         if (cancelled) return;
         setError(err instanceof ApiError ? err.message : t.notFound);
         setPage(null);
@@ -36,7 +57,7 @@ export default function CmsPublicPage() {
     return () => {
       cancelled = true;
     };
-  }, [slug, locale, t.notFound]);
+  }, [slug, locale, t.notFound, router]);
 
   if (loading) {
     return (
@@ -60,7 +81,7 @@ export default function CmsPublicPage() {
   }
 
   return (
-    <PageInlineCms published={page}>
+    <PageInlineCms key={`${page.key}:${page.locale}`} published={page}>
       {({ content }) => <PageBody content={content} />}
     </PageInlineCms>
   );

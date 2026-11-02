@@ -146,6 +146,62 @@ export async function changePassword(
   });
 }
 
+/** Confirm password for Fortify sensitive actions (2FA enable/disable). */
+export async function confirmPassword(password: string, locale?: Locale): Promise<void> {
+  await ensureCsrfCookie();
+  await apiRequest({
+    path: "/user/confirm-password",
+    method: "POST",
+    locale,
+    body: { password },
+  });
+}
+
+export async function enableTwoFactor(locale?: Locale): Promise<void> {
+  await ensureCsrfCookie();
+  await apiRequest({
+    path: "/user/two-factor-authentication",
+    method: "POST",
+    locale,
+  });
+}
+
+export async function disableTwoFactor(locale?: Locale): Promise<void> {
+  await ensureCsrfCookie();
+  await apiRequest({
+    path: "/user/two-factor-authentication",
+    method: "DELETE",
+    locale,
+  });
+}
+
+export async function fetchTwoFactorQrSvg(locale?: Locale): Promise<string> {
+  const res = await apiRequest<{ svg: string }>({
+    path: "/user/two-factor-qr-code",
+    locale,
+  });
+  return res.svg;
+}
+
+export async function confirmTwoFactorCode(code: string, locale?: Locale): Promise<void> {
+  await ensureCsrfCookie();
+  await apiRequest({
+    path: "/user/confirmed-two-factor-authentication",
+    method: "POST",
+    locale,
+    body: { code },
+  });
+}
+
+export async function fetchTwoFactorRecoveryCodes(locale?: Locale): Promise<string[]> {
+  const res = await apiRequest<{ recovery_codes?: string[] } | string[]>({
+    path: "/user/two-factor-recovery-codes",
+    locale,
+  });
+  if (Array.isArray(res)) return res;
+  return res.recovery_codes ?? [];
+}
+
 export async function requestAccountDeletion(
   currentPassword: string,
   locale?: Locale

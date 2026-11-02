@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import BannerWidgetPreview from "@/components/banners/BannerWidgetPreview";
 import StudioPanel from "@/components/banners/StudioPanel";
 import {
   ApiError,
@@ -44,20 +43,53 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
   const [device, setDevice] = useState<Device>("desktop");
   const [tab, setTab] = useState<"design" | "triggers" | "insights">("design");
   const [leftTool, setLeftTool] = useState<LeftTool>("templates");
-  const [selected, setSelected] = useState(true);
+  const [storefrontUrl, setStorefrontUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("Customers see the published version until you launch.");
   const [simulation, setSimulation] = useState<BannerSimulation | null>(null);
   const [aiRuns, setAiRuns] = useState<BannerAiRun[]>([]);
   const [aiBusy, setAiBusy] = useState(false);
+  const [createdDraft, setCreatedDraft] = useState<string | null>(null);
   const [history, setHistory] = useState<BannerConfig[]>([]);
   const [future, setFuture] = useState<BannerConfig[]>([]);
   const [pairStatus, setPairStatus] = useState<string>("canvas");
   const [panelOpen, setPanelOpen] = useState(true);
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const nonceRef = useRef(crypto.randomUUID());
+  const connectionRef = useRef<{ target: Window; origin: string; key: string; nonce: string; paired: boolean } | null>(null);
+  const pairingCleanup = useRef<() => void>(() => {});
+  const pairGeneration = useRef(0);
+  const configRef = useRef(config);
+  useEffect(() => { configRef.current = config; }, [config]);
+
+  useEffect(() => () => { pairGeneration.current++; pairingCleanup.current(); }, []);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    void fetchBannerInstallation(workspaceId).then((installation) => {
+      if (!ac.signal.aborted) setStorefrontUrl(installation.allowed_origins[0] || null);
+    }).catch(() => { if (!ac.signal.aborted) setError("Could not load storefront installation."); });
+    return () => ac.abort();
+  }, [workspaceId]);
+
+  useEffect(() => {
+    const connection = connectionRef.current;
+    if (!connection?.paired) return;
+    connection.target.postMessage({ schema: EMBED_MSG_SCHEMA, type: "editor.apply_config", key: connection.key,
+      nonce: connection.nonce, campaign: bannerId, config }, connection.origin);
+  }, [config, bannerId, pairStatus]);
+  useEffect(() => {
+    const finishGesture = () => {
+      const connection = connectionRef.current;
+      if (connection?.paired) connection.target.postMessage({ schema: EMBED_MSG_SCHEMA, type: "editor.pointer_end",
+        key: connection.key, nonce: connection.nonce, campaign: bannerId }, connection.origin);
+    };
+    window.addEventListener("pointerup", finishGesture);
+    window.addEventListener("blur", finishGesture);
+    return () => { window.removeEventListener("pointerup", finishGesture); window.removeEventListener("blur", finishGesture); };
+  }, [bannerId]);
+
   const load = useCallback(
     async (signal?: AbortSignal) => {
       const row = await fetchBanner(workspaceId, bannerId, signal);
@@ -76,7 +108,7 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
 
   useEffect(() => {
     const ac = new AbortController();
-    void load(ac.signal).catch((err) => {
+    void Promise.resolve().then(() => load(ac.signal)).catch((err) => {
       if (!ac.signal.aborted) setError(err instanceof ApiError ? err.message : "Could not load banner.");
     });
     return () => ac.abort();
@@ -93,6 +125,7 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
   }, [dirty]);
 
   const pushHistory = (next: BannerConfig) => {
+    setError(null);
     setHistory((h) => [...h.slice(-29), config]);
     setFuture([]);
     setConfig(next);
@@ -128,16 +161,20 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
       const saved = await saveBannerDraft(workspaceId, bannerId, { revision, config, name: banner?.name });
       setBanner(saved);
       setRevision(saved.draft_revision ?? revision + 1);
-      setDirty(false);
+      const unchanged = configRef.current === config;
+      setDirty(!unchanged);
+      if (!unchanged) setError("New edits arrived while saving. Save again before publishing.");
+      return unchanged;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Save failed.");
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
   const onPublish = async () => {
-    if (dirty) await onSave();
+    if (dirty && !(await onSave())) return;
     setBusy(true);
     try {
       const row = await publishBanner(workspaceId, bannerId);
@@ -164,6 +201,7 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
   const onSchedule = async () => {
     const raw = window.prompt("Schedule publish (shop-local Y-m-dTH:i)", nextHourLocal());
     if (!raw) return;
+    if (dirty && !(await onSave())) return;
     setBusy(true);
     try {
       setBanner(await scheduleBanner(workspaceId, bannerId, raw));
@@ -261,6 +299,7 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
       if (result.published) {
         setError("Unexpected auto-publish blocked by policy.");
       } else {
+        setCreatedDraft(result.draft_campaign || null);
         setNotice(
           result.draft_campaign
             ? `Editable test draft ${result.draft_campaign} created. Publish remains manual.`
@@ -272,63 +311,83 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
     }
   };
 
-  const openOnWebsite = async () => {
-    setError(null);
+  const pairWebsite = async (target: Window, origin: string) => {
+    pairingCleanup.current();
+    const generation = ++pairGeneration.current;
+    setPairStatus("pairing");
     try {
       const installation = await fetchBannerInstallation(workspaceId);
-      const origin = installation.allowed_origins[0];
-      if (!origin) {
-        setPairStatus("fallback");
-        setError("Add an allowed origin in Installation before editing on your website.");
-        return;
-      }
+      if (!installation.allowed_origins.includes(origin)) throw new Error("Storefront origin is not allowed.");
       const pairing = await requestBannerPairing(workspaceId, origin);
-      setPairStatus("pairing");
-      const win = window.open(origin, "shopbonus-live-editor");
-      if (!win) {
-        setPairStatus("fallback");
-        setError("Popup blocked — design on the canvas below (safe fallback).");
-        return;
-      }
+      if (generation !== pairGeneration.current) return;
+      const connection = { target, origin, key: installation.public_key, nonce: crypto.randomUUID(), paired: false };
+      connectionRef.current = connection;
+      let sentPair = false;
+      const send = (type: string, extra = {}) => target.postMessage({ schema: EMBED_MSG_SCHEMA, type,
+        key: connection.key, nonce: connection.nonce, ...extra }, origin);
       const onMsg = (ev: MessageEvent) => {
         const data = ev.data;
-        if (!data || data.schema !== EMBED_MSG_SCHEMA || data.nonce !== nonceRef.current) return;
-        if (data.type === "editor.ready") {
-          win.postMessage(
-            {
-              schema: EMBED_MSG_SCHEMA,
-              type: "editor.pair",
-              nonce: nonceRef.current,
-              key: installation.public_key,
-              pairing_token: pairing.pairing_token,
-              campaign: bannerId,
-            },
-            origin
-          );
+        if (ev.origin !== origin || ev.source !== target || !data || data.schema !== EMBED_MSG_SCHEMA ||
+            data.key !== connection.key || data.nonce !== connection.nonce) return;
+        if (data.type === "editor.ready" && !sentPair) {
+          sentPair = true;
+          send("editor.pair", { pairing_token: pairing.pairing_token, campaign: bannerId });
         }
-        if (data.type === "editor.paired") setPairStatus("paired");
-        if (data.type === "editor.pair_failed") {
-          setPairStatus("fallback");
-          setError(`Pairing failed (${data.code || data.status}). Using canvas fallback.`);
+        if (data.type === "editor.paired") {
+          connection.paired = true;
+          setPairStatus("paired");
+          clearInterval(retry);
+          clearTimeout(timeout);
         }
-        if (data.type === "banner.moved" && typeof data.offset_x === "number") {
-          pushHistory({
-            ...config,
-            placement: { ...config.placement, offset_x: data.offset_x, offset_y: data.offset_y ?? 0 },
-          });
+        if (data.type === "editor.pair_failed" || data.type === "editor.expired" || data.type === "editor.draft_failed") {
+          connection.paired = false;
+          setPairStatus("failed");
+          setError("Storefront pairing failed or expired. Reconnect to continue.");
+        }
+        if (!connection.paired) return;
+        if (data.type === "banner.resized" && data.campaign === bannerId && Number.isInteger(data.width) &&
+            Number.isInteger(data.height) && data.width >= 160 && data.width <= 720 && data.height >= 80 && data.height <= 800) {
+          const current = configRef.current;
+          setHistory((h) => [...h.slice(-29), current]); setFuture([]);
+          setConfig({ ...current, placement: { ...current.placement, width: data.width, height: data.height } }); setDirty(true);
+        }
+        if (data.type === "banner.target_missing") setError("The placement target is missing. Select a new target or corner anchor.");
+        if (data.type === "banner.moved" && data.campaign === bannerId &&
+            Number.isInteger(data.offset_x) && Number.isInteger(data.offset_y) &&
+            Math.abs(data.offset_x) <= 500 && Math.abs(data.offset_y) <= 500) {
+          const current = configRef.current;
+          setHistory((h) => [...h.slice(-29), current]);
+          setFuture([]);
+          setConfig({ ...current, placement: { ...current.placement,
+            ...(data.anchor && ["top_left", "top_right", "bottom_left", "bottom_right"].includes(data.anchor) ? { anchor: data.anchor } : {}),
+            offset_x: data.offset_x, offset_y: data.offset_y } });
+          setDirty(true);
         }
       };
       window.addEventListener("message", onMsg);
-      setTimeout(() => {
-        win.postMessage(
-          { schema: EMBED_MSG_SCHEMA, type: "editor.handshake", nonce: nonceRef.current, key: installation.public_key },
-          origin
-        );
-      }, 800);
+      const retry = setInterval(() => { if (!sentPair) send("editor.handshake"); }, 700);
+      const timeout = setTimeout(() => {
+        clearInterval(retry);
+        if (!connection.paired) { setPairStatus("failed"); setError("The site did not pair. Check its embed installation or open it in a separate window."); }
+      }, 20000);
+      pairingCleanup.current = () => {
+        clearInterval(retry); clearTimeout(timeout); window.removeEventListener("message", onMsg);
+        if (connection.paired) send("editor.disconnect");
+        connection.paired = false;
+        if (connectionRef.current === connection) connectionRef.current = null;
+      };
+      send("editor.handshake");
     } catch (err) {
-      setPairStatus("fallback");
-      setError(err instanceof ApiError ? err.message : "Could not open live pairing.");
+      setPairStatus("failed");
+      setError(err instanceof Error ? err.message : "Could not pair storefront.");
     }
+  };
+
+  const openOnWebsite = () => {
+    if (!storefrontUrl) { setError("Add an allowed origin in Installation first."); return; }
+    const win = window.open(storefrontUrl, "shopbonus-live-editor");
+    if (!win) { setError("Popup blocked. Allow popups for ShopBonus and reconnect."); return; }
+    void pairWebsite(win, new URL(storefrontUrl).origin);
   };
 
   const onUpload = async (file: File) => {
@@ -483,50 +542,24 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
           ) : null}
         </div>
 
+        {createdDraft ? <Link className="absolute bottom-4 left-20 z-40 rounded-xl bg-white p-3 text-sm underline shadow" href={`/dashboard/banners/${createdDraft}/studio`}>Open editable AI test draft</Link> : null}
         <main className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-slate-200 p-3 md:p-6">
           <div
             data-testid="storefront-canvas"
             className={`relative overflow-hidden rounded-2xl bg-white shadow-2xl transition-all ${
               device === "mobile" ? "h-[720px] w-[390px]" : "h-full w-full max-w-6xl"
             }`}
-            onClick={() => setSelected(false)}
           >
-            <StorefrontChrome shopName={shopName} />
-            <div className="relative h-[calc(100%-56px)] bg-gradient-to-br from-stone-100 via-rose-50 to-slate-100">
-              <div className="pointer-events-none absolute inset-0 opacity-40">
-                <div className="absolute left-[8%] top-[12%] h-[38%] w-[42%] rounded-3xl bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22500%22%3E%3Crect fill=%22%23d4c4b0%22 width=%22400%22 height=%22500%22/%3E%3C/svg%3E')] bg-cover" />
-                <div className="absolute bottom-8 left-8 right-8 grid grid-cols-3 gap-3">
-                  {[1, 2, 3].map((n) => (
-                    <div key={n} className="h-28 rounded-xl bg-white/70 shadow-sm" />
-                  ))}
-                </div>
-              </div>
-              <p className="pointer-events-none absolute left-6 top-5 text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">
-                Mode Atelier · design canvas
-              </p>
-              <p className="pointer-events-none absolute left-6 top-10 text-xs font-semibold text-stone-600">
-                Native products stay untouched · only ShopBonus widgets are editable
-                {pairStatus === "paired" ? " · paired with live site" : " · pair for real domain"}
-              </p>
-              <BannerWidgetPreview
-                config={config}
-                selected={selected}
-                device={device}
-                simulatedCart={
-                  config.template === "cart_progress"
-                    ? { cart_minor: 9400, threshold_minor: 10000 }
-                    : null
-                }
-                onSelect={() => setSelected(true)}
-                onMove={(ox, oy) =>
-                  pushHistory({
-                    ...config,
-                    placement: { ...config.placement, offset_x: ox, offset_y: oy },
-                  })
-                }
-              />
-            </div>
-            <iframe ref={iframeRef} title="pair-bridge" className="hidden" />
+            {storefrontUrl ? (
+              <iframe ref={iframeRef} src={storefrontUrl} title={shopName + " live storefront"}
+                className="h-full w-full border-0" onLoad={() => {
+                  if (iframeRef.current?.contentWindow) void pairWebsite(iframeRef.current.contentWindow, new URL(storefrontUrl).origin);
+                }} />
+            ) : <p className="p-8 text-sm">Configure an allowed storefront origin in Installation to edit your website.</p>}
+            {pairStatus !== "paired" ? <div className="absolute bottom-4 left-4 right-4 rounded-xl bg-white p-4 text-sm shadow">
+              Storefront: {pairStatus}. If the theme blocks framing, <button type="button" className="underline" onClick={openOnWebsite}>open your website in a window</button>.
+            </div> : null}
+
           </div>
         </main>
 
@@ -556,19 +589,6 @@ export default function LiveEditorShell({ workspaceId, bannerId, shopName }: Pro
             Studio
           </button>
         ) : null}
-      </div>
-    </div>
-  );
-}
-
-function StorefrontChrome({ shopName }: { shopName: string }) {
-  return (
-    <div className="flex h-14 items-center justify-between border-b border-stone-200 bg-white px-5">
-      <p className="text-sm font-black tracking-[0.18em] text-stone-800">{shopName.toUpperCase() || "MODE ATELIER"}</p>
-      <div className="flex gap-4 text-[11px] font-bold uppercase tracking-wide text-stone-500">
-        <span>New</span>
-        <span>Women</span>
-        <span>Cart</span>
       </div>
     </div>
   );

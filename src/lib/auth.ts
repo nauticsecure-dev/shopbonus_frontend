@@ -275,13 +275,60 @@ export async function loginAccount(
   return { user: (res as MeResponse).data };
 }
 
+/** Completes Fortify's login challenge with a TOTP or recovery code. */
+export async function completeTwoFactorChallenge(
+  payload: { code: string } | { recovery_code: string },
+  locale: Locale
+): Promise<MeUser> {
+  await ensureCsrfCookie();
+  const res = await apiRequest<MeResponse>({
+    path: "/two-factor-challenge",
+    method: "POST",
+    locale,
+    body: payload,
+  });
+  return res.data;
+}
+
+/**
+ * Backend validation errors keyed for account form fields.
+ * Maps Fortify/Laravel names onto the shared register/login inputs.
+ */
+export function fieldErrorsFromApi(error: unknown): Partial<
+  Record<"name" | "email" | "password" | "consent" | "code" | "recovery", string>
+> {
+  if (!(error instanceof ApiError)) return {};
+  const body = error.body as {
+    error?: { fields?: Record<string, string[]> };
+    errors?: Record<string, string[]>;
+  } | null;
+  const fields = body?.error?.fields ?? body?.errors;
+  if (!fields) return {};
+
+  const first = (keys: string[]) => {
+    for (const key of keys) {
+      const msg = fields[key]?.[0];
+      if (msg) return msg;
+    }
+    return undefined;
+  };
+
+  return {
+    name: first(["first_name", "name"]),
+    email: first(["email"]),
+    password: first(["password", "password_confirmation"]),
+    consent: first(["accept_terms", "terms_version", "privacy_version"]),
+    code: first(["code"]),
+    recovery: first(["recovery_code"]),
+  };
+}
+
 export async function logoutAccount(locale?: Locale): Promise<void> {
   try {
     await ensureCsrfCookie();
     await apiRequest({ path: "/logout", method: "POST", locale });
   } catch (error) {
-    // Already logged out / expired CSRF is fine. Other failures are swallowed by
-    // callers after clearing local session so navigation is never blocked.
+    // Already logged out / expired CSRF is fine — treat as completed logout.
     if (error instanceof ApiError && (error.status === 401 || error.status === 419)) {
       return;
     }

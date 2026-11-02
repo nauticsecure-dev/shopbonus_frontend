@@ -1,0 +1,18 @@
+
+Running 13 tests using 1 worker
+
+  ok  1 [chromium] › e2e\support-repair.spec.ts:30:5 › wallet loading never asserts zero (17.0s)
+  ok  2 [chromium] › e2e\support-repair.spec.ts:31:5 › failed wallet is unavailable and retries (9.0s)
+  ok  3 [chromium] › e2e\support-repair.spec.ts:32:5 › verified empty balance is explicit (10.6s)
+  ok  4 [chromium] › e2e\support-repair.spec.ts:33:5 › reserved balance has no reward or release promise (7.2s)
+  ok  5 [chromium] › e2e\support-repair.spec.ts:34:5 › refresh restores and recovers a pending answer (14.8s)
+  ok  6 [chromium] › e2e\support-repair.spec.ts:35:5 › missed human reply recovers on focus (9.2s)
+  ok  7 [chromium] › e2e\support-repair.spec.ts:36:5 › missed answer catches up on browser reconnect (6.8s)
+  ok  8 [chromium] › e2e\support-repair.spec.ts:37:5 › no optimistic online claim (7.5s)
+  ok  9 [chromium] › e2e\support-repair.spec.ts:38:5 › English support labels and fallback stay English (6.5s)
+  ok 10 [chromium] › e2e\support-repair.spec.ts:39:5 › Dutch support labels remain Dutch (6.3s)
+  ok 11 [chromium] › e2e\support-repair.spec.ts:40:5 › published display controls suppress progress and badge (8.7s)
+  ok 12 [chromium] › e2e\support-repair.spec.ts:41:5 › workspace action cannot open an unauthorized workspace (5.6s)
+  ok 13 [chromium] › e2e\support-repair.spec.ts:43:5 › settings tabs lock unsupported controls and monitoring exposes filters (17.7s)
+
+  13 passed (3.7m)
