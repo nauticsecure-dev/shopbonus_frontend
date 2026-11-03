@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-03T07:18:49.485Z",
+  "environment": "isolated local SQLite / Mailpit",
+  "interception": false,
+  "status": "PARTIAL PASS",
+  "checks": [
+    "Registration through real cookie/CSRF API",
+    "Real database queue worker delivers verification email over SMTP to Mailpit",
+    "Mailbox verification code opens consumer dashboard",
+    "Real points offer → quote without debit → purchase debits exactly 250 points; EUR balance unchanged; dashboard refreshed"
+  ],
+  "failed_step": null,
+  "limits": [
+    "Local SMTP capture is not external mailbox delivery",
+    "Not all ten consumer journeys",
+    "No staging performance or visual approval"
+  ]
+}

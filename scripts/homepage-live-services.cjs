@@ -8,7 +8,10 @@ const proxy=http.createServer((req,res)=>{
  const url=new URL(req.url,'http://localhost:8017'); const began=Date.now();
  const upstream=http.request({hostname:'127.0.0.1',port:8018,path:req.url,method:req.method,headers:{...req.headers,host:'localhost:8017'}},incoming=>{
   const chunks=[];incoming.on('data',chunk=>chunks.push(chunk));incoming.on('end',()=>{
-   evidence.push({method:req.method,path:req.url,status:incoming.statusCode,request_id:incoming.headers['x-request-id'],cache_control:incoming.headers['cache-control'],duration_ms:Date.now()-began});
+   const capture=/\/homepage\/publish|\/cms\/pages\/[^/]+\/schedules/.test(url.pathname);
+   let response;
+   if(capture&&chunks.length){try{response=JSON.parse(Buffer.concat(chunks).toString());}catch{response=undefined;}}
+   evidence.push({method:req.method,path:req.url,status:incoming.statusCode,request_id:incoming.headers['x-request-id'],cache_control:incoming.headers['cache-control'],duration_ms:Date.now()-began,...(response?{response}:{})});
    const send=()=>{if(!res.destroyed){res.writeHead(incoming.statusCode,incoming.headers);res.end(Buffer.concat(chunks));}};
    if(delaySearch&&url.pathname.endsWith('/public/search')&&url.searchParams.get('q')==='Alpha')setTimeout(send,1500);else send();
   });

@@ -21,6 +21,8 @@ export type ConsumerDashboard = {
     id: string;
     type: string;
     amount: number;
+    /** Older dashboard responses omit this; never infer a unit from the amount. */
+    unit?: "points" | "eur_credit";
     reason: string | null;
     at: string | null;
   }>;

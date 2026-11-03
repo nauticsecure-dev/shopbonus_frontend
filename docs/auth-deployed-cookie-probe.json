@@ -1,0 +1,28 @@
+[
+  {
+    "url": "https://app.shopbonus.nl/sanctum/csrf-cookie",
+    "origin": "https://www.shopbonus.nl",
+    "status": 204,
+    "cors": [
+      "https://www.shopbonus.nl"
+    ],
+    "credentials": [
+      "true"
+    ],
+    "cookies": [
+      "XSRF-TOKEN=<redacted>; expires=Tue, 03 Nov 2026 05:20:07 GMT; Max-Age=7200; path=/; domain=.shopbonus.nl; secure; samesite=lax",
+      "shopbonus-session=<redacted>; expires=Tue, 03 Nov 2026 05:20:07 GMT; Max-Age=7200; path=/; domain=.shopbonus.nl; secure; httponly; samesite=lax"
+    ]
+  },
+  {
+    "url": "https://app.shopbonus.nl/sanctum/csrf-cookie",
+    "origin": "https://untrusted.example",
+    "status": 204,
+    "cors": null,
+    "credentials": null,
+    "cookies": [
+      "XSRF-TOKEN=<redacted>; expires=Tue, 03 Nov 2026 05:20:09 GMT; Max-Age=7200; path=/; domain=.shopbonus.nl; secure; samesite=lax",
+      "shopbonus-session=<redacted>; expires=Tue, 03 Nov 2026 05:20:09 GMT; Max-Age=7200; path=/; domain=.shopbonus.nl; secure; httponly; samesite=lax"
+    ]
+  }
+]

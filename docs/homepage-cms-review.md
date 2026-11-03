@@ -30,3 +30,7 @@ Local implementation complete; automated verification passed. Live-service accep
 ## Limits
 
 No screenshot/reference was supplied for exact visual comparison. These checks do not establish production provider behavior, real-service authenticated browser acceptance, or deployment performance. The homepage still uses a saved publication visibility window; scheduling is not represented as a separate queued revision publication system.
+
+## 2026-11-03 follow-up
+
+The revision check and inline queued publication workflow are implemented. Supplied live reference, deployed measurements, browser attempts and current limits are recorded in [the follow-up](homepage-publication-review-2026-11-03.md); this supersedes the scheduling and absent-reference limits above.

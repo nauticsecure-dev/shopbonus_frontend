@@ -2,6 +2,61 @@ import { apiRequest, apiUpload, ApiError } from "@/lib/api";
 
 type Data<T> = { data: T };
 
+export const OWNER_ONLY_PERMISSIONS = ["ownership.manage", "agreements.accept", "finance.manage"];
+
+const PERMISSION_LABELS: Record<string, string> = {
+  "dashboard.view": "Dashboard bekijken", "orders.view": "Bestellingen bekijken",
+  "orders.manage": "Bestellingen beheren", "orders.export": "Bestellingen exporteren",
+  "integrations.view": "Integraties bekijken", "integrations.manage": "Integraties beheren",
+  "offers.view": "Aanbiedingen bekijken", "offers.manage": "Aanbiedingen beheren",
+  "vouchers.view": "Vouchers bekijken", "vouchers.manage": "Vouchers beheren", "vouchers.export": "Vouchers exporteren",
+  "team.view": "Team bekijken", "team.manage": "Team beheren", "settings.view": "Instellingen bekijken",
+  "settings.manage": "Instellingen beheren", "finance.view": "Financiën bekijken",
+};
+export function permissionLabel(permission: string): string {
+  return PERMISSION_LABELS[permission] ?? "Aanvullend recht";
+}
+
+export function accessEventLabel(action: string): string {
+  const labels: Record<string, string> = {
+    "team.invitation_created": "Uitnodiging aangemaakt", "team.invitation_resent": "Uitnodiging opnieuw verstuurd",
+    "team.invitation_cancelled": "Uitnodiging geannuleerd", "team.invitation_accepted": "Uitnodiging geaccepteerd",
+    "team.invitation_recipient_mismatch": "Uitnodiging geweigerd: ander account",
+    "team.member_updated": "Lid bijgewerkt", "team.member_suspended": "Lid geschorst",
+    "team.member_reactivated": "Lid opnieuw geactiveerd", "team.member_removed": "Lid verwijderd", "team.member_left": "Lid vertrokken",
+    "ownership.transfer_started": "Eigendomsoverdracht gestart", "ownership.transfer_accepted": "Eigendomsoverdracht geaccepteerd",
+    "ownership.transfer_cancelled": "Eigendomsoverdracht geannuleerd", "ownership.transfer_declined": "Eigendomsoverdracht geweigerd",
+    "ownership.transfer_voided": "Eigendomsoverdracht ongeldig geworden",
+  };
+  return labels[action] ?? "Toegang gewijzigd";
+}
+
+export type WorkspaceAccess = { membership: { role: string; permissions: string[] } | null };
+export async function fetchWorkspaceAccess(workspaceId: string): Promise<WorkspaceAccess> {
+  return (await apiRequest<Data<WorkspaceAccess>>({ path: ws("", workspaceId) })).data;
+}
+
+export type OwnershipTransfer = {
+  id: string; status: string;
+  from: { id: string; first_name: string }; to: { id: string; first_name: string };
+  expires_at: string; decided_at: string | null; created_at: string;
+};
+export async function fetchOwnershipTransfer(workspaceId: string): Promise<OwnershipTransfer | null> {
+  return (await apiRequest<Data<OwnershipTransfer | null>>({ path: ws("/ownership-transfer", workspaceId) })).data;
+}
+export async function changeOwnershipTransfer(workspaceId: string, action: "start" | "accept" | "cancel", member?: string): Promise<OwnershipTransfer> {
+  return (await apiRequest<Data<OwnershipTransfer>>({
+    path: ws(`/ownership-transfer${action === "accept" ? "/accept" : ""}`, workspaceId),
+    method: action === "cancel" ? "DELETE" : "POST",
+    ...(action === "start" ? { body: { member } } : {}),
+  })).data;
+}
+
+export type AccessHistory = { data: { action: string; occurred_at: string; outcome: string }[]; meta: { current_page: number; last_page: number } };
+export async function fetchAccessHistory(workspaceId: string, page = 1): Promise<AccessHistory> {
+  return apiRequest<AccessHistory>({ path: ws(`/access-history?page=${page}`, workspaceId) });
+}
+
 function ws(path: string, workspaceId = "current"): string {
   return `/api/v1/workspaces/${workspaceId}${path}`;
 }

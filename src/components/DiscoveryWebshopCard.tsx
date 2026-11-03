@@ -3,22 +3,24 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  categoryLabelNl,
   initialsFromName,
-  offerCountLabel,
   resolveCoverUrl,
   shopBadgeLabel,
   type DiscoveryWebshopCard as ShopCard,
 } from "@/lib/discovery";
+import { useLocale } from "@/i18n/LocaleContext";
+import { discoveryCopy } from "@/i18n/discoveryCopy";
 import { formatMinor } from "@/lib/money";
 
 export function DiscoveryWebshopCard({ shop }: { shop: ShopCard }) {
+  const { locale } = useLocale();
+  const copy = discoveryCopy[locale];
   const [imgFailed, setImgFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const cover = resolveCoverUrl(shop);
   const count = shop.active_offer_count ?? shop.offer_count ?? 0;
-  const cats = shop.categories.map(categoryLabelNl);
-  const badge = shopBadgeLabel(shop);
+  const cats = shop.categories.map(cat => cat.label[locale] || cat.label.en || cat.label.nl || cat.key);
+  const badge = shopBadgeLabel(shop, locale);
   const featured = shop.featured_offer;
 
   return (
@@ -43,7 +45,7 @@ export function DiscoveryWebshopCard({ shop }: { shop: ShopCard }) {
         )}
         {count > 0 && (
           <span className="absolute right-3 top-3 rounded-full bg-[#22c55e] px-3 py-1 text-[12px] font-extrabold text-white shadow-sm">
-            {offerCountLabel(count)}
+            {count} {count === 1 ? copy.offerOne : copy.offerMany}
           </span>
         )}
         <div className="absolute -bottom-6 left-5">
@@ -69,13 +71,13 @@ export function DiscoveryWebshopCard({ shop }: { shop: ShopCard }) {
       <div className="flex flex-1 flex-col px-5 pb-5 pt-9">
         <h3 className="text-lg font-extrabold tracking-tight text-navy">{shop.name}</h3>
         <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm leading-snug text-muted">
-          {shop.short_description || "Ontdek de aanbiedingen van deze webshop."}
+          {shop.short_description || copy.description}
         </p>
         {(badge || featured) && (
           <p className="mt-3 line-clamp-2 text-sm font-extrabold text-brand">
             {badge || featured?.title}
             {featured?.price_minor != null && featured.price_minor > 0
-              ? ` · vanaf ${formatMinor(featured.price_minor)} tegoed`
+              ? ` · ${copy.from} ${formatMinor(featured.price_minor, "EUR", locale)} ${copy.creditUnit}`
               : ""}
           </p>
         )}

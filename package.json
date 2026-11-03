@@ -2,6 +2,12 @@
   "name": "shopbonus-frontend",
   "private": true,
   "scripts": {
+    "acceptance:setup": "node scripts/consumer-acceptance.cjs setup",
+    "acceptance:start": "node scripts/consumer-acceptance.cjs start",
+    "acceptance:ui": "node scripts/consumer-acceptance.cjs ui",
+    "acceptance:check": "node scripts/consumer-acceptance.cjs check",
+    "acceptance:smoke": "node scripts/consumer-acceptance-smoke.cjs",
+    "acceptance:api-smoke": "node scripts/consumer-acceptance-api-smoke.cjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -16,7 +22,7 @@
     "dotenv": "17.3.1",
     "drizzle-orm": "0.45.2",
     "laravel-echo": "^2.6.3",
-    "next": "16.2.6",
+    "next": "16.4.4",
     "pg": "8.20.0",
     "pusher-js": "^8.6.0",
     "react": "19.2.6",
@@ -31,8 +37,8 @@
     "@types/react-dom": "19.2.3",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.6",
-    "postcss": "8.5.8",
+    "eslint-config-next": "16.4.4",
+    "postcss": "8.5.32",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3"
   }

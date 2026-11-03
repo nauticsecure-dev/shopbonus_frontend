@@ -1,0 +1,188 @@
+{
+  "environment": "Real Laravel HTTP, isolated SQLite, real cookie/CSRF/TOTP authentication, filesystem upload and actual scheduler command after due time. No browser UI or external providers.",
+  "security": [
+    403,
+    423,
+    419
+  ],
+  "upload_status": 201,
+  "schedule_status": 201,
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/voor-webshops?locale=nl",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/user/confirm-password",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/user/two-factor-authentication",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/user/two-factor-secret-key",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/user/confirmed-two-factor-authentication",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/user/two-factor-recovery-codes",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/logout",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/two-factor-challenge",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/content/voor-webshops/publish",
+      "status": 423
+    },
+    {
+      "method": "POST",
+      "path": "/user/confirm-password",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/content/voor-webshops",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/content/voor-webshops",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/content/voor-webshops/publish",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/voor-webshops/versions?locale=nl&include_content=1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/content/voor-webshops/restore",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/content/voor-webshops",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/cms/pages/01m6g0dn9msjgrrysy4m3ewfjd/schedules",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/voor-webshops?locale=nl",
+      "status": 200
+    }
+  ],
+  "result": "passed"
+}

@@ -1,0 +1,464 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.homepage-live.config.ts",
+      "--grep",
+      "12 another|13 inline|14 real|1 verified"
+    ],
+    "configFile": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\playwright.homepage-live.config.ts",
+    "rootDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/.next-homepage-live/qa-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "homepage-live.spec.ts"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e",
+        "snapshotDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e",
+        "testIgnore": [],
+        "testMatch": "homepage-live.spec.ts",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://localhost:3017",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "chromium",
+          "channel": "chrome",
+          "trace": "off"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "docs/homepage-live-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "homepage-live.spec.ts",
+      "file": "homepage-live.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "1 verified wallet survives a real backend 500 and recovers to new ledger balance",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 160118,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=q3mOO9BClNZHexY7 net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=q3mOO9BClNZHexY7 net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:14:06.157Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-9fa9c84deb3238c28c3b",
+          "file": "homepage-live.spec.ts",
+          "line": 45,
+          "column": 5
+        },
+        {
+          "title": "12 another administrator changes the draft after browser save and before publication",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 130924,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('cms-edit-homepage')\nExpected: visible\nTimeout: 90000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('cms-edit-homepage') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cms-edit-homepage')\u001b[22m\n\u001b[2m    2 × waiting for \"http://localhost:3017/\" navigation to finish...\u001b[22m\n\u001b[2m      - navigated to \"http://localhost:3017/\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('cms-edit-homepage')\nExpected: visible\nTimeout: 90000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('cms-edit-homepage') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cms-edit-homepage')\u001b[22m\n\u001b[2m    2 × waiting for \"http://localhost:3017/\" navigation to finish...\u001b[22m\n\u001b[2m      - navigated to \"http://localhost:3017/\"\u001b[22m\n\n    at home (C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:17:484)\n    at C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:60:13",
+                    "location": {
+                      "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                      "column": 484,
+                      "line": 17
+                    },
+                    "snippet": "  15 | async function action(name:string,body?:unknown){const r=await fetch(control+'/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body??{})});expect(r.status,await r.text()).toBe(200);}\n  16 | async function context(browser:any,state?:typeof adminState,locale='nl'){const ctx:BrowserContext=await browser.newContext({storageState:state,locale:'nl-NL'});await ctx.addCookies([{name:'shopbonus-locale',value:locale,domain:'localhost',path:'/'}]);await ctx.addInitScript((locale:string)=>localStorage.setItem('shopbonus-locale',locale),locale);return ctx;}\n> 17 | async function home(ctx:BrowserContext,admin=false){const page=await ctx.newPage();page.on(\"requestfailed\",r=>console.log(\"Browser request failed:\",r.url(),r.failure()?.errorText));page.on(\"pageerror\",e=>console.log(\"Browser error:\",e.message));console.log('Acceptance: opening homepage');await page.goto('/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForLoadState(\"load\",{timeout:120000});await expect(page.getByTestId(admin?'cms-edit-homepage':'homepage-hero')).toBeVisible();return page;}\n     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ^\n  18 | async function edit(page:Page){console.log('Acceptance: opening editor');await page.getByTestId('cms-edit-homepage').click({timeout:15000});console.log('Acceptance: edit clicked');await expect(page.locator('[data-cms-edit=\"hero.heading\"]')).toBeVisible();await expect(page.getByTestId('cms-publish')).toBeEnabled();}\n  19 | async function heading(page:Page,value:string){console.log('Acceptance: changing heading');await page.locator('[data-cms-edit=\"hero.heading\"]').click({timeout:15000});console.log('Acceptance: heading opened');await page.locator('textarea').fill(value,{timeout:15000});console.log('Acceptance: heading filled');await page.getByRole('button',{name:/^(Toepassen|Apply)$/}).click({timeout:15000});console.log('Acceptance: heading applied');}\n  20 | async function publish(page:Page){const response=page.waitForResponse(r=>r.url().includes('/admin/content/homepage/publish')&&r.request().method()==='POST');await page.getByTestId('cms-publish').click();expect((await response).status()).toBe(200);await expect(page.getByTestId('cms-edit-homepage')).toBeVisible();}"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                        "column": 484,
+                        "line": 17
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('cms-edit-homepage')\nExpected: visible\nTimeout: 90000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('cms-edit-homepage') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('cms-edit-homepage')\u001b[22m\n\u001b[2m    2 × waiting for \"http://localhost:3017/\" navigation to finish...\u001b[22m\n\u001b[2m      - navigated to \"http://localhost:3017/\"\u001b[22m\n\n\n  15 | async function action(name:string,body?:unknown){const r=await fetch(control+'/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body??{})});expect(r.status,await r.text()).toBe(200);}\n  16 | async function context(browser:any,state?:typeof adminState,locale='nl'){const ctx:BrowserContext=await browser.newContext({storageState:state,locale:'nl-NL'});await ctx.addCookies([{name:'shopbonus-locale',value:locale,domain:'localhost',path:'/'}]);await ctx.addInitScript((locale:string)=>localStorage.setItem('shopbonus-locale',locale),locale);return ctx;}\n> 17 | async function home(ctx:BrowserContext,admin=false){const page=await ctx.newPage();page.on(\"requestfailed\",r=>console.log(\"Browser request failed:\",r.url(),r.failure()?.errorText));page.on(\"pageerror\",e=>console.log(\"Browser error:\",e.message));console.log('Acceptance: opening homepage');await page.goto('/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForLoadState(\"load\",{timeout:120000});await expect(page.getByTestId(admin?'cms-edit-homepage':'homepage-hero')).toBeVisible();return page;}\n     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ^\n  18 | async function edit(page:Page){console.log('Acceptance: opening editor');await page.getByTestId('cms-edit-homepage').click({timeout:15000});console.log('Acceptance: edit clicked');await expect(page.locator('[data-cms-edit=\"hero.heading\"]')).toBeVisible();await expect(page.getByTestId('cms-publish')).toBeEnabled();}\n  19 | async function heading(page:Page,value:string){console.log('Acceptance: changing heading');await page.locator('[data-cms-edit=\"hero.heading\"]').click({timeout:15000});console.log('Acceptance: heading opened');await page.locator('textarea').fill(value,{timeout:15000});console.log('Acceptance: heading filled');await page.getByRole('button',{name:/^(Toepassen|Apply)$/}).click({timeout:15000});console.log('Acceptance: heading applied');}\n  20 | async function publish(page:Page){const response=page.waitForResponse(r=>r.url().includes('/admin/content/homepage/publish')&&r.request().method()==='POST');await page.getByTestId('cms-publish').click();expect((await response).status()).toBe(200);await expect(page.getByTestId('cms-edit-homepage')).toBeVisible();}\n    at home (C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:17:484)\n    at C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:60:13"
+                    }
+                  ],
+                  "stdout": [
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=q3mOO9BClNZHexY7 net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:17:33.919Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results\\homepage-live-12-another-a-d9ce3-save-and-before-publication\\error-context.md"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results\\homepage-live-12-another-a-d9ce3-save-and-before-publication\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                    "column": 484,
+                    "line": 17
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-2c3ac6e4aee1d8688cd5",
+          "file": "homepage-live.spec.ts",
+          "line": 58,
+          "column": 5
+        },
+        {
+          "title": "13 inline scheduling queues the saved revision while the current publication stays live",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 362878,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 360000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 360000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 360000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                        "column": 22,
+                        "line": 83
+                      },
+                      "message": "Error: page.waitForResponse: Test ended.\n\n  81 |  const due=new Date(Date.now()+3600000);const local=new Date(due.getTime()-due.getTimezoneOffset()*60000).toISOString().slice(0,16);\n  82 |  await page.locator('input[type=\"datetime-local\"]').fill(local);\n> 83 |  const response=page.waitForResponse(r=>r.url().endsWith('/schedules')&&r.request().method()==='POST');\n     |                      ^\n  84 |  await page.getByRole('button',{name:'Planning opslaan',exact:true}).click();const queued=await response;expect(queued.status()).toBe(201);\n  85 |  const schedule=(await queued.json()).data;const state=await data(ctx,'/api/v1/admin/content/homepage?locale=nl');\n  86 |  expect(schedule.draft_revision).toBe(state.draft_revision);expect(schedule.status).toBe('scheduled');\n    at C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:83:22"
+                    }
+                  ],
+                  "stdout": [
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: opening editor\n"
+                    },
+                    {
+                      "text": "Acceptance: edit clicked\n"
+                    },
+                    {
+                      "text": "Acceptance: changing heading\n"
+                    },
+                    {
+                      "text": "Acceptance: heading opened\n"
+                    },
+                    {
+                      "text": "Acceptance: heading filled\n"
+                    },
+                    {
+                      "text": "Acceptance: heading applied\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=q3mOO9BClNZHexY7 net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:20:12.452Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results\\homepage-live-13-inline-sc-9d073-rent-publication-stays-live\\error-context.md"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results\\homepage-live-13-inline-sc-9d073-rent-publication-stays-live\\error-context.md"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-4bf9f0b03995ece13283",
+          "file": "homepage-live.spec.ts",
+          "line": 78,
+          "column": 5
+        },
+        {
+          "title": "14 real HTTP publication contract rejects missing and stale reviewed revisions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 37362,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:27:15.178Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-673399229c8886f8807b",
+          "file": "homepage-live.spec.ts",
+          "line": 95,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-03T04:12:49.274Z",
+    "duration": 955503.819,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

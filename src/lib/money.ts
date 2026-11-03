@@ -1,16 +1,16 @@
-/** Format Laravel minor units (cents) as Dutch euro, e.g. 1220 → €12,20 */
-export function formatMinor(minor: number, currency = "EUR"): string {
+/** Format Laravel minor units (cents); defaults to Dutch formatting, e.g. 1220 → €12,20. */
+export function formatMinor(minor: number, currency = "EUR", locale = "nl-NL"): string {
   const amount = (Number(minor) || 0) / 100;
-  if (currency === "EUR") {
+  if (currency === "EUR" && locale === "nl-NL") {
     return (
       "€" +
-      amount.toLocaleString("nl-NL", {
+      amount.toLocaleString(locale, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
     );
   }
-  return amount.toLocaleString("nl-NL", {
+  return amount.toLocaleString(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
@@ -27,9 +27,9 @@ export function majorToMinor(major: number): number {
 }
 
 /** Localized short date from ISO string. */
-export function formatNlDate(iso: string | null | undefined): string {
+export function formatNlDate(iso: string | null | undefined, locale = "nl-NL"): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 }

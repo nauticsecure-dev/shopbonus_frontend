@@ -85,7 +85,9 @@ export function useCentralNotifications(options: Options = {}) {
 
   useEffect(() => {
     const ac = new AbortController();
-    void refresh(ac.signal);
+    queueMicrotask(() => {
+      if (!ac.signal.aborted) void refresh(ac.signal);
+    });
     return () => ac.abort();
   }, [refresh]);
 
@@ -111,6 +113,8 @@ export function useCentralNotifications(options: Options = {}) {
         return;
       }
       scheduleRefresh();
+    }, () => {
+      if (!disposed) scheduleRefresh();
     }).then((fn) => {
       if (disposed) {
         fn();

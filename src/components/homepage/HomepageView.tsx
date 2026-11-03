@@ -178,6 +178,10 @@ function HomepageBody({
     }
   }, []);
 
+  if (content.translation_unavailable) {
+    return <><section role="status" className="mx-auto max-w-7xl px-4 py-20" data-testid="homepage-unavailable"><h1>Inhalt auf Deutsch noch nicht verfügbar</h1><p>Bitte versuche es später erneut oder wähle eine andere Sprache.</p></section><CmsToolbar /></>;
+  }
+
   const bgUrl = (content.hero as { background_url?: string | null }).background_url;
 
   const sections: Record<string, ReactNode> = {

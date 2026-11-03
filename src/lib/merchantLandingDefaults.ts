@@ -1,3 +1,6 @@
+import type { Locale } from "@/types/locale";
+import { emptyLocalizedContent } from "./emptyLocalizedContent";
+
 export type Cta = { label: string; href: string };
 
 export type PlatformStatus = "AVAILABLE" | "BETA" | "COMING_SOON" | "MANUAL_SETUP";
@@ -439,13 +442,13 @@ function defaultsEn(): MerchantLandingContent {
   };
 }
 
-export function merchantLandingDefaults(locale: "nl" | "en" = "nl"): MerchantLandingContent {
-  return locale === "en" ? defaultsEn() : defaultsNl();
+export function merchantLandingDefaults(locale: Locale = "nl"): MerchantLandingContent {
+  return locale === "de" ? emptyLocalizedContent(defaultsNl()) : locale === "en" ? defaultsEn() : defaultsNl();
 }
 
 export function mergeMerchantLandingContent(
   partial: Partial<MerchantLandingContent> | null | undefined,
-  locale: "nl" | "en" = "nl"
+  locale: Locale = "nl"
 ): MerchantLandingContent {
   const base = merchantLandingDefaults(locale);
   if (!partial || typeof partial !== "object") return base;

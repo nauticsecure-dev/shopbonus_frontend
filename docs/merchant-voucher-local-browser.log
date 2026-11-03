@@ -1,0 +1,22 @@
+▲ Next.js 16.4.4 (webpack)
+- Local:         http://127.0.0.1:3334
+- Network:       http://127.0.0.1:3334
+- Environments: .env.local
+✓ Ready in 1943ms
+✓ Running next.config.ts took 220ms
+
+○ Compiling /page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3334". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET / 200 in 1316ms (next.js: 764ms, proxy.ts: 83ms, application-code: 469ms)
+ GET / 200 in 707ms (next.js: 15ms, proxy.ts: 22ms, application-code: 670ms)
+○ Compiling /dashboard/page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3334". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /dashboard 200 in 9.0s (next.js: 7.0s, proxy.ts: 36ms, application-code: 1973ms)
+ GET /dashboard 200 in 1142ms (next.js: 36ms, proxy.ts: 22ms, application-code: 1084ms)
+○ Compiling /dashboard/offers/page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3334". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /dashboard/offers 200 in 4.2s (next.js: 3.4s, proxy.ts: 104ms, application-code: 696ms)
+ GET /dashboard 200 in 441ms (next.js: 50ms, proxy.ts: 19ms, application-code: 371ms)
+ GET /dashboard/offers 200 in 1223ms (next.js: 35ms, proxy.ts: 18ms, application-code: 1170ms)
+ GET /dashboard/offers 200 in 475ms (next.js: 40ms, proxy.ts: 24ms, application-code: 412ms)
+ GET /dashboard/offers 200 in 490ms (next.js: 40ms, proxy.ts: 25ms, application-code: 425ms)

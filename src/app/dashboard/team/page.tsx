@@ -9,7 +9,9 @@ import { useSession } from "@/store/SessionContext";
 import { useShopBonus } from "@/store/ShopBonusContext";
 import { formatApiError } from "@/lib/auth";
 import {
-  ApiError,
+  fetchWorkspaceAccess,
+  OWNER_ONLY_PERMISSIONS,
+  permissionLabel,
   cancelTeamInvitation,
   createTeamInvitation,
   listTeamInvitations,
@@ -21,6 +23,8 @@ import {
   type TeamInvitation,
   type TeamMember,
 } from "@/lib/workspaceCompliance";
+
+import TeamAccessManagement, { PermissionEditor } from "@/components/TeamAccessManagement";
 
 function roleLabel(role: string): string {
   if (role === "owner") return "Owner";
@@ -38,25 +42,32 @@ function relativeNl(iso: string | null): string {
 
 export default function DashboardTeamPage() {
   const { workspaceId, revision, current } = useWorkspace();
-  const { session } = useSession();
+  const { session, refresh } = useSession();
   const { pushToast } = useShopBonus();
   const myRole = current?.role ?? "";
-  const canManage = myRole === "owner" || myRole === "manager";
+  const [held, setHeld] = useState<string[]>([]);
+  const canManage = held.includes("team.manage");
+  const grantable = held.filter((p) => !OWNER_ONLY_PERMISSIONS.includes(p));
+  const canEdit = (member: TeamMember) => canManage && member.id !== session?.user.id && member.role !== "owner" && (myRole === "owner" || (myRole === "manager" && member.role === "employee"));
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"manager" | "employee">("employee");
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [review, setReview] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [grants, setGrants] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
     try {
-      const [m, i] = await Promise.all([
-        listTeamMembers(workspaceId),
-        listTeamInvitations(workspaceId),
-      ]);
+      const access = await fetchWorkspaceAccess(workspaceId);
+      if (signal?.aborted) return;
+      const effective = access.membership?.permissions ?? [];
+      setHeld(effective);
+      const [m, i] = effective.includes("team.view") ? await Promise.all([listTeamMembers(workspaceId), listTeamInvitations(workspaceId)]) : [[], []];
       if (signal?.aborted) return;
       setMembers(m);
       setInvitations(i);
@@ -69,6 +80,7 @@ export default function DashboardTeamPage() {
       });
       setMembers([]);
       setInvitations([]);
+      setHeld([]);
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -76,16 +88,17 @@ export default function DashboardTeamPage() {
 
   useEffect(() => {
     const ac = new AbortController();
-    void load(ac.signal);
+    // Start the external read after commit; cleanup also guards obsolete responses.
+    void Promise.resolve().then(() => { if (!ac.signal.aborted) return load(ac.signal); });
     return () => ac.abort();
   }, [load, revision]);
 
   const invite = async () => {
-    if (!canManage) return;
+    if (!canManage || !review || permissions.some((p) => !grantable.includes(p))) return;
     setBusy(true);
     try {
-      await createTeamInvitation({ email: email.trim().toLowerCase(), role }, workspaceId);
-      setEmail("");
+      await createTeamInvitation({ email: email.trim().toLowerCase(), role, permissions }, workspaceId);
+      setEmail(""); setReview(false); setPermissions([]);
       pushToast({ title: "Uitnodiging verstuurd", message: "De ontvanger krijgt een beveiligde link.", kind: "success" });
       await load();
     } catch (err) {
@@ -122,7 +135,7 @@ export default function DashboardTeamPage() {
   };
 
   const changeRole = async (member: TeamMember, nextRole: string) => {
-    if (!canManage || member.role === "owner") return;
+    if (!canEdit(member)) return;
     if (myRole === "manager" && nextRole === "owner") {
       pushToast({ title: "Niet toegestaan", message: "Managers kunnen geen owner toewijzen.", kind: "error" });
       return;
@@ -162,9 +175,6 @@ export default function DashboardTeamPage() {
     } catch (err) {
       const message = formatApiError(err, "Laatste owner kan niet worden verwijderd.");
       pushToast({ title: "Verwijderen mislukt", message, kind: "error" });
-      if (!(err instanceof ApiError)) {
-        /* keep */
-      }
     } finally {
       setBusy(false);
     }
@@ -197,7 +207,7 @@ export default function DashboardTeamPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusPill status={m.status === "active" ? "Actief" : m.status} />
-                    {canManage && m.role !== "owner" ? (
+                    {canEdit(m) ? (
                       <select
                         value={m.role}
                         disabled={busy}
@@ -212,7 +222,8 @@ export default function DashboardTeamPage() {
                         {roleLabel(m.role)}
                       </span>
                     )}
-                    {canManage && m.role !== "owner" && m.id !== session?.user.id && (
+                    {canEdit(m) && <button disabled={busy} className="text-xs font-bold text-brand" onClick={() => { setEditing(m.id); setGrants(m.granted_permissions); }}>Rechten bewerken</button>}
+                    {canEdit(m) && (
                       <>
                         {m.status === "active" && (
                           <button
@@ -235,6 +246,16 @@ export default function DashboardTeamPage() {
                       </>
                     )}
                   </div>
+                  {editing === m.id && canEdit(m) && <div className="w-full sm:max-w-sm">
+                    <PermissionEditor allowed={grantable} value={grants} onChange={setGrants} disabled={busy} />
+                    <button disabled={busy || grants.some((p) => !grantable.includes(p))} className="mt-3 text-sm font-bold text-brand" onClick={async () => {
+                      setBusy(true);
+                      try { await updateTeamMember(m.id, { permissions: grants }, workspaceId); setEditing(null); await load(); }
+                      catch (e) { pushToast({ title: "Rechten wijzigen mislukt", message: formatApiError(e, "Probeer opnieuw."), kind: "error" }); }
+                      finally { setBusy(false); }
+                    }}>Rechten opslaan</button>
+                    <button disabled={busy} className="ml-3 text-sm" onClick={() => setEditing(null)}>Annuleren</button>
+                  </div>}
                 </li>
               ))}
             </ul>
@@ -251,6 +272,7 @@ export default function DashboardTeamPage() {
                 <input
                   type="email"
                   value={email}
+                  disabled={review || busy}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-xl border border-blue-100 px-4 py-3 text-sm outline-none focus:border-brand"
                   placeholder="collega@bedrijf.nl"
@@ -260,21 +282,24 @@ export default function DashboardTeamPage() {
                 <span className="mb-1.5 block text-sm font-bold text-navy">Rol</span>
                 <select
                   value={role}
+                  disabled={review || busy}
                   onChange={(e) => setRole(e.target.value as "manager" | "employee")}
                   className="w-full rounded-xl border border-blue-100 px-4 py-3 text-sm outline-none focus:border-brand"
                 >
-                  {myRole === "owner" && <option value="manager">Manager</option>}
+                  {(myRole === "owner" || myRole === "manager") && <option value="manager">Manager</option>}
                   <option value="employee">Medewerker</option>
                 </select>
               </label>
+              <PermissionEditor allowed={grantable} value={permissions} onChange={setPermissions} disabled={review || busy} />
+              {review && <div className="mt-4 rounded-xl bg-blue-50 p-3 text-sm" role="region" aria-label="Uitnodiging controleren"><h3 className="font-bold">Controleer uitnodiging</h3><p>{email.trim().toLowerCase()} · {roleLabel(role)}</p><p>Rolrechten plus: {permissions.map(permissionLabel).join(", ") || "geen aanvullende rechten"}</p><button disabled={busy} className="mt-2 underline" onClick={() => setReview(false)}>Aanpassen</button></div>}
               <button
                 type="button"
-                disabled={busy || !email.includes("@")}
-                onClick={() => void invite()}
+                disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())}
+                onClick={() => { if (review) void invite(); else setReview(true); }}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-extrabold text-white disabled:opacity-60"
               >
                 <DashboardIcon name="plus" size={16} />
-                Uitnodiging versturen
+                {review ? "Uitnodiging bevestigen en versturen" : "Uitnodiging controleren"}
               </button>
             </Panel>
           )}
@@ -320,6 +345,7 @@ export default function DashboardTeamPage() {
           </Panel>
         </div>
       </div>
+      <TeamAccessManagement workspaceId={workspaceId} userId={session?.user.id} owner={myRole === "owner" && held.includes("ownership.manage")} canManage={canManage} members={members} onChanged={async () => { await refresh(); await load(); }} />
     </DashboardShell>
   );
 }

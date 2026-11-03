@@ -1,0 +1,165 @@
+{
+  "url": "https://www.shopbonus.nl/",
+  "captured_at": "2026-11-03T04:00:10.686Z",
+  "environment": "Local Chrome, no CPU/network emulation; navigation timing is not staging server P95 or field Core Web Vitals",
+  "samples": [
+    {
+      "viewport": "desktop",
+      "hydrated": true,
+      "status": 200,
+      "final_url": "https://www.shopbonus.nl/",
+      "title": "ShopBonus — Spaar cashback voor vouchers",
+      "timing": {
+        "ttfb_ms": 187.59999999403954,
+        "dom_content_loaded_ms": 1484.4000000059605,
+        "load_ms": 1510.0999999940395,
+        "transfer_bytes": 8778,
+        "fcp_ms": 2508,
+        "lcp_ms": 2508,
+        "cls": 0
+      }
+    },
+    {
+      "viewport": "mobile",
+      "hydrated": true,
+      "status": 200,
+      "final_url": "https://www.shopbonus.nl/",
+      "title": "ShopBonus — Spaar cashback voor vouchers",
+      "timing": {
+        "ttfb_ms": 172.09999999403954,
+        "dom_content_loaded_ms": 1242.5,
+        "load_ms": 1647,
+        "transfer_bytes": 8778,
+        "fcp_ms": 1332,
+        "lcp_ms": 1332,
+        "cls": 0
+      }
+    }
+  ],
+  "http": {
+    "description": "30 sequential public HTML requests from local Chrome; duration includes network and full response, not isolated server time",
+    "samples": [
+      {
+        "status": 200,
+        "duration_ms": 645.8271999999997
+      },
+      {
+        "status": 200,
+        "duration_ms": 228.1293999999998
+      },
+      {
+        "status": 200,
+        "duration_ms": 413.0529999999999
+      },
+      {
+        "status": 200,
+        "duration_ms": 301.08179999999993
+      },
+      {
+        "status": 200,
+        "duration_ms": 248.03009999999813
+      },
+      {
+        "status": 200,
+        "duration_ms": 244.93799999999828
+      },
+      {
+        "status": 200,
+        "duration_ms": 196.46289999999863
+      },
+      {
+        "status": 200,
+        "duration_ms": 180.73790000000008
+      },
+      {
+        "status": 200,
+        "duration_ms": 195.9883000000009
+      },
+      {
+        "status": 200,
+        "duration_ms": 385.7426000000014
+      },
+      {
+        "status": 200,
+        "duration_ms": 202.9474999999984
+      },
+      {
+        "status": 200,
+        "duration_ms": 205.85350000000108
+      },
+      {
+        "status": 200,
+        "duration_ms": 272.3342999999986
+      },
+      {
+        "status": 200,
+        "duration_ms": 373.46830000000045
+      },
+      {
+        "status": 200,
+        "duration_ms": 258.83720000000176
+      },
+      {
+        "status": 200,
+        "duration_ms": 251.53390000000218
+      },
+      {
+        "status": 200,
+        "duration_ms": 358.04959999999846
+      },
+      {
+        "status": 200,
+        "duration_ms": 650.8975000000028
+      },
+      {
+        "status": 200,
+        "duration_ms": 233.53819999999905
+      },
+      {
+        "status": 200,
+        "duration_ms": 266.6808999999994
+      },
+      {
+        "status": 200,
+        "duration_ms": 275.55539999999746
+      },
+      {
+        "status": 200,
+        "duration_ms": 500.4853000000003
+      },
+      {
+        "status": 200,
+        "duration_ms": 284.1461999999992
+      },
+      {
+        "status": 200,
+        "duration_ms": 306.13300000000163
+      },
+      {
+        "status": 200,
+        "duration_ms": 442.3924999999981
+      },
+      {
+        "status": 200,
+        "duration_ms": 201.5203999999976
+      },
+      {
+        "status": 200,
+        "duration_ms": 191.68800000000192
+      },
+      {
+        "status": 200,
+        "duration_ms": 243.79190000000017
+      },
+      {
+        "status": 200,
+        "duration_ms": 253.79010000000198
+      },
+      {
+        "status": 200,
+        "duration_ms": 255.69700000000012
+      }
+    ],
+    "p95_ms": 645.8271999999997
+  }
+}

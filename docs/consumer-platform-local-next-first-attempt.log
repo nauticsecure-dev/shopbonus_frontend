@@ -1,0 +1,222 @@
+▲ Next.js 16.4.4 (webpack)
+- Local:         http://127.0.0.1:3340
+- Network:       http://127.0.0.1:3340
+- Environments: .env.local
+✓ Ready in 2.6s
+✓ Running next.config.ts took 376ms
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next-consumer-local/types/**/*.ts'
+  	- include was updated to add '.next-consumer-local/dev/types/**/*.ts'
+
+
+○ Compiling /account/page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /account 200 in 35.6s (next.js: 34.3s, proxy.ts: 427ms, application-code: 850ms)
+ GET /account 200 in 3.8s (next.js: 18ms, proxy.ts: 105ms, application-code: 3.6s)
+○ Compiling /page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET / 200 in 14.9s (next.js: 7.3s, proxy.ts: 32ms, application-code: 7.5s)
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET / 200 in 30.2s (next.js: 1410ms, proxy.ts: 90ms, application-code: 28.7s)
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+⨯ Error: useInlineCms requires InlineCmsProvider
+    at useInlineCms (src\components\homepage\InlineCms.tsx:426:19)
+    at HomepageBody (src\components\homepage\HomepageView.tsx:169:35)
+  424 | export function useInlineCms() {
+  425 |   const ctx = useContext(InlineCmsContext);
+> 426 |   if (!ctx) throw new Error("useInlineCms requires InlineCmsProvider");
+      |                   ^
+  427 |   return ctx;
+  428 | }
+  429 | {
+  digest: '2494874330'
+}
+ GET / 200 in 51s (next.js: 1131ms, proxy.ts: 115ms, application-code: 50s)
+⨯ Error: The destination stream errored while writing data.
+    at ignore-listed frames {
+  digest: '2438457662'
+}
+ GET / 200 in 6.2s (next.js: 2.0s, proxy.ts: 65ms, application-code: 4.2s)
+ GET / 200 in 26.7s (next.js: 186ms, proxy.ts: 38ms, application-code: 26.5s)
+ GET / 500 in 55s (next.js: 667ms, proxy.ts: 115ms, application-code: 54s)
+ GET / 200 in 18.2s (next.js: 1152ms, proxy.ts: 38ms, application-code: 17.0s)
+○ Compiling /webshops/page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /webshops 200 in 12.7s (next.js: 7.9s, proxy.ts: 78ms, application-code: 4.7s)
+ GET /webshops?q=Consumer+Local 200 in 543ms (next.js: 49ms, proxy.ts: 315ms, application-code: 179ms)
+ GET /webshops 200 in 21.4s (next.js: 29ms, proxy.ts: 37ms, application-code: 21.4s)
+ GET /webshops?q=Consumer+Local 200 in 5.0s (next.js: 219ms, proxy.ts: 340ms, application-code: 4.4s)
+ GET /webshops?q=Consumer+Local 200 in 3.3s (next.js: 216ms, proxy.ts: 139ms, application-code: 3.0s)
+ GET /webshops?q=Consumer+Local 200 in 670ms (next.js: 93ms, proxy.ts: 35ms, application-code: 542ms)
+ GET /webshops?q=Consumer+Local 200 in 1631ms (next.js: 66ms, proxy.ts: 34ms, application-code: 1531ms)
+ GET /webshops?q=Consumer+Local 200 in 539ms (next.js: 116ms, proxy.ts: 70ms, application-code: 353ms)
+ GET /webshops?q=Consumer+Local 200 in 249ms (next.js: 58ms, proxy.ts: 24ms, application-code: 166ms)
+○ Compiling /webshops/[slug]/page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /webshops/consumer-local-shop 200 in 21.9s (next.js: 10.0s, proxy.ts: 23ms, application-code: 11.8s)
+ GET /webshops/consumer-local-shop 200 in 18.9s (next.js: 104ms, proxy.ts: 101ms, application-code: 18.6s)
+ GET /webshops/consumer-local-shop 200 in 951ms (next.js: 219ms, proxy.ts: 166ms, application-code: 565ms)
+ GET /webshops/consumer-local-shop 200 in 849ms (next.js: 329ms, proxy.ts: 53ms, application-code: 467ms)
+⨯ Failed to generate static paths for /webshops/[slug]:
+RangeError: Failed to allocate memory
+    at ignore-listed frames {
+  type: 'RangeError',
+  code: 'ERR_MEMORY_ALLOCATION_FAILED'
+}
+⨯ Failed to generate static paths for /webshops/[slug]:
+RangeError: Failed to allocate memory
+    at ignore-listed frames {
+  type: 'RangeError',
+  code: 'ERR_MEMORY_ALLOCATION_FAILED'
+}
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+
+<--- Last few GCs --->
+
+[19096:0000023B2A8A7000]      558 ms: Scavenge 6.4 (8.0) -> 6.2 (10.8) MB, pooled: 0 MB, 4.28 / 0.00 ms  (average mu = 1.000, current mu = 1.000) allocation failure; 
+[19096:0000023B2A8A7000]     1637 ms: Scavenge 9.0 (12.0) -> 8.1 (12.3) MB, pooled: 0 MB, 2.35 / 0.00 ms  (average mu = 1.000, current mu = 1.000) allocation failure; 
+
+FATAL ERROR: MarkCompactCollector: young object promotion failed Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+
+<--- Last few GCs --->
+
+[19096:0000023B2A8A7000]      558 ms: Scavenge 6.4 (8.0) -> 6.2 (10.8) MB, pooled: 0 MB, 4.28 / 0.00 ms  (average mu = 1.000, current mu = 1.000) allocation failure; 
+[19096:0000023B2A8A7000]     1637 ms: Scavenge 9.0 (12.0) -> 8.1 (12.3) MB, pooled: 0 MB, 2.35 / 0.00 ms  (average mu = 1.000, current mu = 1.000) allocation failure; 
+
+FATAL ERROR: MarkCompactCollector: young object promotion failed Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+
+<--- Last few GCs --->
+
+[19096:0000023B2A8A7000]      558 ms: Scavenge 6.4 (8.0) -> 6.2 (10.8) MB, pooled: 0 MB, 4.28 / 0.00 ms  (average mu = 1.000, current mu = 1.000) allocation failure; 
+[19096:0000023B2A8A7000]     1637 ms: Scavenge 9.0 (12.0) -> 8.1 (12.3) MB, pooled: 0 MB, 2.35 / 0.00 ms  (average mu = 1.000, current mu = 1.000) allocation failure; 
+
+FATAL ERROR: MarkCompactCollector: young object promotion failed Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF7940D90C6 
+ 2: 00007FF7940D9604 
+ 3: 00007FF792CE3617 
+ 4: 00007FF792AE3E57 
+ 5: 00007FF792AC354E 
+ 6: 00007FF792AB8C0D 
+ 7: 00007FF792AB88BC 
+ 8: 00007FF792AB8501 
+ 9: 00007FF792ACA9F8 
+10: 00007FF7934E2CEF 
+11: 00007FF794019BDB 
+12: 00007FF792D38A26 
+13: 00007FF79441F483 
+14: 00007FFB4E337374 
+15: 00007FFB502DCC91 
+ GET /webshops/consumer-local-shop 200 in 11.3s (proxy.ts: 27ms)
+○ Compiling /account/page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /webshops/consumer-local-shop 200 in 25.1s (next.js: 22.7s, proxy.ts: 60ms, application-code: 2.3s)
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+⨯ Error: useSession requires SessionProvider
+    at useSession (src\store\SessionContext.tsx:92:21)
+    at WebshopDetail (src\app\webshops\[slug]\page.tsx:113:40)
+  90 | export function useSession() {
+  91 |   const value = useContext(SessionContext);
+> 92 |   if (!value) throw new Error("useSession requires SessionProvider");
+     |                     ^
+  93 |   return value;
+  94 | }
+  95 | {
+  digest: '1671170128'
+}
+ GET /webshops/consumer-local-shop 200 in 2.1s (next.js: 97ms, proxy.ts: 1796ms, application-code: 230ms)
+ GET /webshops/consumer-local-shop 200 in 2.1s (next.js: 181ms, proxy.ts: 1797ms, application-code: 149ms)
+ GET /account?role=consumer&next=%2Faanbiedingen%2Flocal-points-voucher-rexlth 200 in 13.3s (next.js: 11.2s, proxy.ts: 31ms, application-code: 2.1s)
+ GET /account?role=consumer&next=%2Faanbiedingen%2Flocal-points-voucher-rexlth 200 in 250ms (next.js: 30ms, proxy.ts: 21ms, application-code: 199ms)
+ GET /account?role=consumer&next=%2Faanbiedingen%2Flocal-points-voucher-rexlth 200 in 7.4s (next.js: 19ms, proxy.ts: 59ms, application-code: 7.3s)
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /aanbiedingen/local-points-voucher-rexlth 200 in 8.2s (next.js: 7.4s, proxy.ts: 20ms, application-code: 697ms)
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+ GET /aanbiedingen/local-points-voucher-rexlth 200 in 2.3s (next.js: 583ms, proxy.ts: 59ms, application-code: 1706ms)
+ GET /aanbiedingen/local-points-voucher-rexlth 200 in 394ms (next.js: 94ms, proxy.ts: 62ms, application-code: 238ms)
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /claim/[redacted] 200 in 8.0s (next.js: 5.6s, proxy.ts: 26ms, application-code: 2.4s)
+ GET /claim/[redacted] 200 in 11.7s (next.js: 120ms, proxy.ts: 64ms, application-code: 11.6s)
+ GET /claim/[redacted] 200 in 2.6s (next.js: 242ms, proxy.ts: 47ms, application-code: 2.3s)
+ GET /claim/[redacted] 200 in 476ms (next.js: 90ms, proxy.ts: 73ms, application-code: 313ms)
+ GET /claim/[redacted] 200 in 442ms (next.js: 72ms, proxy.ts: 32ms, application-code: 339ms)
+ GET /claim/[redacted] 200 in 450ms (next.js: 200ms, proxy.ts: 50ms, application-code: 199ms)
+ GET /claim/[redacted] 200 in 1268ms (next.js: 119ms, proxy.ts: 32ms, application-code: 1117ms)
+ GET /claim/[redacted] 200 in 441ms (next.js: 132ms, proxy.ts: 43ms, application-code: 267ms)
+○ Compiling /afrekenen/[slug]/page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /claim/[redacted] 200 in 879ms (next.js: 160ms, proxy.ts: 40ms, application-code: 679ms)
+ GET /afrekenen/local-expensive-voucher-seoqfp 200 in 17.5s (next.js: 15.0s, proxy.ts: 30ms, application-code: 2.5s)
+ GET /afrekenen/local-expensive-voucher-seoqfp 200 in 573ms (next.js: 100ms, proxy.ts: 43ms, application-code: 430ms)
+ GET /afrekenen/local-expensive-voucher-seoqfp 200 in 9.3s (next.js: 55ms, proxy.ts: 44ms, application-code: 9.2s)
+ GET /afrekenen/local-expensive-voucher-seoqfp 200 in 752ms (next.js: 227ms, proxy.ts: 194ms, application-code: 331ms)
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /afrekenen/local-expensive-voucher-seoqfp 200 in 3.4s (next.js: 918ms, proxy.ts: 52ms, application-code: 2.5s)
+ GET /afrekenen/local-expensive-voucher-seoqfp 200 in 19.0s (next.js: 91ms, proxy.ts: 128ms, application-code: 18.8s)
+○ Compiling /profiel/page ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /afrekenen/local-expensive-voucher-seoqfp 200 in 939ms (next.js: 283ms, proxy.ts: 43ms, application-code: 613ms)
+ GET /profiel 200 in 28.1s (next.js: 17.5s, proxy.ts: 238ms, application-code: 10.4s)
+ GET /profiel 200 in 17.8s (next.js: 39ms, proxy.ts: 86ms, application-code: 17.6s)
+⨯ unhandledRejection: RangeError: Failed to allocate memory
+    at new Promise (<anonymous>) {
+  code: 'ERR_MEMORY_ALLOCATION_FAILED'
+}
+
+<--- Last few GCs --->
+
+[11992:0000016EA270C000]   704320 ms: Scavenge (interleaved) 592.8 (607.1) -> 590.9 (611.1) MB, pooled: 0 MB, 3.95 / 0.00 ms  (average mu = 0.174, current mu = 0.000) allocation failure; 
+[11992:0000016EA270C000]   704656 ms: Scavenge (interleaved) 600.3 (616.3) -> 596.5 (616.3) MB, pooled: 0 MB, 3.09 / 0.00 ms  (average mu = 0.174, current mu = 0.000) allocation failure; 
+
+FATAL ERROR: Zone Allocation failed - process out of memory
+----- Native stack trace -----
+
+ 1: 00007FF7940D90C6 
+ 2: 00007FF7940D9604 
+ 3: 00007FF792CE3617 
+ 4: 00007FF79265B506 
+ 5: 00007FF79247D942 
+ 6: 00007FF79247D914 
+ 7: 00007FF79247D914 
+ 8: 00007FF79247D914 
+ 9: 00007FF79247D902 
+10: 00007FF79247D902 
+11: 00007FF79247D803 
+12: 00007FF79247D74D 
+13: 00007FF792477C64 
+14: 00007FF79247FD1E 
+15: 00007FF7924E1412 
+16: 00007FF7924DFA28 
+17: 00007FF7924B49FB 
+18: 00007FF7924B45D2 
+19: 00007FF7924B659C 
+20: 00007FF7924B5A2E 
+21: 00007FF7924C8FB1 
+22: 00007FF79249DDF5 
+23: 00007FF7924B9542 
+24: 00007FF7924CAC06 
+25: 00007FF7924CBA07 
+26: 00007FF7924DFDDA 
+27: 00007FF7924B49FB 
+28: 00007FF79252CAC6 
+29: 00007FF79252B7CD 
+30: 00007FF79252957A 
+31: 00007FF792C572CF 
+32: 00007FF79252B05B 
+33: 00007FF7934E2CEF 
+34: 00007FF794019BDB 
+35: 00007FF792D38A26 
+36: 00007FF79441F483 
+37: 00007FFB4E337374 BaseThreadInitThunk+20
+38: 00007FFB502DCC91 RtlUserThreadStart+33
+[?25h

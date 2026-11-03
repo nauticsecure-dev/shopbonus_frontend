@@ -1,4 +1,4 @@
-import { apiRequest, ApiError, ensureCsrfCookie } from "@/lib/api";
+import { apiRequest, ApiError } from "@/lib/api";
 import type { Locale } from "@/types/locale";
 
 export type OnboardingIntent = "consumer" | "merchant";
@@ -239,7 +239,7 @@ export async function fetchMe(locale?: Locale): Promise<MeUser | null> {
     const res = await apiRequest<MeResponse>({ path: "/api/v1/me", locale });
     return res.data;
   } catch (error) {
-    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+    if (error instanceof ApiError && error.code !== "csrf_initialization_failed" && (error.status === 401 || error.status === 403)) {
       return null;
     }
     throw error;
@@ -247,7 +247,6 @@ export async function fetchMe(locale?: Locale): Promise<MeUser | null> {
 }
 
 export async function registerAccount(input: RegisterInput, locale: Locale): Promise<MeUser> {
-  await ensureCsrfCookie();
   const res = await apiRequest<MeResponse>({
     path: "/register",
     method: "POST",
@@ -262,7 +261,6 @@ export async function loginAccount(
   password: string,
   locale: Locale
 ): Promise<{ user?: MeUser; twoFactor?: true }> {
-  await ensureCsrfCookie();
   const res = await apiRequest<MeResponse | { two_factor: true }>({
     path: "/login",
     method: "POST",
@@ -280,7 +278,6 @@ export async function completeTwoFactorChallenge(
   payload: { code: string } | { recovery_code: string },
   locale: Locale
 ): Promise<MeUser> {
-  await ensureCsrfCookie();
   const res = await apiRequest<MeResponse>({
     path: "/two-factor-challenge",
     method: "POST",
@@ -325,11 +322,11 @@ export function fieldErrorsFromApi(error: unknown): Partial<
 
 export async function logoutAccount(locale?: Locale): Promise<void> {
   try {
-    await ensureCsrfCookie();
     await apiRequest({ path: "/logout", method: "POST", locale });
   } catch (error) {
-    // Already logged out / expired CSRF is fine — treat as completed logout.
-    if (error instanceof ApiError && (error.status === 401 || error.status === 419)) {
+    // Only an absent server session confirms logout. A persistent 419 must
+    // reach SessionContext so local state survives and the user can retry.
+    if (error instanceof ApiError && error.status === 401 && error.code !== "csrf_initialization_failed") {
       return;
     }
     throw error;
@@ -358,7 +355,6 @@ export async function resendEmailCode(locale: Locale): Promise<{ resend_availabl
 }
 
 export async function forgotPassword(email: string, locale: Locale): Promise<string> {
-  await ensureCsrfCookie();
   const res = await apiRequest<{ message: string }>({
     path: "/forgot-password",
     method: "POST",
@@ -377,7 +373,6 @@ export async function resetPassword(
   },
   locale: Locale
 ): Promise<void> {
-  await ensureCsrfCookie();
   await apiRequest({
     path: "/reset-password",
     method: "POST",

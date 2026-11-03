@@ -12,7 +12,7 @@ import { useShopBonus } from "@/store/ShopBonusContext";
 import { useLocale } from "@/i18n/LocaleContext";
 import { formatMinor } from "@/lib/money";
 import { updateConsumerProfile } from "@/lib/profile";
-import type { Locale } from "@/types/locale";
+import { LOCALES, type Locale } from "@/types/locale";
 
 function isActive(pathname: string, href: string, search = "") {
   const [withoutHash] = href.split("#");
@@ -77,7 +77,7 @@ function HeaderInner() {
   const router = useRouter();
   const { session, ready, signOut } = useSession();
   const { availableMinor, profile, walletError, walletReady } = useShopBonus();
-  const { locale, setLocale, dictionary: t } = useLocale();
+  const { locale, setLocale, dictionary: t, intlLocale } = useLocale();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -199,7 +199,7 @@ function HeaderInner() {
             role="group"
             aria-label={t.language}
           >
-            {(["nl", "en"] as const).map((code) => (
+            {LOCALES.map((code) => (
               <button
                 key={code}
                 type="button"
@@ -225,23 +225,19 @@ function HeaderInner() {
                 }`}
                 title={
                   walletError
-                    ? locale === "en"
-                      ? `Balance may be outdated: ${walletError}`
-                      : `Saldo mogelijk verouderd: ${walletError}`
+                    ? t.headerWalletError.replace("{error}", walletError)
                     : !walletReady
-                      ? locale === "en"
-                        ? "Loading wallet…"
-                        : "Tegoed laden…"
-                      : `${formatMinor(availableMinor)} beschikbaar`
+                      ? t.headerWalletLoading
+                      : t.headerWalletAvailable.replace("{balance}", formatMinor(availableMinor, "EUR", intlLocale))
                 }
                 aria-busy={!walletReady && !walletError}
               >
                 <Icon name="wallet" size={18} className={walletError ? "text-amber-700" : "text-brand"} />
-                <span className="hidden text-xs font-semibold text-muted lg:inline">Mijn ShopBonus-tegoed</span>
-                <strong className={walletError ? "text-amber-900" : "text-navy"}>{walletReady ? formatMinor(availableMinor) : "…"}</strong>
+                <span className="hidden text-xs font-semibold text-muted lg:inline">{t.headerWallet}</span>
+                <strong className={walletError ? "text-amber-900" : "text-navy"}>{walletReady ? formatMinor(availableMinor, "EUR", intlLocale) : "…"}</strong>
                 {walletError && (
                   <span className="text-[10px] font-extrabold uppercase tracking-wide text-amber-700">
-                    {locale === "en" ? "Stale" : "Verouderd"}
+                    {t.headerWalletStale}
                   </span>
                 )}
                 <Icon name="chevron" size={14} className="text-muted" />
@@ -359,8 +355,8 @@ function HeaderInner() {
                 walletError ? "bg-amber-50 text-amber-900" : "bg-blue-50 text-navy"
               }`}
             >
-              <span>Mijn ShopBonus-tegoed{walletError ? (locale === "en" ? " (outdated)" : " (verouderd)") : ""}</span>
-              <strong>{walletReady ? formatMinor(availableMinor) : "…"}</strong>
+              <span>{t.headerWallet}{walletError ? t.headerWalletOutdated : ""}</span>
+              <strong>{walletReady ? formatMinor(availableMinor, "EUR", intlLocale) : "…"}</strong>
             </Link>
           )}
           {authed && (

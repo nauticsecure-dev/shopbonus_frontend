@@ -81,9 +81,9 @@ export async function fetchHomepageContent(locale?: Locale): Promise<HomepageCon
       res.data && typeof res.data === "object" && "content" in res.data
         ? (res.data as { content: Partial<HomepageContent> }).content
         : (res.data as Partial<HomepageContent>);
-    return mergeHomepageContent(content, (locale ?? "nl") as "nl" | "en");
+    return mergeHomepageContent(content, locale ?? "nl");
   } catch {
-    return mergeHomepageContent(null, (locale ?? "nl") as "nl" | "en");
+    return mergeHomepageContent(null, locale ?? "nl");
   }
 }
 
@@ -247,16 +247,39 @@ export async function previewHomepage(locale: Locale = "nl"): Promise<HomepageCo
     body: { locale },
     locale,
   });
-  return mergeHomepageContent(res.data.content, locale as "nl" | "en");
+  return mergeHomepageContent(res.data.content, locale);
 }
 
-export async function publishHomepage(locale: Locale = "nl"): Promise<void> {
+export async function publishHomepage(locale: Locale, revision: number): Promise<void> {
   await apiRequest({
     path: `/api/v1/admin/content/homepage/publish`,
     method: "POST",
-    body: { locale },
+    body: { locale, revision },
     locale,
   });
+}
+
+export async function queueHomepagePublication(pageId: string, locale: Locale, revision: number, dueAt: string): Promise<void> {
+  await apiRequest({
+    path: `/api/v1/admin/cms/pages/${encodeURIComponent(pageId)}/schedules`,
+    method: "POST",
+    body: { action: "publish", locale, revision, due_at: dueAt },
+    locale,
+  });
+}
+
+export type HomepagePublicationSchedule = { id: string; locale: string; draft_revision: number; due_at: string; status: string };
+
+export async function fetchHomepageSchedules(pageId: string, locale: Locale): Promise<HomepagePublicationSchedule[]> {
+  const res = await apiRequest<Data<HomepagePublicationSchedule[]>>({
+    path: `/api/v1/admin/cms/schedules?page=${encodeURIComponent(pageId)}`,
+    locale,
+  });
+  return res.data.filter(row => row.locale === locale);
+}
+
+export async function cancelHomepageSchedule(id: string, locale: Locale): Promise<void> {
+  await apiRequest({ path: `/api/v1/admin/cms/schedules/${encodeURIComponent(id)}/cancel`, method: "POST", body: {}, locale });
 }
 
 export async function fetchHomepageVersions(locale?: Locale): Promise<

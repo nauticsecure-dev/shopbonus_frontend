@@ -1,0 +1,9 @@
+{
+  "test_ports_closed": true,
+  "removed_test_databases": 9,
+  "removed_test_assets": 6,
+  "original_runtime_database_restored": true,
+  "original_database_sha256": "26fc46ae6333878021ea7b7363bde0e92dccfd4d0a08c73855d89be5e550a859",
+  "test_asset_sha256": "0792e0e13b0e942e7aeca100b0fa24b58fc96d0d1d06c559a3e558ec60d4f763",
+  "test_asset_note": "Six identical synthetic crop screenshots were visually identified and hash-verified before deletion from the local private CMS disk. Future helper launches explicitly populate PHP environment variables for LARAVEL_STORAGE_PATH."
+}

@@ -1,12 +1,21 @@
 import { apiRequest, apiUpload } from "@/lib/api";
 import type { Locale } from "@/types/locale";
 
+export type WalletBalance = {
+  unit: "points" | "eur_credit";
+  available: number;
+  reserved: number;
+  pending: number;
+  total_earned: number;
+  total_spent: number;
+};
+
 export type WalletSummary = {
   available_minor: number;
   reserved_minor?: number;
-  /** Legacy field; consumer UI never presents pending cashback. */
+  /** Non-spendable rewards under their frozen earning rules. */
   pending_minor?: number;
-  /** Legacy field; consumer UI never presents pending cashback. */
+  /** Preferred pending reward projection when supplied by the wallet API. */
   pending_cashback_minor?: number;
   total_earned_minor: number;
   total_spent_minor: number;
@@ -16,7 +25,7 @@ export type WalletSummary = {
   withdrawable?: boolean;
   notice?: string | null;
   savings_goal?: { target_minor: number; label?: string } | null;
-  balances?: Record<string, unknown>;
+  balances?: Partial<Record<"points" | "eur_credit", WalletBalance>>;
 };
 
 export type VoucherStatusLabel = "ACTIVE" | "USED" | "EXPIRED" | "CANCELLED" | string;
@@ -93,6 +102,11 @@ export type PageMeta = {
 };
 
 export type CheckoutQuote = {
+  wallet_unit?: "eur_credit" | "points";
+  price_points?: number | null;
+  wallet_available_points?: number;
+  wallet_part_points?: number;
+  shortfall_points?: number;
   price_minor: number;
   currency: string;
   wallet_available: number;
@@ -177,10 +191,11 @@ export async function fetchVoucherDetail(id: string, locale?: Locale): Promise<C
 }
 
 export async function fetchTransactions(
-  opts: { filter?: LedgerFilter; q?: string; page?: number; per_page?: number } = {},
+  opts: { filter?: LedgerFilter; q?: string; page?: number; per_page?: number; unit?: "points" | "eur_credit" } = {},
   locale?: Locale
 ): Promise<{ data: LedgerEntry[]; meta: PageMeta }> {
   const params = new URLSearchParams();
+  if (opts.unit) params.set("unit", opts.unit);
   if (opts.filter && opts.filter !== "all") params.set("filter", opts.filter);
   if (opts.q) params.set("q", opts.q);
   if (opts.page) params.set("page", String(opts.page));
@@ -203,12 +218,13 @@ export async function fetchTransaction(id: string, locale?: Locale): Promise<Led
 export async function quoteCheckout(
   offer: string,
   useWallet = true,
-  locale?: Locale
+  locale?: Locale,
+  walletUnit: "eur_credit" | "points" = "eur_credit"
 ): Promise<CheckoutQuote> {
   const res = await apiRequest<Data<CheckoutQuote>>({
     path: "/api/v1/consumer/checkouts/quote",
     method: "POST",
-    body: { offer, use_wallet: useWallet },
+    body: { offer, use_wallet: useWallet, wallet_unit: walletUnit },
     locale,
   });
   return res.data;
@@ -218,12 +234,13 @@ export async function startCheckout(
   offer: string,
   idempotencyKey: string,
   useWallet = true,
-  locale?: Locale
+  locale?: Locale,
+  walletUnit: "eur_credit" | "points" = "eur_credit"
 ): Promise<CheckoutResult> {
   const res = await apiRequest<Data<CheckoutResult>>({
     path: "/api/v1/consumer/checkouts",
     method: "POST",
-    body: { offer, use_wallet: useWallet },
+    body: { offer, use_wallet: useWallet, wallet_unit: walletUnit },
     headers: { "Idempotency-Key": idempotencyKey },
     locale,
   });

@@ -7,7 +7,7 @@
       "--config",
       "playwright.homepage-live.config.ts",
       "--grep",
-      "2.actual"
+      "9 real"
     ],
     "configFile": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\playwright.homepage-live.config.ts",
     "rootDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/e2e",
@@ -20,14 +20,18 @@
     "grep": {},
     "grepInvert": null,
     "maxFailures": 0,
-    "metadata": {},
+    "metadata": {
+      "actualWorkers": 1
+    },
     "preserveOutput": "always",
     "projects": [
       {
         "outputDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/.next-homepage-live/qa-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "id": "",
         "name": "",
         "testDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/e2e",
@@ -45,7 +49,9 @@
         "outputDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "name": "",
         "testDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e",
         "snapshotDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e",
@@ -100,17 +106,92 @@
     "workers": 1,
     "webServer": null
   },
-  "suites": [],
-  "errors": [
+  "suites": [
     {
-      "message": "Error: Process from config.webServer was not able to start. Exit code: 1",
-      "stack": "Error: Process from config.webServer was not able to start. Exit code: 1"
+      "title": "homepage-live.spec.ts",
+      "file": "homepage-live.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "9 real image crop/upload, responsive variants, navigation/footer, drag order and featured merchants publish",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 112582,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: opening editor\n"
+                    },
+                    {
+                      "text": "Acceptance: edit clicked\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=q3mOO9BClNZHexY7 net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/webshops/acceptance-beta net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/webshops/acceptance-beta net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/webshops/acceptance-beta net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:49:54.746Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-dcb4a554ba8ae30130c2",
+          "file": "homepage-live.spec.ts",
+          "line": 120,
+          "column": 5
+        }
+      ]
     }
   ],
+  "errors": [],
   "stats": {
-    "startTime": "2026-10-31T14:39:43.771Z",
-    "duration": 35698.386000000006,
-    "expected": 0,
+    "startTime": "2026-11-03T04:49:19.840Z",
+    "duration": 186554.597,
+    "expected": 1,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

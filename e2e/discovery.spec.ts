@@ -1,5 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 
+// Pin the baseline locale; Chromium's default Accept-Language is English.
+test.beforeEach(async ({ context }) => {
+  await context.addCookies([
+    { name: "shopbonus-locale", value: "nl", url: test.info().project.use.baseURL! },
+    // API fixtures represent an already initialized Sanctum browser session.
+    { name: "XSRF-TOKEN", value: "discovery-fixture-session", url: test.info().project.use.baseURL! },
+  ]);
+});
+
 // Browser component acceptance with explicit API fixtures. Real API semantics are
 // covered by backend Discovery tests; this suite is not full platform acceptance.
 const shops = Array.from({ length: 49 }, (_, i) => ({
@@ -11,8 +20,10 @@ const shops = Array.from({ length: 49 }, (_, i) => ({
   offer_count: i % 3, active_offer_count: i % 3,
 }));
 
-async function fixtures(page: Page, options: { loggedIn?: boolean; voucherError?: boolean; voucherDelay?: number } = {}) {
-  const state = { requests: [] as URL[], voucherRequests: 0, voucherCount: 2, failDirectory: false };
+async function fixtures(page: Page, options: { loggedIn?: boolean; voucherError?: boolean; voucherDelay?: number; holdVouchers?: boolean; locale?: "nl" | "en" | "de" } = {}) {
+  let releaseVouchers = () => {};
+  const voucherGate = new Promise<void>(resolve => { releaseVouchers = resolve; });
+  const state = { requests: [] as URL[], voucherRequests: 0, voucherCount: 2, failDirectory: false, releaseVouchers };
   await page.route("**/broken-*.png", route => route.fulfill({ status: 404, body: "missing" }));
   await page.route("**/api/v1/**", async route => {
     const url = new URL(route.request().url());
@@ -21,11 +32,12 @@ async function fixtures(page: Page, options: { loggedIn?: boolean; voucherError?
     let status = 200;
     if (path.endsWith("/me")) {
       status = options.loggedIn ? 200 : 401;
-      data = options.loggedIn ? { id: "discovery-consumer", first_name: "Anna", email: "anna@example.test", email_verified: true, status: "active", role: "consumer", onboarding_intent: "consumer", locale: "nl", roles: [], workspaces: [], two_factor_enabled: false, support_session: null } : null;
+      data = options.loggedIn ? { id: "discovery-consumer", first_name: "Anna", email: "anna@example.test", email_verified: true, status: "active", role: "consumer", onboarding_intent: "consumer", locale: options.locale ?? "nl", roles: [], workspaces: [], two_factor_enabled: false, support_session: null } : null;
     } else if (path.endsWith("/me/wallet")) {
       data = { available_minor: 1220, reserved_minor: 0, total_earned_minor: 1220, total_spent_minor: 0, currency: "EUR" };
     } else if (path.endsWith("/consumer/vouchers")) {
       state.voucherRequests++;
+      if (options.holdVouchers) await voucherGate;
       if (options.voucherDelay) await new Promise(resolve => setTimeout(resolve, options.voucherDelay));
       status = options.voucherError ? 503 : 200;
       data = Array.from({ length: state.voucherCount }, (_, i) => ({ id: `voucher-${i}`, status: "ACTIVE" }));
@@ -160,9 +172,61 @@ test("shared lifecycle refresh updates voucher summary with one request", async 
   const state = await fixtures(page, { loggedIn: true });
   await page.goto("/webshops");
   await expect(page.getByText("2 actieve vouchers", { exact: true })).toBeVisible();
-  expect(state.voucherRequests).toBe(1);
+  // Account locale hydration can revalidate /me before the explicit event.
+  await page.waitForLoadState("networkidle");
+  const beforeFocus = state.voucherRequests;
   state.voucherCount = 3;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByText("3 actieve vouchers", { exact: true })).toBeVisible();
-  expect(state.voucherRequests).toBe(2);
+  expect(state.voucherRequests).toBe(beforeFocus + 1);
+});
+
+async function selectLocale(page: Page, locale: "en" | "de") {
+  await page.context().addCookies([{ name: "shopbonus-locale", value: locale, url: test.info().project.use.baseURL! }]);
+  await page.addInitScript(value => {
+    localStorage.setItem("shopbonus-locale", value);
+    localStorage.setItem("shopbonus-locale-explicit", "1");
+    document.cookie = `shopbonus-locale=${value}; Path=/; SameSite=Lax`;
+  }, locale);
+}
+
+for (const locale of ["en", "de"] as const) {
+  test(`${locale} voucher loading and failure stay localized`, async ({ page }) => {
+    await selectLocale(page, locale);
+    const state = await fixtures(page, { loggedIn: true, voucherError: true, holdVouchers: true, locale });
+    await page.goto("/webshops");
+    await expect(page.getByText(locale === "en" ? "Loading vouchers…" : "Gutscheine werden geladen…", { exact: true })).toBeVisible();
+    state.releaseVouchers();
+    await expect(page.getByText(locale === "en" ? "Vouchers unavailable" : "Gutscheine nicht verfügbar", { exact: true })).toBeVisible();
+    await expect(page.getByText("0 actieve vouchers", { exact: true })).toHaveCount(0);
+  });
+}
+
+test("English directory translates controls, counts, pagination, empty and retry states", async ({ page }) => {
+  await selectLocale(page, "en");
+  const state = await fixtures(page, { loggedIn: true, locale: "en" });
+  await page.goto("/webshops");
+  await expect(page.getByRole("heading", { name: "Discover webshops and offers." })).toBeVisible();
+  await expect(page.getByText("2 active vouchers", { exact: true })).toBeVisible();
+  await expect(page.getByText("Page 1 of 5", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "All categories", exact: true })).toBeVisible();
+  await expect(cards(page).first()).toContainText("2 offers");
+  await expect(cards(page).first()).toContainText("Category");
+  state.voucherCount = 1;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByText("1 active voucher", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByText("Page 2 of 5", { exact: true })).toBeVisible();
+  const request = page.waitForRequest(r => r.url().includes("/public/webshops?") && r.url().includes("search=no-match"));
+  await page.getByRole("textbox", { name: "Search for a webshop" }).fill("no-match");
+  expect((await request).headers()["accept-language"]).toBe("en");
+  await expect(page.getByRole("heading", { name: "No webshops found" })).toBeVisible();
+  state.failDirectory = true;
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Could not load webshops" })).toBeVisible();
+  state.failDirectory = false;
+  const retried = page.waitForRequest(r => r.url().includes("/public/webshops?"));
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  expect((await retried).headers()["accept-language"]).toBe("en");
+  await expect(cards(page)).toHaveCount(12);
 });

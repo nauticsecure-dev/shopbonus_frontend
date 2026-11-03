@@ -52,8 +52,10 @@ interface ShopBonusState {
   /** Available credit in major euros — mirrors available_minor / 100 for legacy UI. */
   balance: number;
   availableMinor: number;
+  pointsBalance: NonNullable<WalletSummary["balances"]>["points"] | null;
   /** Checkout holds only — never pending affiliate cashback. */
   reservedMinor: number;
+  pendingMinor: number;
   totalEarnedMinor: number;
   totalSpentMinor: number;
   savingsGoal: WalletSummary["savings_goal"];
@@ -101,13 +103,15 @@ function applyWallet(summary: WalletSummary) {
 
 export function ShopBonusProvider({ children }: { children: React.ReactNode }) {
   const { session, ready: sessionReady } = useSession();
-  const { locale } = useLocale();
+  const { locale, dictionary: c } = useLocale();
   const apiMode = Boolean(session?.user);
 
   const [hydrated, setHydrated] = useState(false);
   const [balance, setBalance] = useState(0);
   const [availableMinor, setAvailableMinor] = useState(0);
+  const [pointsBalance, setPointsBalance] = useState<ShopBonusState["pointsBalance"]>(null);
   const [reservedMinor, setReservedMinor] = useState(0);
+  const [pendingMinor, setPendingMinor] = useState(0);
   const [totalEarnedMinor, setTotalEarnedMinor] = useState(0);
   const [totalSpentMinor, setTotalSpentMinor] = useState(0);
   const [savingsGoal, setSavingsGoal] = useState<WalletSummary["savings_goal"]>(null);
@@ -166,13 +170,20 @@ export function ShopBonusProvider({ children }: { children: React.ReactNode }) {
       try {
         const summary = await fetchMeWallet(locale);
         if (walletOwnerRef.current !== owner) return null;
-        if (![summary.available_minor, summary.reserved_minor ?? 0, summary.total_earned_minor, summary.total_spent_minor].every(amount => Number.isSafeInteger(amount) && amount >= 0)) {
+        const pending = summary.pending_cashback_minor ?? summary.pending_minor ?? 0;
+        if (![summary.available_minor, summary.reserved_minor ?? 0, pending, summary.total_earned_minor, summary.total_spent_minor].every(amount => Number.isSafeInteger(amount) && amount >= 0)) {
           throw new Error("Invalid wallet summary");
         }
         const next = applyWallet(summary);
+        const points = summary.balances?.points;
+        if (points && (points.unit !== "points" || ![points.available, points.reserved, points.pending, points.total_earned, points.total_spent].every(amount => Number.isSafeInteger(amount) && amount >= 0))) {
+          throw new Error("Invalid points summary");
+        }
+        setPointsBalance(points ?? null);
         setVerifiedWalletOwner(owner);
         setAvailableMinor(next.availableMinor);
         setReservedMinor(next.reservedMinor);
+        setPendingMinor(pending);
         setTotalEarnedMinor(next.totalEarnedMinor);
         setTotalSpentMinor(next.totalSpentMinor);
         setSavingsGoal(next.savingsGoal);
@@ -183,10 +194,12 @@ export function ShopBonusProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         if (walletOwnerRef.current !== owner) return null;
         setVerifiedWalletOwner(null);
-        const message = err instanceof ApiError ? err.message : "Wallet kon niet worden geladen.";
+        setPointsBalance(null);
+        const message = err instanceof ApiError ? err.message : c.benefitsWalletLoadError;
         setAvailableMinor(0);
         setBalance(0);
         setReservedMinor(0);
+        setPendingMinor(0);
         setSavingsGoal(null);
         setTotalEarnedMinor(0);
         setTotalSpentMinor(0);
@@ -200,7 +213,7 @@ export function ShopBonusProvider({ children }: { children: React.ReactNode }) {
 
     refreshInFlight.current = { owner, promise: run };
     return run;
-  }, [session, locale]);
+  }, [session, locale, c.benefitsWalletLoadError]);
 
   const refreshVouchers = useCallback(
     async (filter: "all" | "active" | "used" | "expired" | "cancelled" = "all") => {
@@ -276,6 +289,7 @@ export function ShopBonusProvider({ children }: { children: React.ReactNode }) {
         setVoucherStatus("idle");
         setAvailableMinor(0);
         setReservedMinor(0);
+        setPendingMinor(0);
         setBalance(0);
         setVouchers([]);
         setWalletError(null);
@@ -450,7 +464,9 @@ export function ShopBonusProvider({ children }: { children: React.ReactNode }) {
     () => ({
       balance: verifiedWalletOwner === walletOwner ? balance : 0,
       availableMinor: verifiedWalletOwner === walletOwner ? availableMinor : 0,
+      pointsBalance: verifiedWalletOwner === walletOwner ? pointsBalance : null,
       reservedMinor: verifiedWalletOwner === walletOwner ? reservedMinor : 0,
+      pendingMinor: verifiedWalletOwner === walletOwner ? pendingMinor : 0,
       totalEarnedMinor: verifiedWalletOwner === walletOwner ? totalEarnedMinor : 0,
       totalSpentMinor: verifiedWalletOwner === walletOwner ? totalSpentMinor : 0,
       savingsGoal: verifiedWalletOwner === walletOwner ? savingsGoal : null,
@@ -480,7 +496,9 @@ export function ShopBonusProvider({ children }: { children: React.ReactNode }) {
       verifiedWalletOwner,
       balance,
       availableMinor,
+      pointsBalance,
       reservedMinor,
+      pendingMinor,
       totalEarnedMinor,
       totalSpentMinor,
       savingsGoal,

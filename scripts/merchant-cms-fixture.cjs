@@ -3,7 +3,13 @@ const ts = require('typescript');
 const http = require('http');
 const mod = { exports: {} };
 const source = ts.transpileModule(fs.readFileSync('src/lib/merchantLandingDefaults.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-new Function('exports', 'module', source)(mod.exports, mod);
+function load(name) {
+ const module = { exports: {} };
+ const code = ts.transpileModule(fs.readFileSync('src/lib/' + name + '.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+ new Function('exports', 'module', 'require', code)(module.exports, module, path => load(path.replace('./', '')));
+ return module.exports;
+}
+new Function('exports', 'module', 'require', source)(mod.exports, mod, path => load(path.replace('./', '')));
 http.createServer((request, response) => {
   const url = new URL(request.url, 'http://127.0.0.1:8012');
   response.setHeader('Content-Type', 'application/json');

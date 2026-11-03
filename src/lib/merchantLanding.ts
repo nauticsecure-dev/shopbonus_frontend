@@ -71,12 +71,12 @@ export async function publishMerchantLanding(locale: Locale = "nl", revision?: n
   });
 }
 
-export async function fetchMerchantLandingVersions(locale?: Locale): Promise<
-  { id: string; locale: string; number: number; published_at: string }[]
+export async function fetchMerchantLandingVersions(locale?: Locale, includeContent = false): Promise<
+  { id: string; locale: string; number: number; published_at: string; content?: MerchantLandingContent }[]
 > {
-  const qs = locale ? `?locale=${encodeURIComponent(locale)}` : "";
+  const qs = `?${new URLSearchParams({ ...(locale ? { locale } : {}), ...(includeContent ? { include_content: "1" } : {}) })}`;
   const res = await apiRequest<
-    Data<{ id: string; locale: string; number: number; published_at: string }[]>
+    Data<{ id: string; locale: string; number: number; published_at: string; content?: MerchantLandingContent }[]>
   >({
     path: `/api/v1/admin/content/voor-webshops/versions${qs}`,
     locale,

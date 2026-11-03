@@ -1,0 +1,135 @@
+{
+  "recorded_at": "2026-11-03T04:53:08.461Z",
+  "environment": "Real Laravel HTTP and Next.js, isolated SQLite, installed Chrome, synthetic actors, genuine cookie login/CSRF/TOTP/recent-password; no response fixtures. Route interception only pauses then forwards real requests.",
+  "cases": [
+    {
+      "title": "1 verified wallet survives a real backend 500 and recovers to new ledger balance",
+      "status": "passed",
+      "duration_ms": 160118,
+      "report": "homepage-live-first-review-results.json"
+    },
+    {
+      "title": "12 another administrator changes the draft after browser save and before publication",
+      "status": "passed",
+      "duration_ms": 60399,
+      "report": "homepage-live-cms-review-results.json"
+    },
+    {
+      "title": "13 inline scheduling queues the saved revision while the current publication stays live",
+      "status": "passed",
+      "duration_ms": 50157,
+      "report": "homepage-live-cms-review-results.json"
+    },
+    {
+      "title": "14 real HTTP publication contract rejects missing and stale reviewed revisions",
+      "status": "passed",
+      "duration_ms": 37362,
+      "report": "homepage-live-first-review-results.json"
+    },
+    {
+      "title": "9 real image crop/upload, responsive variants, navigation/footer, drag order and featured merchants publish",
+      "status": "passed",
+      "duration_ms": 112582,
+      "report": "homepage-live-results.json"
+    },
+    {
+      "title": "10 inspect and restore a specifically selected historical publication with confirmation and access control",
+      "status": "passed",
+      "duration_ms": 147824,
+      "report": "homepage-live-restore-review-results.json"
+    }
+  ],
+  "attempts": [
+    {
+      "file": "homepage-live-first-review-results.json",
+      "stats": {
+        "startTime": "2026-11-03T04:12:49.274Z",
+        "duration": 955503.819,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      }
+    },
+    {
+      "file": "homepage-live-cms-review-results.json",
+      "stats": {
+        "startTime": "2026-11-03T04:34:09.917Z",
+        "duration": 485411.59699999995,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      }
+    },
+    {
+      "file": "homepage-live-restore-review-results.json",
+      "stats": {
+        "startTime": "2026-11-03T04:43:17.624Z",
+        "duration": 302400.23600000003,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "file": "homepage-live-results.json",
+      "stats": {
+        "startTime": "2026-11-03T04:49:19.840Z",
+        "duration": 186554.597,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "reconciliation": [
+    {
+      "file": "homepage-live-first-review-http.json",
+      "verify": {
+        "users": 2,
+        "revisions": 3,
+        "assets": 0,
+        "publish_audits": 7,
+        "wallet_reconciles": true
+      }
+    },
+    {
+      "file": "homepage-live-cms-review-http.json",
+      "verify": {
+        "users": 2,
+        "revisions": 5,
+        "assets": 0,
+        "publish_audits": 19,
+        "wallet_reconciles": true
+      }
+    },
+    {
+      "file": "homepage-live-restore-review-http.json",
+      "verify": {
+        "users": 2,
+        "revisions": 6,
+        "assets": 3,
+        "publish_audits": 17,
+        "wallet_reconciles": true
+      }
+    },
+    {
+      "file": "homepage-live-http.json",
+      "verify": {
+        "users": 2,
+        "revisions": 3,
+        "assets": 3,
+        "publish_audits": 12,
+        "wallet_reconciles": true
+      }
+    }
+  ],
+  "limits": [
+    "Selected journeys passed across separate runs; the entire 14-case suite was not rerun as one green run.",
+    "Featured preview needed an explicit UI retry after settling local queued requests; the existing 8-second fetch timeout was retained.",
+    "Exact equal-state screenshot fidelity and representative deployment server/API performance remain unverified."
+  ]
+}

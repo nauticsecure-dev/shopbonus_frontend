@@ -17,6 +17,9 @@ import {
   fetchHomepageVersions,
   isSuperAdmin,
   publishHomepage,
+  queueHomepagePublication,
+  fetchHomepageSchedules,
+  cancelHomepageSchedule,
   requestHomepageAiSuggest,
   restoreHomepageVersion,
   saveHomepageDraft,
@@ -42,7 +45,6 @@ const CMS_LABELS: Record<string, string> = {
   "Geen AI-suggestie beschikbaar (goedkeuring blijft verplicht)": "No AI suggestion available (approval required)",
   "AI-suggesties zijn uitgeschakeld of niet geconfigureerd": "AI suggestions are disabled or not configured",
   "AI-suggestie mislukt": "AI suggestion failed",
-  "Planning opgeslagen in concept.": "Schedule saved in draft.",
   "Planning opslaan mislukt": "Could not save schedule",
   "Voorbeeldmodus": "Preview mode",
   "Homepage bewerken": "Edit homepage",
@@ -55,6 +57,13 @@ const CMS_LABELS: Record<string, string> = {
   "Sluiten": "Close"
 };
 function cmsLabel(locale: string, nl: string) { return locale === "en" ? CMS_LABELS[nl] ?? nl : nl; }
+
+function publicationStatusLabel(locale: string, status: string) {
+  const labels: Record<string, string> = locale === "en"
+    ? { scheduled: "Scheduled", running: "Publishing", done: "Published", cancelled: "Cancelled", stale: "Draft changed", failed: "Failed" }
+    : { scheduled: "Ingepland", running: "Wordt gepubliceerd", done: "Gepubliceerd", cancelled: "Geannuleerd", stale: "Concept gewijzigd", failed: "Mislukt" };
+  return labels[status] ?? status;
+}
 
 const SECTION_KEYS = [
   "hero",
@@ -76,6 +85,8 @@ type InlineCmsContextValue = {
   content: HomepageContent;
   setMode: (m: CmsMode) => void;
   draftRevision: number | null;
+  draftReady: boolean;
+  pageId: string | null;
   dirty: boolean;
   saving: boolean;
   message: string | null;
@@ -84,8 +95,10 @@ type InlineCmsContextValue = {
   dismissPasswordConfirmation: () => void;
   confirmRecentPassword: (password: string) => Promise<boolean>;
   updateField: (path: string, value: unknown) => void;
-  saveDraft: () => Promise<boolean>;
+  saveDraft: () => Promise<number | false>;
   publish: () => Promise<void>;
+  schedulePublication: (dueAt: string) => Promise<void>;
+  cancelScheduledPublication: (id: string) => Promise<void>;
   cancel: () => void;
   enterPreview: () => void;
   restoreVersion: (id: string) => Promise<void>;
@@ -137,6 +150,15 @@ export function InlineCmsProvider({
   const [content, setContent] = useState(initialContent);
   const [editorLocale, setEditorLocale] = useState<string | null>(null);
   const [draftRevision, setDraftRevision] = useState<number | null>(null);
+  const [pageId, setPageId] = useState<string | null>(null);
+  const draftReady = editorLocale === locale && draftRevision != null;
+  const changeMode = useCallback((next: CmsMode) => {
+    if (next === "edit" && mode === "live") {
+      setEditorLocale(null);
+      setDraftRevision(null);
+    }
+    setMode(next);
+  }, [mode]);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -175,6 +197,7 @@ export function InlineCmsProvider({
         setEditorLocale(locale);
         setContent(draft);
         setDraftRevision(state.draft_revision);
+        setPageId(state.id);
         setDirty(false);
       })
       .catch((err) => {
@@ -187,10 +210,11 @@ export function InlineCmsProvider({
   }, [editing, locale]);
 
   const updateField = useCallback((path: string, value: unknown) => {
+    if (!draftReady) return;
     editGeneration.current += 1;
     setContent((prev) => setByPath(prev, path, value));
     setDirty(true);
-  }, []);
+  }, [draftReady]);
 
   const saveDraft = useCallback(async () => {
     if (!canEdit || editorLocale !== locale || draftRevision == null || operation.current) return false;
@@ -204,7 +228,7 @@ export function InlineCmsProvider({
       if (generation !== editGeneration.current) return false;
       setDirty(false);
       setMessage(locale === "en" ? "Draft saved" : "Concept opgeslagen");
-      return true;
+      return res.draft_revision;
     } catch (err) {
       if (err instanceof ApiError && err.code === "password_confirmation_required") setNeedsPassword(true);
       setMessage(err instanceof ApiError ? err.message : cmsLabel(locale, "Opslaan mislukt"));
@@ -228,10 +252,11 @@ export function InlineCmsProvider({
     if (!canEdit || editorLocale !== locale || operation.current || draftRevision == null) return;
     setMessage(null);
     try {
-      if (dirty && !(await saveDraft())) return;
+      const reviewedRevision = dirty ? await saveDraft() : draftRevision;
+      if (reviewedRevision === false) return;
       operation.current = true;
       setSaving(true);
-      await publishHomepage(locale);
+      await publishHomepage(locale, reviewedRevision);
       setMode("live");
       setMessage(cmsLabel(locale, "Gepubliceerd — live homepage bijgewerkt"));
       // Soft refresh so RSC picks up cache invalidation.
@@ -244,6 +269,40 @@ export function InlineCmsProvider({
       setSaving(false);
     }
   }, [dirty, locale, saveDraft, draftRevision, canEdit, editorLocale]);
+
+  const schedulePublication = useCallback(async (dueAt: string) => {
+    if (!canEdit || editorLocale !== locale || operation.current || draftRevision == null || !pageId) return;
+    try {
+      const reviewedRevision = dirty ? await saveDraft() : draftRevision;
+      if (reviewedRevision === false) return;
+      operation.current = true;
+      setSaving(true);
+      await queueHomepagePublication(pageId, locale, reviewedRevision, dueAt);
+      setMessage(locale === "en" ? "Publication queued. The current page stays live. Later draft edits invalidate this schedule." : "Publicatie ingepland. De huidige pagina blijft live. Latere conceptwijzigingen maken deze planning ongeldig.");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "password_confirmation_required") setNeedsPassword(true);
+      setMessage(err instanceof ApiError ? err.message : cmsLabel(locale, "Planning opslaan mislukt"));
+    } finally {
+      operation.current = false;
+      setSaving(false);
+    }
+  }, [canEdit, editorLocale, locale, draftRevision, pageId, dirty, saveDraft]);
+
+  const cancelScheduledPublication = useCallback(async (id: string) => {
+    if (!canEdit || operation.current) return;
+    operation.current = true;
+    setSaving(true);
+    try {
+      await cancelHomepageSchedule(id, locale);
+      setMessage(locale === "en" ? "Scheduled publication cancelled." : "Geplande publicatie geannuleerd.");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "password_confirmation_required") setNeedsPassword(true);
+      setMessage(err instanceof ApiError ? err.message : cmsLabel(locale, "Planning opslaan mislukt"));
+    } finally {
+      operation.current = false;
+      setSaving(false);
+    }
+  }, [canEdit, locale]);
 
   const cancel = useCallback(() => {
     setContent(liveContent);
@@ -305,10 +364,11 @@ export function InlineCmsProvider({
   const value = useMemo<InlineCmsContextValue>(
     () => ({
       canEdit,
-      mode,
-      content: !canEdit || mode === "live" ? liveContent : editorLocale === locale ? content : mergeHomepageContent(null, locale),
-      setMode,
+      mode: editing && !draftReady ? "preview" : mode,
+      content: !canEdit || mode === "live" || !draftReady ? liveContent : content,
+      setMode: changeMode,
       draftRevision: editorLocale === locale ? draftRevision : null,
+      draftReady,
       dirty,
       saving,
       message,
@@ -318,6 +378,9 @@ export function InlineCmsProvider({
       confirmRecentPassword,
       updateField,
       saveDraft,
+      schedulePublication,
+      cancelScheduledPublication,
+      pageId,
       publish,
       cancel,
       enterPreview,
@@ -329,6 +392,9 @@ export function InlineCmsProvider({
       editorLocale,
       locale,
       mode,
+      editing,
+      draftReady,
+      changeMode,
       liveContent,
       content,
       draftRevision,
@@ -341,6 +407,9 @@ export function InlineCmsProvider({
       confirmRecentPassword,
       updateField,
       saveDraft,
+      schedulePublication,
+      cancelScheduledPublication,
+      pageId,
       publish,
       cancel,
       enterPreview,
@@ -366,6 +435,19 @@ export function CmsToolbar() {
   const [panel, setPanel] = useState<"none" | "sections" | "seo" | "schedule" | "history">("none");
   const [versions, setVersions] = useState<Awaited<ReturnType<typeof fetchHomepageVersions>>>([]);
   const [versionId, setVersionId] = useState("");
+  const [publishAt, setPublishAt] = useState("");
+  const [schedules, setSchedules] = useState<Awaited<ReturnType<typeof fetchHomepageSchedules>>>([]);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  useEffect(() => {
+    if (panel !== "schedule" || !cms.pageId || !cms.canEdit) return;
+    let cancelled = false;
+    void fetchHomepageSchedules(cms.pageId, locale).then(rows => {
+      if (!cancelled) { setSchedules(rows); setScheduleError(null); }
+    }).catch(err => {
+      if (!cancelled) setScheduleError(err instanceof ApiError ? err.message : cmsLabel(locale, "Planning opslaan mislukt"));
+    });
+    return () => { cancelled = true; };
+  }, [panel, cms.pageId, cms.canEdit, cms.saving, locale]);
   useEffect(() => {
     if (!cms.canEdit || panel !== "history") return;
     let cancelled = false;
@@ -373,9 +455,6 @@ export function CmsToolbar() {
     void fetchHomepageVersions(locale).then((rows) => { if (!cancelled) setVersions(rows.filter(row => row.locale === locale)); }).catch(() => { if (!cancelled) setVersions([]); });
     return () => { cancelled = true; };
   }, [cms.canEdit, panel, locale]);
-  const localDate = (value?: string | null) => value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "";
-  const publishAt = localDate(cms.content.schedule?.publish_at);
-  const unpublishAt = localDate(cms.content.schedule?.unpublish_at);
 
   if (!cms.canEdit) return null;
 
@@ -395,13 +474,7 @@ export function CmsToolbar() {
   }
 
   async function applySchedule() {
-    try {
-      if (cms.dirty && !(await cms.saveDraft())) return;
-
-      window.alert(cmsLabel(locale, "Planning opgeslagen in concept."));
-    } catch (err) {
-      window.alert(err instanceof ApiError ? err.message : cmsLabel(locale, "Planning opslaan mislukt"));
-    }
+    if (publishAt) await cms.schedulePublication(new Date(publishAt).toISOString());
   }
 
   return (
@@ -410,7 +483,7 @@ export function CmsToolbar() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm">
             <p className="font-extrabold text-navy">
-              {cms.mode === "preview" ? cmsLabel(locale, "Voorbeeldmodus") : cmsLabel(locale, "Homepage bewerken")}
+              {!cms.draftReady ? (locale === "en" ? "Loading draft…" : "Concept laden…") : cms.mode === "preview" ? cmsLabel(locale, "Voorbeeldmodus") : cmsLabel(locale, "Homepage bewerken")}
               {cms.dirty ? cmsLabel(locale, " · niet-opgeslagen wijzigingen") : ""}
               {cms.saving ? cmsLabel(locale, " · opslaan…") : ""}
             </p>
@@ -458,7 +531,7 @@ export function CmsToolbar() {
             </button>
             <button
               type="button"
-              disabled={cms.saving}
+              disabled={cms.saving || !cms.draftReady}
               onClick={() => void cms.publish()}
               className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
               data-testid="cms-publish"
@@ -538,22 +611,20 @@ export function CmsToolbar() {
               <input
                 type="datetime-local"
                 value={publishAt}
-                onChange={(e) => cms.updateField("schedule.publish_at", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                onChange={(e) => setPublishAt(e.target.value)}
                 className="mt-1 block rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
               />
             </label>
-            <label className="text-xs font-bold text-navy">
-              {locale === "en" ? "Unpublish at" : "Verbergen op"}
-              <input
-                type="datetime-local"
-                value={unpublishAt}
-                onChange={(e) => cms.updateField("schedule.unpublish_at", e.target.value ? new Date(e.target.value).toISOString() : null)}
-                className="mt-1 block rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
-              />
-            </label>
+            <p className="text-xs">{locale === "en" ? "Your local time. The current page stays live until publication. Later draft saves invalidate the queued revision." : "Je lokale tijd. De huidige pagina blijft live tot publicatie. Latere conceptwijzigingen maken de geplande versie ongeldig."}</p>
+            {scheduleError && <p role="alert">{scheduleError}</p>}
+            {schedules.filter(row => row.locale === locale).map(row => <div key={row.id} className="text-xs" data-testid="cms-publication-schedule" data-status={row.status}>
+              {new Date(row.due_at).toLocaleString(locale)} · {publicationStatusLabel(locale, row.status)} · {locale === "en" ? "Draft" : "Concept"} {row.draft_revision}
+              {row.status === "scheduled" && <button type="button" disabled={cms.saving} onClick={() => void cms.cancelScheduledPublication(row.id)}>{locale === "en" ? "Cancel publication" : "Publicatie annuleren"}</button>}
+            </div>)}
             <button
               type="button"
               onClick={() => void applySchedule()}
+              disabled={!publishAt || cms.saving || !cms.draftReady}
               className="rounded-xl bg-navy px-4 py-2 text-sm font-bold text-white"
             >
               {locale === "en" ? "Save schedule" : "Planning opslaan"}

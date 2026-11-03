@@ -11,18 +11,22 @@ import { useWorkspace } from "@/store/WorkspaceContext";
 import { useSession } from "@/store/SessionContext";
 import { formatMinor } from "@/lib/money";
 import { subscribeOrderSheet } from "@/lib/echo";
+import { useLocale } from "@/i18n/LocaleContext";
+import { appStoreText } from "@/i18n/appStoreCopy";
 import {
   ApiError,
   SERVICE_APPS,
   canAccessAppStore,
   canManageIntegrations,
   capabilityBadgeFromState,
+  catalogSyncState,
   connectionBadge,
   connectionLifecycle,
   connectionStatusLabel,
   createConnection,
   disconnectConnection,
   fetchConnection,
+  fetchCatalogSyncs,
   fetchConnectionCoupons,
   fetchConnectionEvents,
   fetchConnectionHealth,
@@ -34,6 +38,7 @@ import {
   paymentStatusLabel,
   replaceConnectionCredentials,
   retryConnectionEvent,
+  setConnectionPaused,
   startShopifyOAuth,
   summarizeCapabilities,
   syncConnectionCoupons,
@@ -52,6 +57,29 @@ import {
 type MainTab = "discover" | "connections" | "services";
 type PlatformFilter = "all" | "webshop" | "coming_soon" | "status";
 
+const NATIVE_FIELDS: Record<string, { key: string; label: string; secret?: boolean }[]> = {
+  ecwid: [
+    { key: "store_id", label: "Ecwid store ID" },
+    { key: "access_token", label: "Store access token", secret: true },
+    { key: "client_secret", label: "App client secret", secret: true },
+  ],
+  lightspeed_e: [
+    { key: "store_id", label: "E-Series / Ecwid store ID" },
+    { key: "access_token", label: "Store access token", secret: true },
+    { key: "client_secret", label: "App client secret", secret: true },
+  ],
+  squarespace: [
+    { key: "website_id", label: "Squarespace website ID" },
+    { key: "api_key", label: "Orders read API key", secret: true },
+  ],
+  prestashop: [
+    { key: "store_url", label: "Verified HTTPS installation URL" },
+    { key: "webservice_key", label: "Read-only Webservice key", secret: true },
+    { key: "shop_id", label: "PrestaShop shop ID" },
+    { key: "timezone", label: "Store timezone (for example Europe/Amsterdam)" },
+  ],
+};
+
 function stepIndex(checklist: ConnectionChecklist | null, connection: WebshopConnection | null): number {
   if (!connection) return 1;
   if (!connection.setup?.webhook_url) return 1;
@@ -67,6 +95,8 @@ function normalizeShopifyDomain(raw: string): string {
 }
 
 export default function AppStorePage() {
+  const { locale } = useLocale();
+  const t = useCallback((text: string) => appStoreText(locale, text), [locale]);
   const { ready: sessionReady } = useSession();
   const { workspaceId, revision, current } = useWorkspace();
   // Wait for /me before role-gating so SSR and the first client paint stay identical.
@@ -92,11 +122,16 @@ export default function AppStorePage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncFeedback, setSyncFeedback] = useState<{ owner: string; runId: string | null; kind: string; state: string; imported: number; code: string | null } | null>(null);
   const [secrets, setSecrets] = useState<Record<string, string> | null>(null);
   const [storeUrl, setStoreUrl] = useState("");
   const [consumerKey, setConsumerKey] = useState("");
   const [consumerSecret, setConsumerSecret] = useState("");
   const [shopifyDomain, setShopifyDomain] = useState("");
+  const credentialOwner = `${workspaceId}:${selectedPlatform ?? ""}`;
+  const [nativeDraft, setNativeDraft] = useState<{ owner: string; values: Record<string, string> }>({ owner: "", values: {} });
+  const nativeValues = nativeDraft.owner === credentialOwner ? nativeDraft.values : {};
+  const nativeFields = NATIVE_FIELDS[selectedPlatform ?? ""] ?? [];
   const [copied, setCopied] = useState(false);
   const [live, setLive] = useState(false);
 
@@ -169,12 +204,12 @@ export default function AppStorePage() {
         });
       } catch (err) {
         if (signal?.aborted) return;
-        setError(err instanceof ApiError ? err.message : "App Store kon niet worden geladen.");
+        setError(err instanceof ApiError ? err.message : t("App Store kon niet worden geladen."));
       } finally {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [workspaceId, allowed]
+    [workspaceId, allowed, t]
   );
 
   const refreshSelected = useCallback(
@@ -216,10 +251,10 @@ export default function AppStorePage() {
           setChecklist(null);
           return;
         }
-        setError(err instanceof ApiError ? err.message : "Verbinding kon niet worden geladen.");
+        setError(err instanceof ApiError ? err.message : t("Verbinding kon niet worden geladen."));
       }
     },
-    [workspaceId, selectedPlatform, connections]
+    [workspaceId, selectedPlatform, connections, t]
   );
 
   const refreshOrders = useCallback(
@@ -236,15 +271,32 @@ export default function AppStorePage() {
 
   useEffect(() => {
     const ac = new AbortController();
-    void loadBase(ac.signal);
+    queueMicrotask(() => { if (!ac.signal.aborted) void loadBase(ac.signal); });
     return () => ac.abort();
   }, [loadBase, revision]);
 
   useEffect(() => {
     const ac = new AbortController();
-    void refreshSelected(ac.signal);
+    queueMicrotask(() => { if (!ac.signal.aborted) void refreshSelected(ac.signal); });
     return () => ac.abort();
   }, [refreshSelected]);
+
+  useEffect(() => {
+    const conn = connection ?? activeConnection;
+    if (!conn || !syncFeedback?.runId || syncFeedback.owner !== `${workspaceId}:${conn.id}` || !["queued", "processing"].includes(syncFeedback.state)) return;
+    const ac = new AbortController();
+    const timer = window.setInterval(async () => {
+      try {
+        const runs = await fetchCatalogSyncs(workspaceId, conn.id, ac.signal);
+        const run = runs.find((row) => row.id === syncFeedback.runId);
+        if (!run || ac.signal.aborted) return;
+        const state = catalogSyncState({ ...run, run_id: run.id, imported: run.items, exhausted: run.status === "completed", cursor: null });
+        setSyncFeedback((previous) => previous?.runId === run.id ? { ...previous, state, imported: run.items, code: run.error_code } : previous);
+        if (!["queued", "processing"].includes(state)) await refreshSelected(ac.signal);
+      } catch { /* Keep the last observed state until a successful refresh. */ }
+    }, 3000);
+    return () => { ac.abort(); window.clearInterval(timer); };
+  }, [workspaceId, connection, activeConnection, syncFeedback, refreshSelected]);
 
   useEffect(() => {
     if (!current?.id || !allowed) return;
@@ -271,6 +323,7 @@ export default function AppStorePage() {
   const selectPlatform = (platform: string, stayOnConnections = false) => {
     setSelectedPlatform(platform);
     setSecrets(null);
+    setNativeDraft({ owner: "", values: {} });
     if (!stayOnConnections) {
       setMainTab("discover");
     }
@@ -291,14 +344,18 @@ export default function AppStorePage() {
       if (selectedPlatform === "shopify" && shopifyDomain) {
         body.shop_domain = normalizeShopifyDomain(shopifyDomain);
       }
+      for (const field of nativeFields) {
+        if (nativeValues[field.key]) body[field.key] = nativeValues[field.key].trim();
+      }
       const created = await createConnection(workspaceId, selectedPlatform, body);
+      setNativeDraft({ owner: "", values: {} });
       setSecrets(created.secrets ?? null);
       setConnection(created);
       setConnections((prev) => [created, ...prev.filter((c) => c.id !== created.id)]);
       const check = await verifyConnection(workspaceId, created.id);
       setChecklist(check);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Verbinding starten mislukt.");
+      setError(err instanceof ApiError ? err.message : t("Verbinding starten mislukt."));
     } finally {
       setBusy(false);
     }
@@ -308,7 +365,7 @@ export default function AppStorePage() {
     if (!canManage) return;
     const domain = normalizeShopifyDomain(shopifyDomain);
     if (!domain.endsWith(".myshopify.com")) {
-      setError("Enter a canonical shop domain like your-store.myshopify.com");
+      setError(t("Enter a canonical shop domain like your-store.myshopify.com"));
       return;
     }
     setBusy(true);
@@ -320,7 +377,7 @@ export default function AppStorePage() {
       setError(
         err instanceof ApiError
           ? err.message
-          : "Shopify OAuth could not start. Check SHOPIFY_OAUTH_ENABLED and app credentials."
+          : t("Shopify OAuth could not start. Check SHOPIFY_OAUTH_ENABLED and app credentials.")
       );
       setBusy(false);
     }
@@ -333,16 +390,22 @@ export default function AppStorePage() {
     setError(null);
     try {
       const body: Record<string, unknown> = {};
-      if (storeUrl) body.store_url = storeUrl;
-      if (consumerKey) body.consumer_key = consumerKey;
-      if (consumerSecret) body.consumer_secret = consumerSecret;
+      if (conn.platform === "woocommerce") {
+        if (storeUrl) body.store_url = storeUrl;
+        if (consumerKey) body.consumer_key = consumerKey;
+        if (consumerSecret) body.consumer_secret = consumerSecret;
+      }
+      for (const field of NATIVE_FIELDS[conn.platform] ?? []) {
+        if (nativeValues[field.key]) body[field.key] = nativeValues[field.key].trim();
+      }
       const updated = await replaceConnectionCredentials(workspaceId, conn.id, body);
+      setNativeDraft({ owner: "", values: {} });
       setSecrets(updated.secrets ?? null);
       setConnection(updated);
       const check = await verifyConnection(workspaceId, updated.id);
       setChecklist(check);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Credentials opslaan mislukt.");
+      setError(err instanceof ApiError ? err.message : t("Could not save credentials."));
     } finally {
       setBusy(false);
     }
@@ -362,7 +425,7 @@ export default function AppStorePage() {
       setHealth(healthData);
       await refreshOrders();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Verificatie mislukt.");
+      setError(err instanceof ApiError ? err.message : t("Verificatie mislukt."));
     } finally {
       setBusy(false);
     }
@@ -404,7 +467,23 @@ export default function AppStorePage() {
       setSecrets(null);
       setConnections((prev) => prev.map((c) => (c.id === conn.id ? { ...c, status: "disconnected" } : c)));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Verbreken mislukt.");
+      setError(err instanceof ApiError ? err.message : t("Verbreken mislukt."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onTogglePause = async () => {
+    const conn = connection ?? activeConnection;
+    if (!conn || !canManage) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await setConnectionPaused(workspaceId, conn.id, !conn.paused_at);
+      setConnection((previous) => ({ ...previous, ...updated }));
+      setConnections((previous) => previous.map((row) => row.id === updated.id ? updated : row));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("Could not update pause state."));
     } finally {
       setBusy(false);
     }
@@ -415,23 +494,23 @@ export default function AppStorePage() {
     if (!conn || !canManage) return;
     setBusy(true);
     setError(null);
+    setSyncFeedback(null);
     try {
+      const result = kind === "products"
+        ? await syncConnectionProducts(workspaceId, conn.id)
+        : await syncConnectionCoupons(workspaceId, conn.id);
+      setSyncFeedback({ owner: `${workspaceId}:${conn.id}`, runId: result.run_id, kind, state: catalogSyncState(result), imported: result.imported, code: result.error_code });
       if (kind === "products") {
-        const result = await syncConnectionProducts(workspaceId, conn.id);
         setProducts(await fetchConnectionProducts(workspaceId, conn.id));
-        if (result.imported === 0 && !result.exhausted) {
-          setError("Product sync returned no rows — capability may be UNSUPPORTED for this platform.");
-        }
       } else {
-        const result = await syncConnectionCoupons(workspaceId, conn.id);
         setCoupons(await fetchConnectionCoupons(workspaceId, conn.id));
-        if (result.imported === 0 && !result.exhausted) {
-          setError("Coupon sync returned no rows — capability may be UNSUPPORTED for this platform.");
-        }
       }
       setHealth(await fetchConnectionHealth(workspaceId, conn.id).catch(() => null));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Catalog sync failed (often UNSUPPORTED).");
+      if (err instanceof ApiError && err.code === "capability_unsupported") {
+        setSyncFeedback({ owner: `${workspaceId}:${conn.id}`, runId: null, kind, state: "unsupported", imported: 0, code: err.code });
+      }
+      setError(err instanceof ApiError ? err.message : t("Catalog sync failed."));
     } finally {
       setBusy(false);
     }
@@ -445,17 +524,25 @@ export default function AppStorePage() {
       await retryConnectionEvent(workspaceId, conn.id, eventId);
       setEvents(await fetchConnectionEvents(workspaceId, conn.id));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Event retry failed.");
+      setError(err instanceof ApiError ? err.message : t("Event retry failed."));
     } finally {
       setBusy(false);
     }
   };
 
   const webhookUrl = connection?.setup?.webhook_url ?? activeConnection?.setup?.webhook_url;
+  const packageFile = selectedPlatform === "prestashop" ? "shopbonus-prestashop9.zip" : selectedPlatform === "opencart" ? "shopbonus.ocmod.zip" : null;
+  let packageUrl: string | null = null;
+  try {
+    if (webhookUrl && packageFile) {
+      const endpoint = new URL(webhookUrl);
+      if (["https:", "http:"].includes(endpoint.protocol)) packageUrl = new URL(`/downloads/integrations/${packageFile}`, endpoint.origin).href;
+    }
+  } catch { /* A malformed setup URL must not break the connection screen. */ }
   const steps = connection?.setup?.steps ?? [
-    "Select your platform and start the connection for this shop.",
-    "Grant least-privilege access or paste the ShopBonus webhook URL.",
-    "Verify a real paid order independently — a token handshake is not verification.",
+    t("Select your platform and start the connection for this shop."),
+    t("Grant least-privilege access or paste the ShopBonus webhook URL."),
+    t("Verify a real paid order independently — a token handshake is not verification."),
   ];
 
   const copyUrl = async () => {
@@ -474,11 +561,11 @@ export default function AppStorePage() {
       <DashboardShell>
         <DashboardHeading
           title="App Store"
-          subtitle="Webshop platforms and service connections for this shop."
+          subtitle={t("Webshop platforms and service connections for this shop.")}
         />
         <Panel>
           <p className="py-8 text-center text-sm font-semibold text-muted" role="status">
-            App Store laden…
+            {t("App Store laden…")}
           </p>
         </Panel>
       </DashboardShell>
@@ -490,15 +577,14 @@ export default function AppStorePage() {
       <DashboardShell>
         <DashboardHeading
           title="App Store"
-          subtitle="Webshop platforms and service connections for this shop."
+          subtitle={t("Webshop platforms and service connections for this shop.")}
         />
         <Panel>
           <p className="text-sm font-semibold text-navy">
-            You do not have App Store access on this workspace. Owners and managers can connect
-            platforms; employees and sales agents cannot.
+            {t("You do not have App Store access on this workspace. Owners and managers can connect platforms; employees and sales agents cannot.")}
           </p>
           <p className="mt-2 text-sm text-muted">
-            Current role: <span className="font-bold text-navy">{current?.role ?? "unknown"}</span>
+            {t("Current role")}: <span className="font-bold text-navy">{current?.role ?? "unknown"}</span>
           </p>
         </Panel>
       </DashboardShell>
@@ -509,7 +595,7 @@ export default function AppStorePage() {
     <DashboardShell>
       <DashboardHeading
         title="App Store"
-        subtitle={`Webshop Platforms · shop ${current?.name ?? "—"} · connections stay scoped to this workspace.`}
+        subtitle={`${t("Connections for")} ${current?.name ?? "—"} · ${t("Connection data is scoped to this workspace.")}`}
       />
 
       {error && (
@@ -521,9 +607,9 @@ export default function AppStorePage() {
       <div className="mb-5 flex flex-wrap gap-2">
         {(
           [
-            ["discover", "Discover Apps"],
-            ["connections", "My Connections"],
-            ["services", "Services"],
+            ["discover", t("Discover Apps")],
+            ["connections", t("My Connections")],
+            ["services", t("Services")],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -549,7 +635,7 @@ export default function AppStorePage() {
                 <CapabilityBadge
                   kind={
                     svc.status === "AVAILABLE"
-                      ? "VERIFIED"
+                      ? "SETUP REQUIRED"
                       : svc.status === "NOT_IMPLEMENTED"
                         ? "UNSUPPORTED"
                         : svc.status === "ADMIN_ONLY"
@@ -558,15 +644,16 @@ export default function AppStorePage() {
                   }
                 />
               </div>
-              <p className="mt-1 text-sm font-semibold text-muted">{svc.purpose}</p>
-              <p className="mt-3 text-xs font-semibold leading-relaxed text-navy/80">{svc.note}</p>
+              <p className="mt-1 text-sm font-semibold text-muted">{t(svc.purpose)}</p>
+              <p className="mt-3 text-xs font-semibold leading-relaxed text-navy/80">{t(svc.note)}</p>
+              {svc.status === "AVAILABLE" && <p className="mt-2 text-xs text-muted">{t("Service availability does not verify authorization or health for this workspace.")}</p>}
               {svc.href && svc.status === "AVAILABLE" && (
                 <Link href={svc.href} className="mt-3 inline-flex text-sm font-extrabold text-brand hover:underline">
-                  Open settings
+                  {t("Open settings")}
                 </Link>
               )}
               {svc.status === "ADMIN_ONLY" && (
-                <p className="mt-3 text-xs font-bold text-amber-800">Super Admin configures this service.</p>
+                <p className="mt-3 text-xs font-bold text-amber-800">{t("Super Admin configures this service.")}</p>
               )}
             </Panel>
           ))}
@@ -577,7 +664,7 @@ export default function AppStorePage() {
         <Panel className="!p-4 sm:!p-5">
           {myConnections.length === 0 ? (
             <p className="py-8 text-center text-sm font-semibold text-muted">
-              No active connections. Open Discover Apps to connect a platform.
+              {t("No active connections. Open Discover Apps to connect a platform.")}
             </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -598,7 +685,7 @@ export default function AppStorePage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-extrabold text-navy">{meta?.name ?? c.platform}</p>
                         <p className="mt-0.5 truncate text-xs font-semibold text-muted">
-                          {c.external_shop_ref ?? connectionStatusLabel(c.status)}
+                          {c.external_shop_ref ?? t(connectionStatusLabel(c.status))}
                         </p>
                         <div className="mt-2">
                           <CapabilityBadge kind={b.kind} title={b.detail} />
@@ -606,7 +693,7 @@ export default function AppStorePage() {
                       </div>
                     </div>
                     <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-brand">
-                      Manage
+                      {t("Manage")}
                       <DashboardIcon name="arrow" size={14} />
                     </span>
                   </button>
@@ -623,10 +710,10 @@ export default function AppStorePage() {
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {(
                 [
-                  ["all", "All"],
-                  ["webshop", "Webshop Platforms"],
-                  ["coming_soon", "Coming soon"],
-                  ["status", "By status"],
+                  ["all", t("All")],
+                  ["webshop", t("Webshop Platforms")],
+                  ["coming_soon", t("Coming soon")],
+                  ["status", t("By status")],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -646,7 +733,7 @@ export default function AppStorePage() {
               <div className="mb-3 flex flex-wrap gap-2">
                 {(["all", "connected", "setup", "disconnected", "error"] as const).map((s) => (
                   <button
-                    key={s}
+                    key={t(s)}
                     type="button"
                     onClick={() => setStatusFilter(s)}
                     className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
@@ -660,7 +747,7 @@ export default function AppStorePage() {
             )}
 
             <div className="mb-3 flex flex-wrap gap-2">
-              <span className="self-center text-xs font-extrabold uppercase tracking-wide text-muted">Capability</span>
+              <span className="self-center text-xs font-extrabold uppercase tracking-wide text-muted">{t("Capability")}</span>
               {(["all", "orders", "products", "coupons_read", "banner_embed", "refunds"] as const).map((c) => (
                 <button
                   key={c}
@@ -670,7 +757,7 @@ export default function AppStorePage() {
                     capabilityFilter === c ? "bg-navy text-white" : "bg-slate-100 text-navy"
                   }`}
                 >
-                  {c === "all" ? "all" : c.replaceAll("_", " ")}
+                  {t(c === "all" ? "all" : c.replaceAll("_", " "))}
                 </button>
               ))}
             </div>
@@ -682,13 +769,13 @@ export default function AppStorePage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search platforms…"
+                placeholder={t("Search platforms…")}
                 className="w-full rounded-2xl border border-blue-100 bg-white py-3 pl-10 pr-4 text-sm font-semibold text-navy outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
               />
             </label>
 
             {loading ? (
-              <p className="py-10 text-center text-sm font-semibold text-muted">Platforms laden…</p>
+              <p className="py-10 text-center text-sm font-semibold text-muted">{t("Platforms laden…")}</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredPlatforms.map((p) => {
@@ -713,7 +800,7 @@ export default function AppStorePage() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-extrabold text-navy">{p.name}</p>
                           <p className="mt-0.5 line-clamp-2 text-[11px] font-semibold leading-snug text-muted">
-                            {summarizeCapabilities(p.capabilities)}
+                            {summarizeCapabilities(p.capabilities, t)}
                           </p>
                           <div className="mt-2">
                             <CapabilityBadge kind={b.kind} title={b.detail} />
@@ -722,10 +809,10 @@ export default function AppStorePage() {
                       </div>
                       <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-brand">
                         {!p.available
-                          ? "Coming soon"
+                          ? t("Coming soon")
                           : conn
-                            ? "Manage"
-                            : "Connect"}
+                            ? t("Manage")
+                            : t("Connect")}
                         <DashboardIcon name="arrow" size={14} />
                       </span>
                     </button>
@@ -741,21 +828,22 @@ export default function AppStorePage() {
                 <div>
                   <h2 className="text-xl font-black text-navy">{selectedMeta?.name ?? "Platform"}</h2>
                   <p className="mt-1 text-sm font-semibold text-muted">
-                    {activeConnection ? "Manage connection" : "Connect"} · step {step} of 3 ·{" "}
-                    {connectionStatusLabel(lifecycle)}
+                    {activeConnection ? t("Manage connection") : t("Connect")} · {t("step")} {step} {t("of 3")} ·{" "}
+                    {t(connectionStatusLabel(lifecycle))}
                   </p>
-                  <p className="mt-2 text-xs font-semibold leading-relaxed text-navy/70">{badge.detail}</p>
+                  <p className="mt-2 text-xs font-semibold leading-relaxed text-navy/70">{t(badge.detail)}</p>
+                  {(connection ?? activeConnection)?.paused_at && <p role="status" className="mt-2 text-sm font-bold text-amber-800">{t("Integration paused. Credentials and connection history are retained.")}</p>}
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <CapabilityBadge kind={badge.kind} title={badge.detail} />
                   <StatusPill
-                    status={
-                      lifecycle === "connected"
+                    status={t(
+                      (connection ?? activeConnection)?.paused_at ? "Paused" : lifecycle === "connected"
                         ? "Geverifieerd"
                         : lifecycle === "error"
                           ? "Fout"
                           : "In behandeling"
-                    }
+                    )}
                   />
                 </div>
               </div>
@@ -778,7 +866,7 @@ export default function AppStorePage() {
 
               {!selectedMeta?.available && (
                 <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
-                  {selectedMeta?.blocked_reason ?? "This platform cannot be connected yet."}
+                  {selectedMeta?.blocked_reason ?? t("This platform cannot be connected yet.")}
                 </p>
               )}
 
@@ -799,10 +887,16 @@ export default function AppStorePage() {
                     ))}
                   </ol>
 
+                  {packageUrl && canManage && (
+                    <a href={packageUrl} className="mt-4 inline-flex rounded-xl bg-navy px-4 py-2.5 text-sm font-bold text-white">
+                      {t("Download candidate connector ZIP")}
+                    </a>
+                  )}
+
                   {webhookUrl && (
                     <div className="mt-5">
                       <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-muted">
-                        Webhook endpoint URL
+                        {t("Webhook endpoint URL")}
                       </p>
                       <div className="flex gap-2">
                         <input
@@ -816,7 +910,7 @@ export default function AppStorePage() {
                           className="inline-flex items-center gap-1.5 rounded-xl bg-navy px-3 py-2 text-sm font-bold text-white"
                         >
                           <DashboardIcon name="copy" size={16} />
-                          {copied ? "Copied" : "Copy URL"}
+                          {copied ? t("Copied") : t("Copy URL")}
                         </button>
                       </div>
                     </div>
@@ -824,7 +918,7 @@ export default function AppStorePage() {
 
                   {secrets && (
                     <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm">
-                      <p className="font-extrabold text-amber-900">Show once — store now</p>
+                      <p className="font-extrabold text-amber-900">{t("Show once — store now")}</p>
                       {Object.entries(secrets).map(([key, value]) => (
                         <p key={key} className="mt-1 break-all font-mono text-amber-950">
                           <span className="font-bold">{key}:</span> {value}
@@ -842,9 +936,32 @@ export default function AppStorePage() {
                         className="rounded-xl border border-blue-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-brand/30"
                       />
                       <p className="text-xs font-semibold text-muted">
-                        Least privilege: read_orders, read_products. OAuth requires SHOPIFY_OAUTH_ENABLED on the
-                        server.
+                        {t("Authorize Shopify to read orders and products.")}
                       </p>
+                    </div>
+                  )}
+
+                  {nativeFields.length > 0 && canManage && (
+                    <div className="mt-4 grid gap-3">
+                      <p className="text-xs font-semibold text-muted">
+                        {t("Enter restricted provider credentials. Saving credentials does not verify a connection.")}
+                      </p>
+                      {nativeFields.map((field) => (
+                        <label key={`${credentialOwner}:${field.key}`} className="grid gap-1 text-xs font-bold text-muted">
+                          {t(field.label)}
+                          <input
+                            type={field.secret ? "password" : "text"}
+                            value={nativeValues[field.key] ?? ""}
+                            onChange={(event) => setNativeDraft((previous) => ({
+                              owner: credentialOwner,
+                              values: { ...(previous.owner === credentialOwner ? previous.values : {}), [field.key]: event.target.value },
+                            }))}
+                            autoComplete="off"
+                            disabled={busy}
+                            className="rounded-xl border border-blue-100 px-3 py-2.5 text-sm font-semibold text-navy outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                        </label>
+                      ))}
                     </div>
                   )}
 
@@ -859,13 +976,13 @@ export default function AppStorePage() {
                       <input
                         value={consumerKey}
                         onChange={(e) => setConsumerKey(e.target.value)}
-                        placeholder="Read-only consumer key (optional)"
+                        placeholder={t("Read-only consumer key (optional)")}
                         className="rounded-xl border border-blue-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-brand/30"
                       />
                       <input
                         value={consumerSecret}
                         onChange={(e) => setConsumerSecret(e.target.value)}
-                        placeholder="Read-only consumer secret (optional)"
+                        placeholder={t("Read-only consumer secret (optional)")}
                         type="password"
                         autoComplete="off"
                         className="rounded-xl border border-blue-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-brand/30"
@@ -882,7 +999,7 @@ export default function AppStorePage() {
                         className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-60"
                       >
                         <DashboardIcon name="plus" size={16} />
-                        Connect
+                        {t("Connect")}
                       </button>
                     )}
                     {selectedPlatform === "shopify" && canManage && (
@@ -895,14 +1012,14 @@ export default function AppStorePage() {
                         Shopify OAuth
                       </button>
                     )}
-                    {activeConnection && selectedPlatform === "woocommerce" && canManage && (storeUrl || consumerKey) && (
+                    {activeConnection && canManage && ((selectedPlatform === "woocommerce" && (storeUrl || consumerKey)) || (nativeFields.length > 0 && Object.values(nativeValues).some(Boolean))) && (
                       <button
                         type="button"
                         disabled={busy}
                         onClick={() => void onSaveCredentials()}
                         className="rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-bold text-navy"
                       >
-                        Save API credentials
+                        {t("Save API credentials")}
                       </button>
                     )}
                     {activeConnection && (
@@ -913,7 +1030,17 @@ export default function AppStorePage() {
                         className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-60"
                       >
                         <DashboardIcon name="sync" size={16} />
-                        Verify
+                        {t("Verify")}
+                      </button>
+                    )}
+                    {activeConnection && canManage && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void onTogglePause()}
+                        className="rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-bold text-navy disabled:opacity-60"
+                      >
+                        {t((connection ?? activeConnection)?.paused_at ? "Resume integration" : "Pause integration")}
                       </button>
                     )}
                     {activeConnection && canManage && (
@@ -923,7 +1050,7 @@ export default function AppStorePage() {
                         onClick={() => void onReconnect()}
                         className="rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-bold text-navy"
                       >
-                        Reconnect
+                        {t("Reconnect")}
                       </button>
                     )}
                     {activeConnection && canManage && (
@@ -933,7 +1060,7 @@ export default function AppStorePage() {
                         onClick={() => void onDisconnect()}
                         className="rounded-xl px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50"
                       >
-                        Disconnect
+                        {t("Disconnect")}
                       </button>
                     )}
                   </div>
@@ -947,7 +1074,7 @@ export default function AppStorePage() {
                       ))}
                       {checklist.missing_gates.length > 0 && (
                         <p className="mt-1 text-amber-800">
-                          Remaining gates: {checklist.missing_gates.join(", ")}
+                          {t("Remaining gates")}: {checklist.missing_gates.join(", ")}
                         </p>
                       )}
                     </div>
@@ -955,16 +1082,16 @@ export default function AppStorePage() {
 
                   {health && (
                     <div className="mt-4 rounded-xl border border-blue-100 bg-slate-50 px-3 py-3 text-xs font-semibold text-navy/80">
-                      <p className="font-extrabold text-navy">Sync / event health</p>
+                      <p className="font-extrabold text-navy">{t("Sync / event health")}</p>
                       <p className="mt-1">
-                        Sync healthy: {health.sync.healthy ? "yes" : "no"}
+                        {t("Sync healthy")}: {health.sync.healthy ? t("yes") : t("no")}
                         {health.sync.error ? ` · ${health.sync.error}` : ""}
                       </p>
                       <p>
-                        Last success: {health.sync.last_success_at ?? "—"} · products {health.products_synced} ·
-                        coupons {health.coupons_synced}
+                        {t("Last success")}: {health.sync.last_success_at ?? "—"} · {t("products")} {health.products_synced} ·
+                        {t("coupons")} {health.coupons_synced}
                       </p>
-                      <p>Last event: {connection?.last_event_at ?? "—"}</p>
+                      <p>{t("Last event")}: {connection?.last_event_at ?? "—"}</p>
                     </div>
                   )}
                 </>
@@ -974,41 +1101,45 @@ export default function AppStorePage() {
             {activeConnection && (
               <Panel>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-lg font-black text-navy">Catalog & events</h2>
+                  <h2 className="text-lg font-black text-navy">{t("Catalog & events")}</h2>
                   <div className="flex flex-wrap gap-2">
                     {canManage && (
                       <>
                         <button
                           type="button"
-                          disabled={busy}
+                          disabled={busy || !!(connection ?? activeConnection)?.paused_at}
                           onClick={() => void onSyncCatalog("products")}
                           className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-navy"
                         >
-                          Sync products
+                          {t("Sync products")}
                         </button>
                         <button
                           type="button"
-                          disabled={busy}
+                          disabled={busy || !!(connection ?? activeConnection)?.paused_at}
                           onClick={() => void onSyncCatalog("coupons")}
                           className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-navy"
                         >
-                          Sync coupons
+                          {t("Sync coupons")}
                         </button>
                       </>
                     )}
                   </div>
                 </div>
+                {syncFeedback?.owner === `${workspaceId}:${(connection ?? activeConnection)?.id}` && (
+                  <p role="status" aria-live="polite" className="mb-3 text-sm font-semibold text-navy">
+                    {t(syncFeedback.kind)}: {t(syncFeedback.state)} · {syncFeedback.imported} {t("imported")}
+                    {syncFeedback.code ? ` · ${syncFeedback.code}` : ""}
+                  </p>
+                )}
                 <p className="mb-3 text-xs font-semibold text-muted">
-                  Native coupons ≠ ShopBonus wallet vouchers. Sync uses CatalogReader (Woo, Shopify,
-                  Wix, BigCommerce, Ecwid, PrestaShop, Shopware, Magento). Lightspeed C / OpenCart /
-                  roadmap platforms stay UNSUPPORTED — never shown as green.
+                  {t("Native coupons are separate from ShopBonus wallet vouchers. Capabilities are reported per platform; an empty sync is not evidence of unsupported functionality.")}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <p className="mb-1 text-xs font-extrabold uppercase text-muted">Products ({products.length})</p>
+                    <p className="mb-1 text-xs font-extrabold uppercase text-muted">{t("Products")} ({products.length})</p>
                     <ul className="max-h-40 space-y-1 overflow-y-auto text-xs font-semibold text-navy/80">
                       {products.length === 0 ? (
-                        <li className="text-muted">No synced products.</li>
+                        <li className="text-muted">{t("No synced products.")}</li>
                       ) : (
                         products.slice(0, 20).map((p) => (
                           <li key={p.id}>
@@ -1020,15 +1151,15 @@ export default function AppStorePage() {
                     </ul>
                   </div>
                   <div>
-                    <p className="mb-1 text-xs font-extrabold uppercase text-muted">Coupons ({coupons.length})</p>
+                    <p className="mb-1 text-xs font-extrabold uppercase text-muted">{t("Coupons")} ({coupons.length})</p>
                     <ul className="max-h-40 space-y-1 overflow-y-auto text-xs font-semibold text-navy/80">
                       {coupons.length === 0 ? (
-                        <li className="text-muted">No synced coupons.</li>
+                        <li className="text-muted">{t("No synced coupons.")}</li>
                       ) : (
                         coupons.slice(0, 20).map((c) => (
                           <li key={c.id}>
                             {c.code ?? c.external_coupon_id}
-                            {!c.eligible_public ? " · private" : ""}
+                            {!c.eligible_public ? ` · ${t("private")}` : ""}
                           </li>
                         ))
                       )}
@@ -1036,10 +1167,10 @@ export default function AppStorePage() {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <p className="mb-1 text-xs font-extrabold uppercase text-muted">Recent events</p>
+                  <p className="mb-1 text-xs font-extrabold uppercase text-muted">{t("Recent events")}</p>
                   <ul className="max-h-36 space-y-1 overflow-y-auto text-xs font-semibold">
                     {events.length === 0 ? (
-                      <li className="text-muted">No webhook events yet.</li>
+                      <li className="text-muted">{t("No webhook events yet.")}</li>
                     ) : (
                       events.slice(0, 15).map((e) => (
                         <li key={e.id} className="flex items-center justify-between gap-2 text-navy/80">
@@ -1054,7 +1185,7 @@ export default function AppStorePage() {
                               onClick={() => void onRetryEvent(e.id)}
                               className="font-bold text-brand"
                             >
-                              Retry
+                              {t("Retry")}
                             </button>
                           )}
                         </li>
@@ -1068,14 +1199,14 @@ export default function AppStorePage() {
             <Panel>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
-                  <h2 className="text-lg font-black text-navy">Live Order Sheet</h2>
+                  <h2 className="text-lg font-black text-navy">{t("Live Order Sheet")}</h2>
                   <p className="text-sm font-semibold text-muted">
-                    Shop-scoped realtime sheet for {current?.name ?? "this workspace"} only.
+                    {t("Orders for")} {current?.name ?? t("this workspace")}.
                   </p>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-extrabold text-green-700">
                   <span className={`h-2 w-2 rounded-full ${live ? "bg-green-500" : "bg-amber-400"}`} />
-                  {live ? "Receiving orders" : "Polling"}
+                  {live ? t("Receiving orders") : t("Polling")}
                 </span>
               </div>
 
@@ -1083,17 +1214,17 @@ export default function AppStorePage() {
                 <table className="min-w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-blue-50 text-xs font-extrabold uppercase tracking-wide text-muted">
-                      <th className="px-2 py-2">Order</th>
+                      <th className="px-2 py-2">{t("Order")}</th>
                       <th className="px-2 py-2">Platform</th>
-                      <th className="px-2 py-2">Amount</th>
-                      <th className="px-2 py-2">Payment</th>
+                      <th className="px-2 py-2">{t("Amount")}</th>
+                      <th className="px-2 py-2">{t("Payment")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {orders.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="px-2 py-8 text-center font-semibold text-muted">
-                          No orders yet. Place a paid test order after webhook setup.
+                          {t("No orders yet. Place a paid test order after webhook setup.")}
                         </td>
                       </tr>
                     ) : (
@@ -1116,7 +1247,7 @@ export default function AppStorePage() {
                                   : "bg-slate-100 text-slate-700"
                               }`}
                             >
-                              {paymentStatusLabel(o.payment_status)}
+                              {t(paymentStatusLabel(o.payment_status))}
                             </span>
                           </td>
                         </tr>
@@ -1126,7 +1257,7 @@ export default function AppStorePage() {
                 </table>
               </div>
               <p className="mt-3 text-xs font-semibold text-muted">
-                Paid status is independent of cashback/Answer24 eligibility. Unpaid/canceled never start rewards.
+                {t("Paid status is independent of cashback/Answer24 eligibility. Unpaid/canceled never start rewards.")}
               </p>
             </Panel>
           </div>

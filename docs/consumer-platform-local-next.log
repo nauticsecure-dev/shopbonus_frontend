@@ -1,0 +1,21 @@
+▲ Next.js 16.4.4 (Turbopack)
+- Local:         http://127.0.0.1:3340
+- Network:       http://127.0.0.1:3340
+- Environments: .env.local
+✓ Ready in 1762ms
+✓ Running next.config.ts took 164ms
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next-consumer-local-turbo/types/**/*.ts'
+  	- include was updated to add '.next-consumer-local-turbo/dev/types/**/*.ts'
+
+
+○ Compiling /account ...
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3340". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /account 200 in 7.1s (next.js: 4.9s, proxy.ts: 225ms, application-code: 1898ms)
+ GET /profiel 200 in 624ms (next.js: 270ms, proxy.ts: 23ms, application-code: 331ms)
+ GET /profiel 200 in 1153ms (next.js: 34ms, proxy.ts: 16ms, application-code: 1104ms)
+ GET /profiel 200 in 452ms (next.js: 96ms, proxy.ts: 17ms, application-code: 340ms)
+ GET /profiel 200 in 726ms (next.js: 26ms, proxy.ts: 15ms, application-code: 685ms)

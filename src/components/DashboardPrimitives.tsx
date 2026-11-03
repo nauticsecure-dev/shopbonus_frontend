@@ -171,6 +171,8 @@ export function DashboardLineChart({
   ySuffix = "",
   onPointClick,
   emptyLabel = "Nog geen claims in deze periode.",
+  ariaLabel = "Trendgrafiek",
+  locale = "nl-NL",
 }: {
   values: number[];
   id?: string;
@@ -182,6 +184,8 @@ export function DashboardLineChart({
   ySuffix?: string;
   onPointClick?: (index: number, date?: string, value?: number) => void;
   emptyLabel?: string;
+  ariaLabel?: string;
+  locale?: string;
 }) {
   const width = 900;
   const left = 42;
@@ -218,7 +222,7 @@ export function DashboardLineChart({
       {allZero && (
         <p className="mb-2 text-center text-xs font-semibold text-muted">{emptyLabel}</p>
       )}
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label="Trendgrafiek">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label={ariaLabel}>
         <defs>
           <linearGradient id={`${id}-fill`} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.22" />
@@ -232,7 +236,7 @@ export function DashboardLineChart({
             <g key={ratio}>
               <line x1={left} x2={width - right} y1={y} y2={y} stroke="#e8eff9" strokeDasharray="4 5" />
               <text x={left - 9} y={y + 4} textAnchor="end" fontSize="11" fill="#8291ae">
-                {value.toLocaleString("nl-NL")}{ySuffix}
+                {value.toLocaleString(locale)}{ySuffix}
               </text>
             </g>
           );
@@ -251,7 +255,7 @@ export function DashboardLineChart({
             className={onPointClick ? "cursor-pointer" : undefined}
             onClick={() => onPointClick?.(i, dates[i], values[i])}
           >
-            <title>{`${labels[i] ?? dates[i] ?? `#${i + 1}`}: ${values[i].toLocaleString("nl-NL")}${ySuffix}`}</title>
+            <title>{`${labels[i] ?? dates[i] ?? `#${i + 1}`}: ${values[i].toLocaleString(locale)}${ySuffix}`}</title>
           </circle>
         ))}
         {labelIndexes.map((index) => {

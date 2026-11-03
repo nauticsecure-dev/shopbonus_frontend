@@ -1,0 +1,434 @@
+{
+  "captured_at": "2026-11-03T03:41:32.615Z",
+  "environment": "Local Chrome + Next dev + real Laravel HTTP + isolated SQLite; database queue and array mailer; token fault injection only for failed logout",
+  "checks": [
+    "Consumer registration through real CSRF/session; verification receives keyboard focus",
+    "Unverified session resumes verification after reload",
+    "Queued encrypted OTP verifies against real service and opens consumer destination at 390px",
+    "Explicit login mode and safe next destination work",
+    "Two genuine Laravel 419 logout responses preserve the authenticated server session and show recoverable error",
+    "Retrying logout succeeds and protected me returns 401",
+    "Real Fortify totp login, focus, authenticated me",
+    "Real Fortify recovery login, focus, authenticated me and recovery code consumption",
+    "Merchant registration and OTP open webshop setup without granting membership"
+  ],
+  "exchanges": [
+    {
+      "path": "/sanctum/csrf-cookie",
+      "status": 204
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/public/legal-requirements",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/register",
+      "status": 201
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/public/legal-requirements",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/auth/email/verify-code",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/consumer/dashboard",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/public/legal-requirements",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/public/categories",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/public/webshops",
+      "status": 200
+    },
+    {
+      "path": "/logout",
+      "status": 419
+    },
+    {
+      "path": "/sanctum/csrf-cookie",
+      "status": 204
+    },
+    {
+      "path": "/logout",
+      "status": 419
+    },
+    {
+      "path": "/logout",
+      "status": 204
+    },
+    {
+      "path": "/api/v1/public/legal-requirements",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/public/legal-requirements",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/two-factor-challenge",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/dashboard",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/public/legal-requirements",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "path": "/two-factor-challenge",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/public/cookie-policy",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/public/legal-requirements",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 401
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    },
+    {
+      "path": "/register",
+      "status": 201
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/notifications",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 403
+    },
+    {
+      "path": "/api/v1/auth/email/verify-code",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/me/wallet",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/consumer/vouchers",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/content/homepage",
+      "status": 404
+    }
+  ],
+  "limitations": [
+    "No actual email delivery or Redis",
+    "No deployed cookie/CORS verification or staging P95",
+    "No approved visual references supplied"
+  ]
+}
