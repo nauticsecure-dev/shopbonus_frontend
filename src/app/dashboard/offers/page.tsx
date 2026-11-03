@@ -25,6 +25,7 @@ import {
   fetchCodeHistory,
   fetchCodeImport,
   fetchOfferCodes,
+  fetchOfferBatches,
   formatAddedAt,
   formatDiscount,
   formatOfferMoney,
@@ -103,6 +104,12 @@ function MerchantOffersPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState(["available", "reserved"].includes(inventoryParam ?? "") ? inventoryParam! : "all");
   const [batchFilter, setBatchFilter] = useState("all");
+  const [batches, setBatches] = useState<string[]>([]);
+  const [batchError, setBatchError] = useState(false);
+  const [addedFrom, setAddedFrom] = useState("");
+  const [addedTo, setAddedTo] = useState("");
+  const [sort, setSort] = useState("-created_at");
+  const [invalidationBusy, setInvalidationBusy] = useState(false);
   const [platformFilter, setPlatformFilter] = useState("all");
   const [assignedFilter, setAssignedFilter] = useState("all");
   const [offerListFilter, setOfferListFilter] = useState(() => {
@@ -206,7 +213,9 @@ function MerchantOffersPage() {
               assignedFilter === "all" ? undefined : assignedFilter === "assigned" ? true : false,
             per_page: PAGE_SIZE,
             page,
-            sort: "-created_at",
+            sort,
+            added_from: addedFrom ? new Date(addedFrom + "T00:00:00").toISOString() : undefined,
+            added_to: addedTo ? new Date(addedTo + "T23:59:59.999").toISOString() : undefined,
           },
           signal
         );
@@ -240,6 +249,9 @@ function MerchantOffersPage() {
       batchFilter,
       platformFilter,
       assignedFilter,
+      addedFrom,
+      addedTo,
+      sort,
       page,
       pushToast,
     ]
@@ -312,17 +324,25 @@ function MerchantOffersPage() {
   const selectedOffer = offers.find((o) => o.id === selectedOfferId) ?? visibleOffers[0] ?? null;
 
   useEffect(() => {
-    queueMicrotask(() => { setSelectedCodes([]); setPage(1); });
+    queueMicrotask(() => { setSelectedCodes([]); setPage(1); setBatchFilter("all"); });
   }, [selectedOfferId]);
 
-  const batches = useMemo(() => {
-    const ids = new Set<string>();
-    codes.forEach((c) => {
-      if (c.batch_id) ids.add(c.batch_id);
+  useEffect(() => {
+    const ac = new AbortController();
+    queueMicrotask(async () => {
+      if (ac.signal.aborted) return;
+      setBatches([]);
+      setBatchError(false);
+      if (!selectedOfferId) return;
+      try {
+        const ids = await fetchOfferBatches(selectedOfferId, workspaceId, ac.signal);
+        if (!ac.signal.aborted) setBatches(ids);
+      } catch {
+        if (!ac.signal.aborted) setBatchError(true);
+      }
     });
-    if (batchFilter !== "all") ids.add(batchFilter);
-    return Array.from(ids);
-  }, [codes, batchFilter]);
+    return () => ac.abort();
+  }, [selectedOfferId, workspaceId, revision, importPreview?.status]);
 
   const openNew = () => {
     setForm({
@@ -569,6 +589,10 @@ function MerchantOffersPage() {
         batch: batchFilter === "all" ? undefined : batchFilter,
         search: debouncedQuery || undefined,
         platform_validation: platformFilter === "all" ? undefined : platformFilter,
+        assigned: assignedFilter === "all" ? undefined : String(assignedFilter === "assigned"),
+        added_from: addedFrom ? new Date(addedFrom + "T00:00:00").toISOString() : undefined,
+        added_to: addedTo ? new Date(addedTo + "T23:59:59.999").toISOString() : undefined,
+        sort,
       });
       const res = await fetch(apiUrl(path), {
         credentials: env.useCookieAuth ? "include" : "same-origin",
@@ -645,14 +669,19 @@ function MerchantOffersPage() {
     }
   };
 
-  const verifyRow = async (row: InventoryCode) => {
+  const verifyRow = async (row: InventoryCode, manual = false) => {
     try {
-      const result = await verifyCodePlatform(row.id, workspaceId, { mode: "provider_check" });
+      const note = manual ? window.prompt("Bevestig dat je deze code met de voucher-/aanbiedingsvoorwaarden in je webshop hebt gecontroleerd. Noteer bewijs (min. 3 tekens).") : undefined;
+      if (manual && (!note || note.trim().length < 3)) return;
+      const result = await verifyCodePlatform(row.id, workspaceId, {
+        mode: manual ? "manual_confirm" : "provider_check", note: note?.trim(),
+        voucher_id: row.assigned?.voucher_id,
+      });
       setCodes((prev) => prev.map((c) => (c.id === row.id ? result.data : c)));
       pushToast({
-        title: platformValidationLabel(result.data.platform_validation),
+        title: `${row.assigned ? "Historische voucher: " : "Voorraad: "}${platformValidationLabel(result.verification.platform_validation)}`,
         message: String(result.verification.detail.message ?? result.verification.detail.reason ?? ""),
-        kind: result.data.platform_validation === "verified" ? "success" : "info",
+        kind: result.verification.platform_validation === "verified" ? "success" : "info",
       });
       await loadCodes();
     } catch (err) {
@@ -665,24 +694,38 @@ function MerchantOffersPage() {
   };
 
   const invalidateSelected = async () => {
-    if (!selectedCodes.length) return;
+    if (!selectedCodes.length || invalidationBusy) return;
     if (!window.confirm(`Maak ${selectedCodes.length} beschikbare code(s) ongeldig? Dit wordt geaudit.`)) return;
     const reason = window.prompt("Reden (min. 3 tekens)", "Niet geaccepteerd in kassa");
     if (!reason || reason.trim().length < 3) return;
-    let ok = 0;
+    setInvalidationBusy(true);
+    const failed: string[] = [];
+    const errors: Record<string, number> = {};
     for (const id of selectedCodes) {
       try {
         await invalidateCode(id, workspaceId, reason.trim());
-        ok += 1;
-      } catch {
-        /* conflict for non-available codes */
+      } catch (err) {
+        failed.push(id);
+        const category = err instanceof ApiError
+          ? err.status === 401 || err.status === 419 ? "Sessie verlopen"
+          : err.status === 403 ? "Geen rechten"
+          : err.status === 404 ? "Code niet beschikbaar"
+          : err.status === 409 ? "Statusconflict: alleen beschikbare codes"
+          : err.status === 429 ? "Te veel verzoeken: probeer later"
+          : err.status >= 500 ? "Serverfout"
+          : err.message
+          : "Netwerkfout: controleer de verbinding";
+        errors[category] = (errors[category] ?? 0) + 1;
       }
     }
-    setSelectedCodes([]);
+    setSelectedCodes(failed);
+    setInvalidationBusy(false);
     pushToast({
-      title: `${ok} codes ongeldig`,
-      message: ok < selectedCodes.length ? "Alleen beschikbare codes kunnen worden geïnvalideerd." : "Audit vastgelegd.",
-      kind: ok ? "success" : "error",
+      title: `${selectedCodes.length - failed.length} codes ongeldig`,
+      message: failed.length
+        ? Object.entries(errors).map(([label, count]) => `${label}: ${count}`).join(". ") + ". Mislukte codes blijven geselecteerd."
+        : "Audit vastgelegd.",
+      kind: failed.length ? "error" : "success",
     });
     await loadCodes();
   };
@@ -969,7 +1012,8 @@ function MerchantOffersPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Zoek een code…"
+            placeholder="Zoek volledige code (exact)…"
+            aria-label="Zoek volledige code (exact)"
             className="min-w-0 flex-1 bg-transparent text-sm text-navy outline-none placeholder:text-muted/75"
           />
         </label>
@@ -1005,6 +1049,20 @@ function MerchantOffersPage() {
             </option>
           ))}
         </select>
+        <label className="text-xs font-bold text-muted">Toegevoegd vanaf
+          <input aria-label="Toegevoegd vanaf" type="date" value={addedFrom} max={addedTo || undefined}
+            onChange={(e) => { setAddedFrom(e.target.value); setPage(1); }} className="ml-2 rounded-xl border border-blue-100 p-2 text-navy" />
+        </label>
+        <label className="text-xs font-bold text-muted">Toegevoegd t/m
+          <input aria-label="Toegevoegd tot en met" type="date" value={addedTo} min={addedFrom || undefined}
+            onChange={(e) => { setAddedTo(e.target.value); setPage(1); }} className="ml-2 rounded-xl border border-blue-100 p-2 text-navy" />
+        </label>
+        <select aria-label="Sorteer codes" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} className="rounded-xl border border-blue-100 p-2 text-sm font-bold text-navy">
+          <option value="-created_at">Nieuwste eerst</option>
+          <option value="created_at">Oudste eerst</option>
+          <option value="status">Status A–Z</option>
+          <option value="-status">Status Z–A</option>
+        </select>
         <select
           value={platformFilter}
           onChange={(e) => {
@@ -1014,7 +1072,8 @@ function MerchantOffersPage() {
           className="rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-bold text-navy outline-none focus:border-brand"
         >
           <option value="all">Platformstatus</option>
-          <option value="verified">Geverifieerd</option>
+          <option value="verified">Provider geverifieerd</option>
+          <option value="manually_confirmed">Handmatig bevestigd</option>
           <option value="merchant_verification_required">Merchantverificatie</option>
           <option value="unsupported_integration">Niet ondersteund</option>
           <option value="sync_error">Syncfout</option>
@@ -1058,7 +1117,7 @@ function MerchantOffersPage() {
           disabled={!selectedOfferId}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-extrabold text-brand hover:bg-blue-50 disabled:opacity-40"
         >
-          <DashboardIcon name="download" size={17} /> Exporteren
+          <DashboardIcon name="download" size={17} /> Gefilterde voorraad exporteren
         </button>
       </div>
 
@@ -1102,6 +1161,7 @@ function MerchantOffersPage() {
           </div>
           {selectedCodes.length > 0 && (
             <button
+              disabled={invalidationBusy}
               onClick={() => void invalidateSelected()}
               className="rounded-xl bg-red-50 px-4 py-2.5 text-sm font-extrabold text-red-600 hover:bg-red-100"
             >
@@ -1110,6 +1170,8 @@ function MerchantOffersPage() {
           )}
         </div>
 
+        <p className="px-5 py-2 text-xs text-muted">Zoeken werkt alleen met de volledige code, niet met referenties. Export bevat alle gefilterde rijen, ongeacht je selectie. Automatische checks: alleen WooCommerce; handmatige bevestiging is geen providerbewijs. Vouchercheck gebruikt bevroren voorwaarden; de platformkolom toont de voorraadcheck.</p>
+        {batchError && <p role="alert" className="px-5 py-2 text-sm text-red-700">Batches laden mislukt. Vernieuw de pagina om opnieuw te proberen.</p>}
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead>
@@ -1179,10 +1241,11 @@ function MerchantOffersPage() {
                       <button
                         onClick={() => void verifyRow(code)}
                         className="rounded-lg px-2 text-xs font-extrabold text-muted hover:bg-blue-50 hover:text-brand"
-                        title="Verifieer op webshop"
+                        title={code.assigned ? "Controleer bevroren vouchervoorwaarden" : "Controleer huidige aanbiedingsvoorwaarden"}
                       >
-                        Check
+                        {code.assigned ? "Vouchercheck" : "Check"}
                       </button>
+                      <button onClick={() => void verifyRow(code, true)} className="rounded-lg px-2 text-xs font-bold text-muted">Handmatig</button>
                       <button
                         onClick={() => void openHistory(code)}
                         className="rounded-lg px-2 text-lg font-black text-muted hover:bg-blue-50 hover:text-brand"
@@ -1236,6 +1299,8 @@ function MerchantOffersPage() {
                     >
                       <DashboardIcon name="copy" size={14} /> Kopieer
                     </button>
+                    <button onClick={() => void verifyRow(code)} className="text-xs font-bold text-brand">{code.assigned ? "Vouchercheck" : "Check"}</button>
+                    <button onClick={() => void verifyRow(code, true)} className="text-xs font-bold text-muted">Handmatig</button>
                     <button onClick={() => void openHistory(code)} className="text-xs font-extrabold text-muted">
                       Geschiedenis
                     </button>

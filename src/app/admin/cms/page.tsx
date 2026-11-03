@@ -12,22 +12,28 @@ const hubs = [
     href: "/admin/cms/pages",
     titleNl: "Pagina's",
     titleEn: "Pages",
+    titleDe: "Seiten",
     bodyNl: "Juridische en info-pagina's, concepten, publiceren, revisies.",
     bodyEn: "Legal and info pages, drafts, publish, revisions.",
+    bodyDe: "Rechtliche Seiten und Infoseiten, Entwürfe, Veröffentlichung und Versionen.",
   },
   {
     href: "/admin/cms/faq",
     titleNl: "FAQ",
     titleEn: "FAQ",
+    titleDe: "Häufige Fragen",
     bodyNl: "Categorieën, volgorde, doelgroep en publicatie.",
     bodyEn: "Categories, order, audience and publication.",
+    bodyDe: "Kategorien, Reihenfolge, Zielgruppe und Veröffentlichung.",
   },
   {
     href: "/admin/cms/cookies",
     titleNl: "Cookiebeleid",
     titleEn: "Cookie policy",
+    titleDe: "Cookie-Richtlinie",
     bodyNl: "Versies, categorieën, allowlisted trackers en stats.",
     bodyEn: "Versions, categories, allowlisted trackers and stats.",
+    bodyDe: "Versionen, Kategorien, zugelassene Tracker und Statistiken.",
   },
 ];
 
@@ -35,12 +41,13 @@ export default function AdminCmsHubPage() {
   const { locale, dictionary: t } = useLocale();
   const [rows, setRows] = useState<TranslationStatusRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const ac = new AbortController();
     void listTranslationStatuses(locale)
       .then((data) => {
-        if (!ac.signal.aborted) setRows(data);
+        if (!ac.signal.aborted) { setRows(data); setLoaded(true); }
       })
       .catch((err) => {
         if (!ac.signal.aborted) {
@@ -57,7 +64,7 @@ export default function AdminCmsHubPage() {
       title={t.adminContentStudio}
       accent="cms"
       subtitle={
-        locale === "en"
+        locale === "de" ? "Seiten, häufige Fragen, Cookies und Übersetzungsstatus durchsuchen. Entwürfe ändern keine öffentlichen Inhalte." : locale === "en"
           ? "Searchable studio for pages, FAQ, cookies and translation status. Drafts never change public content."
           : "Doorzoekbare studio voor pagina's, FAQ, cookies en vertaalstatus. Concepten wijzigen nooit publieke content."
       }
@@ -69,8 +76,8 @@ export default function AdminCmsHubPage() {
             href={h.href}
             className="rounded-2xl border border-blue-100 bg-white p-5 transition hover:border-brand/40 hover:shadow-md"
           >
-            <h2 className="text-lg font-extrabold text-navy">{locale === "en" ? h.titleEn : h.titleNl}</h2>
-            <p className="mt-2 text-sm text-muted">{locale === "en" ? h.bodyEn : h.bodyNl}</p>
+            <h2 className="text-lg font-extrabold text-navy">{locale === "de" ? h.titleDe : locale === "en" ? h.titleEn : h.titleNl}</h2>
+            <p className="mt-2 text-sm text-muted">{locale === "de" ? h.bodyDe : locale === "en" ? h.bodyEn : h.bodyNl}</p>
           </Link>
         ))}
       </div>
@@ -78,9 +85,10 @@ export default function AdminCmsHubPage() {
       <div className="mt-8">
         <h3 className="text-base font-extrabold text-navy">{t.adminTranslations}</h3>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-        {!error && stale.length === 0 && (
+        {!error && !loaded && <p role="status">{t.loading}</p>}
+        {!error && loaded && rows.length > 0 && stale.length === 0 && (
           <p className="mt-2 text-sm text-muted">
-            {locale === "en" ? "All locales published." : "Alle locales gepubliceerd."}
+            {locale === "de" ? "Alle erfassten Übersetzungen sind veröffentlicht." : locale === "en" ? "All locales published." : "Alle locales gepubliceerd."}
           </p>
         )}
         {stale.length > 0 && (

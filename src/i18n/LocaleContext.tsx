@@ -100,7 +100,7 @@ export function LocaleProvider({ children, initialLocale = DEFAULT_LOCALE }: { c
       dictionary: getDictionary(locale),
       setLocale,
       applyAccountLocale,
-      intlLocale: locale === "nl" ? "nl-NL" : "en-GB",
+      intlLocale: ({ nl: "nl-NL", en: "en-GB", de: "de-DE" })[locale],
     }),
     [locale, setLocale, applyAccountLocale]
   );

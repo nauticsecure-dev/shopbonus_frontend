@@ -1,0 +1,126 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.merchant-live.config.ts"
+    ],
+    "configFile": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\playwright.merchant-live.config.ts",
+    "rootDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/test-results-merchant-live",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "",
+        "name": "",
+        "testDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "merchant-landing-live.spec.ts"
+        ],
+        "timeout": 420000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\test-results-merchant-live",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "name": "",
+        "testDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e",
+        "snapshotDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e",
+        "testIgnore": [],
+        "testMatch": "merchant-landing-live.spec.ts",
+        "timeout": 420000,
+        "use": {
+          "baseURL": "http://localhost:3026",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "chromium",
+          "channel": "chrome"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "docs/merchant-landing/real-service-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npx next dev --webpack --port 3026",
+      "url": "http://localhost:3026/voor-webshops",
+      "timeout": 180000,
+      "reuseExistingServer": true,
+      "env": {
+        "NEXT_PUBLIC_API_BASE_URL": "http://localhost:8026",
+        "NEXT_PUBLIC_APP_URL": "http://localhost:3026",
+        "NEXT_PUBLIC_USE_COOKIE_AUTH": "true",
+        "SHOPBONUS_NEXT_DIST_DIR": ".next-merchant-live"
+      }
+    }
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "Error: Process from config.webServer was not able to start. Exit code: 134",
+      "stack": "Error: Process from config.webServer was not able to start. Exit code: 134"
+    }
+  ],
+  "stats": {
+    "startTime": "2026-11-03T06:11:18.623Z",
+    "duration": 72176.06599999999,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

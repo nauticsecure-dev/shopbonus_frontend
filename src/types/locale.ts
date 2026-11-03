@@ -1,5 +1,5 @@
 /** Locales supported by ShopBonus API (Accept-Language / user.locale). */
-export const LOCALES = ["nl", "en"] as const;
+export const LOCALES = ["nl", "en", "de"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -8,6 +8,7 @@ export const DEFAULT_LOCALE: Locale = "nl";
 export const LOCALE_LABELS: Record<Locale, string> = {
   nl: "Nederlands",
   en: "English",
+  de: "Deutsch",
 };
 
 export function isLocale(value: unknown): value is Locale {

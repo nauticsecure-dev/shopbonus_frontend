@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-03",
+  "environment": {
+    "site": "http://localhost:3000",
+    "api": "http://localhost:8010"
+  },
+  "interception": false,
+  "checks": [
+    "Real local CSRF and seeded consumer login",
+    "Authenticated profile loads persisted first name/email and header",
+    "Browser save persists through reload and independent API read",
+    "Invalid name leaves persisted name unchanged",
+    "Original demo name restored and verified"
+  ],
+  "limits": [
+    "Local seeded consumer only",
+    "No mail transport: env uses log mailer and disables notification email",
+    "No approved visual reference comparison",
+    "Not the complete ten real-service journeys"
+  ],
+  "status": "PARTIAL PASS"
+}

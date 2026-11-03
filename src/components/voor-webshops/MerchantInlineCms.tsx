@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useRouter } from "next/navigation";
 import { fetchAdminMerchantLanding, fetchMerchantLandingServer, fetchMerchantLandingVersions, isSuperAdmin, publishMerchantLanding, requestMerchantLandingAiSuggest, restoreMerchantLandingVersion, saveMerchantLandingDraft } from "@/lib/merchantLanding";
 import { mergeMerchantLandingContent, type MerchantLandingContent } from "@/lib/merchantLandingDefaults";
+import { merchantCmsText, merchantCmsError } from "@/i18n/merchantCmsCopy";
 import { useLocale } from "@/i18n/LocaleContext";
 import { useSession } from "@/store/SessionContext";
 import { apiRequest } from "@/lib/api";
@@ -60,10 +61,11 @@ export function InlineCmsProvider({ initialContent, children }: { initialContent
   useEffect(() => { queueMicrotask(() => setLiveContent(initialContent)); }, [initialContent]);
   useEffect(() => {
     let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) setMessage(null); });
     void fetchMerchantLandingServer(locale).then((published) => {
       if (!cancelled) setLiveContent(published);
     }).catch(() => {
-      if (!cancelled) setMessage("Published content could not be refreshed. Showing the last approved snapshot.");
+      if (!cancelled) setMessage(merchantCmsText(locale, "Published content could not be refreshed. Showing the last approved snapshot."));
     });
     // LocaleProvider persists this cookie too; write synchronously before refreshing metadata.
     document.cookie = "shopbonus-locale=" + locale + "; Path=/; SameSite=Lax; Max-Age=31536000";
@@ -86,7 +88,7 @@ export function InlineCmsProvider({ initialContent, children }: { initialContent
       setDirty(false);
       setLoadedLocale(locale);
     }).catch((err) => {
-      if (!cancelled) setMessage(err instanceof Error ? err.message : "CMS laden mislukt");
+      if (!cancelled) setMessage(merchantCmsError(locale, err, "CMS load failed"));
     });
     return () => { cancelled = true; };
   }, [editing, locale]);
@@ -99,11 +101,11 @@ export function InlineCmsProvider({ initialContent, children }: { initialContent
   }, [loadedLocale, locale]);
 
   const persist = useCallback(async () => {
-    if (!canEdit) throw new Error("CMS access is required");
-    if (revision.current == null || loadedLocale !== locale) throw new Error("Wait until the draft has loaded");
+    if (!canEdit) throw new Error(merchantCmsText(locale, "CMS access is required"));
+    if (revision.current == null || loadedLocale !== locale) throw new Error(merchantCmsText(locale, "Wait until the draft has loaded"));
     const captured = snapshot.current;
     const res = await saveMerchantLandingDraft({ locale, revision: revision.current, content: captured });
-    if (activeLocale.current !== locale) throw new Error("Language changed during save. Reopen the editor to load this draft.");
+    if (activeLocale.current !== locale) throw new Error(merchantCmsText(locale, "Language changed during save. Reopen the editor to load this draft."));
     revision.current = res.draft_revision;
     setDraftRevision(res.draft_revision);
     setDirty(snapshot.current !== captured);
@@ -116,13 +118,13 @@ export function InlineCmsProvider({ initialContent, children }: { initialContent
     setSaving(true);
     try {
       await persist();
-      setMessage("Concept opgeslagen");
+      setMessage(merchantCmsText(locale, "Draft saved"));
       return true;
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Opslaan mislukt");
+      setMessage(merchantCmsError(locale, err, "Save failed"));
       return false;
     } finally { busy.current = false; setSaving(false); }
-  }, [persist]);
+  }, [persist, locale]);
 
   useEffect(() => {
     if (!editing || !dirty || loadedLocale !== locale) return;
@@ -165,14 +167,14 @@ export function InlineCmsProvider({ initialContent, children }: { initialContent
       const window = snapshot.current.schedule;
       if ((window?.publish_at && Date.parse(window.publish_at) > Date.now()) || (window?.unpublish_at && Date.parse(window.unpublish_at) <= Date.now())) {
         setMode("preview");
-        setMessage("Publication saved. The page is outside its scheduled visibility window.");
+        setMessage(merchantCmsText(locale, "Publication saved. The page is outside its scheduled visibility window."));
         return;
       }
       setLiveContent(await fetchMerchantLandingServer(locale));
       setMode("live");
-      setMessage("Gepubliceerd");
+      setMessage(merchantCmsText(locale, "Published"));
       router.refresh();
-    } catch (err) { setMessage(err instanceof Error ? err.message : "Publiceren mislukt"); }
+    } catch (err) { setMessage(merchantCmsError(locale, err, "Publish failed")); }
     finally { busy.current = false; setSaving(false); }
   }, [locale, persist, router]);
 
@@ -191,13 +193,13 @@ export function InlineCmsProvider({ initialContent, children }: { initialContent
     setSaving(true);
     try {
       const versions = await fetchMerchantLandingVersions(locale);
-      if (!versions.some((v) => v.id === id && v.locale === locale)) throw new Error("Select a version for this language");
+      if (!versions.some((v) => v.id === id && v.locale === locale)) throw new Error(merchantCmsText(locale, "Select a version for this language"));
       await restoreMerchantLandingVersion(id, locale);
       setLiveContent(await fetchMerchantLandingServer(locale));
       setDirty(false);
       setMode("live");
       router.refresh();
-    } catch (err) { setMessage(err instanceof Error ? err.message : "Herstellen mislukt"); }
+    } catch (err) { setMessage(merchantCmsError(locale, err, "Restore failed")); }
     finally { busy.current = false; setSaving(false); }
   }, [locale, router]);
   const schedulePublication = useCallback(async (dueAt: string) => {
@@ -207,22 +209,22 @@ export function InlineCmsProvider({ initialContent, children }: { initialContent
     try {
       const savedRevision = await persist();
       const state = await fetchAdminMerchantLanding(locale);
-      if (activeLocale.current !== locale) throw new Error("Language changed. Review this draft again before scheduling.");
+      if (activeLocale.current !== locale) throw new Error(merchantCmsText(locale, "Language changed. Review this draft again before scheduling."));
       await apiRequest({
         path: `/api/v1/admin/cms/pages/${encodeURIComponent(state.id)}/schedules`,
         method: "POST", locale,
         body: { action: "publish", locale, revision: savedRevision, due_at: dueAt },
       });
       setMode("live");
-      setMessage("Publication scheduled. The current approved page stays live until the scheduled draft is published.");
-    } catch (err) { setMessage(err instanceof Error ? err.message : "Scheduling failed"); }
+      setMessage(merchantCmsText(locale, "Publication scheduled. The current approved page stays live until the scheduled draft is published."));
+    } catch (err) { setMessage(merchantCmsError(locale, err, "Scheduling failed")); }
     finally { busy.current = false; setSaving(false); }
   }, [locale, persist]);
   const improveWithAi = useCallback(async (path: string, intent: "stronger" | "shorter" | "cta" | "seo" = "stronger") => {
     try {
       const res = await requestMerchantLandingAiSuggest({ locale, field: path, text: String(getByPath(content, path) ?? ""), intent });
       return res.suggestion || null;
-    } catch (err) { setMessage(err instanceof Error ? err.message : "AI-suggestie mislukt"); return null; }
+    } catch (err) { setMessage(merchantCmsError(locale, err, "AI suggestion failed")); return null; }
   }, [content, locale]);
   const value = useMemo(() => ({ canEdit, mode, content: mode === "live" ? liveContent : content, setMode, draftRevision, dirty, saving, loading: editing && loadedLocale !== locale, message, updateField, saveDraft, publish, cancel, enterPreview, restoreVersion, schedulePublication, improveWithAi }), [canEdit, mode, liveContent, content, draftRevision, dirty, saving, editing, loadedLocale, locale, message, updateField, saveDraft, publish, cancel, enterPreview, restoreVersion, schedulePublication, improveWithAi]);
   return <InlineCmsContext.Provider value={value}>{children}</InlineCmsContext.Provider>;
@@ -234,17 +236,19 @@ export function useInlineCms() {
 }
 export function CmsToolbar() {
   const cms = useInlineCms();
+  const { locale } = useLocale();
+  const t = (text: string) => merchantCmsText(locale, text);
   if (!cms.canEdit) return null;
-  if (cms.mode === "live") return <div className="fixed bottom-5 right-5 z-50"><button type="button" data-testid="cms-edit-voor-webshops" onClick={() => cms.setMode("edit")} className="rounded-full bg-navy px-5 py-3 font-bold text-white shadow-lg">Edit page</button>{cms.message && <p role="status" className="max-w-sm bg-white p-2">{cms.message}</p>}</div>;
+  if (cms.mode === "live") return <div className="fixed bottom-5 right-5 z-50"><button type="button" data-testid="cms-edit-voor-webshops" onClick={() => cms.setMode("edit")} className="rounded-full bg-navy px-5 py-3 font-bold text-white shadow-lg">{t("Edit page")}</button>{cms.message && <p role="status" className="max-w-sm bg-white p-2">{cms.message}</p>}</div>;
   return <div className="fixed inset-x-0 bottom-0 z-50 border-t bg-white p-3 shadow-lg">
     <MerchantCmsControls />
     <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3">
-      <p role="status">{cms.loading ? "Loading draft…" : cms.saving ? "Saving…" : cms.dirty ? "Unsaved changes" : "Draft saved"} {cms.message}</p>
+      <p role="status">{cms.loading ? t("Loading draft…") : cms.saving ? t("Saving…") : cms.dirty ? t("Unsaved changes") : t("Draft saved")} {cms.message}</p>
       <fieldset disabled={cms.saving || cms.loading} className="flex flex-wrap gap-3 disabled:opacity-50 [&>button]:min-h-11 [&>button]:rounded-xl [&>button]:border [&>button]:border-blue-100 [&>button]:px-4 [&>button]:py-2 [&>button]:text-sm [&>button]:font-bold">
-        <button onClick={() => void cms.saveDraft()} disabled={!cms.dirty}>Save draft</button>
-        <button onClick={cms.enterPreview}>{cms.mode === "preview" ? "Back to edit" : "Preview"}</button>
-        <button onClick={() => void cms.publish()} className="rounded bg-brand px-4 py-2 text-white">Publish</button>
-        <button onClick={cms.cancel}>Cancel</button>
+        <button onClick={() => void cms.saveDraft()} disabled={!cms.dirty}>{t("Save draft")}</button>
+        <button onClick={cms.enterPreview}>{cms.mode === "preview" ? t("Back to edit") : t("Preview")}</button>
+        <button onClick={() => void cms.publish()} className="rounded bg-brand px-4 py-2 text-white">{t("Publish")}</button>
+        <button onClick={cms.cancel}>{t("Cancel")}</button>
       </fieldset>
     </div>
   </div>;
@@ -262,6 +266,8 @@ export function EditableText({
   multiline?: boolean;
 }) {
   const cms = useInlineCms();
+  const { locale } = useLocale();
+  const t = (text: string) => merchantCmsText(locale, text);
   const raw = getByPath(cms.content, path);
   const value = typeof raw === "string" ? raw : "";
   const [open, setOpen] = useState(false);
@@ -335,7 +341,7 @@ export function EditableText({
           )}
           {aiSuggestion && (
             <div className="mt-3 rounded-xl bg-blue-50 p-3 text-sm">
-              <p className="font-bold text-navy">AI-suggestie (goedkeuring vereist)</p>
+              <p className="font-bold text-navy">{t("AI suggestion (approval required)")}</p>
               <p className="mt-1 text-muted">{aiSuggestion}</p>
               <div className="mt-2 flex gap-2">
                 <button
@@ -345,16 +351,12 @@ export function EditableText({
                     setDraft(aiSuggestion);
                     setAiSuggestion(null);
                   }}
-                >
-                  Overnehmen
-                </button>
+                >{t("Accept suggestion")}</button>
                 <button
                   type="button"
                   className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted"
                   onClick={() => setAiSuggestion(null)}
-                >
-                  Afwijzen
-                </button>
+                >{t("Reject")}</button>
               </div>
             </div>
           )}
@@ -367,23 +369,17 @@ export function EditableText({
                 cms.updateField(path, draft);
                 setOpen(false);
               }}
-            >
-              Toepassen
-            </button>
+            >{t("Apply")}</button>
             <button
               type="button"
               className="rounded-lg border border-blue-100 px-3 py-1.5 text-xs font-bold text-navy"
               onClick={() => void cms.improveWithAi(path).then((s) => s && setAiSuggestion(s))}
-            >
-              Improve with AI
-            </button>
+            >{t("Improve with AI")}</button>
             <button
               type="button"
               className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted"
               onClick={() => setOpen(false)}
-            >
-              Sluiten
-            </button>
+            >{t("Close")}</button>
           </div>
         </div>
       )}

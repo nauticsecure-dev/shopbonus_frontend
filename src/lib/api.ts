@@ -36,12 +36,31 @@ function readCookie(name: string): string | null {
  * Fetch the Laravel Sanctum CSRF cookie before cookie-authenticated mutations.
  * Safe to call repeatedly; no-ops when cookie auth is disabled.
  */
-export async function ensureCsrfCookie(): Promise<void> {
+let csrfBootstrap: Promise<void> | null = null;
+
+export async function ensureCsrfCookie(force = false): Promise<void> {
   if (!env.useCookieAuth || typeof window === "undefined") return;
-  await fetch(apiUrl("/sanctum/csrf-cookie"), {
-    method: "GET",
-    credentials: "include",
-  });
+  if (csrfBootstrap) return csrfBootstrap;
+  if (!force && readCookie(csrfCookieName())) return;
+  csrfBootstrap = (async () => {
+    const response = await fetch(apiUrl("/sanctum/csrf-cookie"), {
+      method: "GET",
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new ApiError("Could not initialize the secure session. Please try again.", response.status, "csrf_initialization_failed");
+    }
+    if (!readCookie(csrfCookieName())) {
+      throw new ApiError("The secure session cookie is unavailable. Check the cookie domain and API settings, then try again.", 419, "csrf_cookie_unavailable");
+    }
+  })();
+  try {
+    await csrfBootstrap;
+  } finally {
+    csrfBootstrap = null;
+  }
 }
 
 /**
@@ -63,7 +82,9 @@ export async function apiRequest<T = unknown>({
   // Support sessions must send Bearer alone — cookie + token → 400 ambiguous_credentials.
   const supportToken = getSupportToken();
   const useCookies = env.useCookieAuth && !supportToken;
-  if (mutating && useCookies) {
+  // Establish one anonymous session before parallel initial reads as well as
+  // writes; competing Set-Cookie responses can otherwise replace a new login.
+  if (useCookies) {
     await ensureCsrfCookie();
   }
   const xsrf = useCookies ? readCookie(csrfCookieName()) : null;
@@ -90,7 +111,7 @@ export async function apiRequest<T = unknown>({
 
   // Recover from expired CSRF: refresh cookie once and retry the mutation.
   if (response.status === 419 && mutating && useCookies) {
-    await ensureCsrfCookie();
+    await ensureCsrfCookie(true);
     const retryXsrf = readCookie(csrfCookieName());
     response = await doFetch({
       ...requestHeaders,
@@ -109,6 +130,9 @@ export async function apiRequest<T = unknown>({
   }
 
   if (!response.ok) {
+    if (typeof window !== "undefined" && /\/api\/v1\/workspaces\//.test(path) && [403, 404].includes(response.status)) {
+      window.dispatchEvent(new Event("shopbonus:workspace-access-check"));
+    }
     const payload = parsed as { message?: string; error?: { code?: string; message?: string } } | null;
     const message =
       payload?.error?.message ||
@@ -137,60 +161,5 @@ export async function apiUpload<T = unknown>({
   method?: "POST" | "PUT" | "PATCH";
   signal?: AbortSignal;
 }): Promise<T> {
-  const resolvedLocale = normalizeLocale(locale, DEFAULT_LOCALE);
-  if (env.useCookieAuth) {
-    await ensureCsrfCookie();
-  }
-  const supportToken = getSupportToken();
-  const useCookies = env.useCookieAuth && !supportToken;
-  if (useCookies) {
-    await ensureCsrfCookie();
-  }
-  const xsrf = useCookies ? readCookie(csrfCookieName()) : null;
-  const headers: HeadersInit = {
-    Accept: "application/json",
-    "Accept-Language": resolvedLocale,
-    ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}),
-    ...(supportToken ? { Authorization: `Bearer ${supportToken}` } : {}),
-  };
-
-  const doFetch = async (headersForAttempt: HeadersInit) =>
-    fetch(path.startsWith("http") ? path : apiUrl(path), {
-      method,
-      credentials: supportToken ? "omit" : useCookies ? "include" : "same-origin",
-      headers: headersForAttempt,
-      body: formData,
-      signal,
-    });
-
-  let response = await doFetch(headers);
-  if (response.status === 419 && useCookies) {
-    await ensureCsrfCookie();
-    const retryXsrf = readCookie(csrfCookieName());
-    response = await doFetch({
-      ...headers,
-      ...(retryXsrf ? { "X-XSRF-TOKEN": retryXsrf } : {}),
-    });
-  }
-
-  const text = await response.text();
-  let parsed: unknown = null;
-  if (text) {
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = text;
-    }
-  }
-
-  if (!response.ok) {
-    const payload = parsed as { message?: string; error?: { code?: string; message?: string } } | null;
-    const message =
-      payload?.error?.message ||
-      payload?.message ||
-      `Request failed (${response.status})`;
-    throw new ApiError(message, response.status, payload?.error?.code, parsed);
-  }
-
-  return parsed as T;
+  return apiRequest<T>({ path, locale, method, body: formData, signal });
 }

@@ -61,7 +61,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (user?.locale) applyAccountLocale(user.locale);
       return user;
     } catch {
-      setUser(null);
+      // A network/server failure does not establish that the session ended.
       return null;
     } finally {
       setReady(true);
@@ -69,7 +69,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [locale, setUser, applyAccountLocale]);
 
   useEffect(() => {
-    void refresh();
+    // Start the external request after the effect has installed its cleanup.
+    const timer = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [refresh]);
 
   const signOut = useCallback(async () => {

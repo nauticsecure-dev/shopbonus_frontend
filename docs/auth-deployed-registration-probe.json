@@ -1,0 +1,55 @@
+[
+  {
+    "method": "POST",
+    "path": "/register",
+    "payload": {},
+    "csrf_header": false,
+    "status": 419,
+    "response": {
+      "error": {
+        "status": 419,
+        "code": "csrf_token_mismatch",
+        "message": "The session or CSRF token has expired. Refresh and try again.",
+        "request_id": "01a19f6e-1760-7214-8551-34713acc33ed"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "payload": {},
+    "csrf_header": true,
+    "status": 422,
+    "response": {
+      "error": {
+        "status": 422,
+        "code": "validation_failed",
+        "message": "The given data was invalid.",
+        "request_id": "01a19f6e-1a73-73d0-bf64-f2ea92c654ce",
+        "fields": {
+          "account_type": [
+            "The account type field is required."
+          ],
+          "first_name": [
+            "The first name field is required."
+          ],
+          "email": [
+            "The email field is required."
+          ],
+          "password": [
+            "The password field is required."
+          ],
+          "accept_terms": [
+            "The accept terms field must be accepted."
+          ],
+          "terms_version": [
+            "The terms version field is required."
+          ],
+          "privacy_version": [
+            "The privacy version field is required."
+          ]
+        }
+      }
+    }
+  }
+]

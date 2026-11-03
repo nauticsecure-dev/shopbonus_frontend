@@ -2,10 +2,12 @@
 
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -27,17 +29,25 @@ const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { session, refresh } = useSession();
-  const workspaces = session?.user.workspaces ?? [];
+  const workspaces = useMemo(() => session?.user.workspaces ?? [], [session?.user.workspaces]);
   const serverCurrent = workspaces.find((w) => w.is_current) ?? workspaces[0] ?? null;
   const [overrideId, setOverrideId] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
   const [revision, setRevision] = useState(0);
-
+  const checkingAccess = useRef(false);
   useEffect(() => {
-    if (overrideId && !workspaces.some((w) => w.id === overrideId)) {
-      setOverrideId(null);
-    }
-  }, [overrideId, workspaces]);
+    const revalidate = () => {
+      if (checkingAccess.current) return;
+      checkingAccess.current = true;
+      void refresh().finally(() => { checkingAccess.current = false; });
+    };
+    window.addEventListener("shopbonus:workspace-access-check", revalidate);
+    window.addEventListener("focus", revalidate);
+    return () => {
+      window.removeEventListener("shopbonus:workspace-access-check", revalidate);
+      window.removeEventListener("focus", revalidate);
+    };
+  }, [refresh]);
 
   const current =
     (overrideId ? workspaces.find((w) => w.id === overrideId) : null) ?? serverCurrent;
@@ -70,7 +80,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [workspaces, current, switching, select, revision]
   );
 
-  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+  return <WorkspaceContext.Provider value={value}>
+    {switching ? <p role="status">Webshop selecteren…</p> : current && current.status !== "suspended" ? <Fragment key={`${session?.user.id}:${current.id}`}>{children}</Fragment> : <p role="alert">Geen toegankelijke webshop beschikbaar.</p>}
+  </WorkspaceContext.Provider>;
 }
 
 export function useWorkspace() {

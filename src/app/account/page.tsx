@@ -8,6 +8,7 @@ import { useShopBonus } from "@/store/ShopBonusContext";
 import { useSession } from "@/store/SessionContext";
 import { useLocale } from "@/i18n/LocaleContext";
 import { authCopy } from "@/i18n/authCopy";
+import { LOCALES } from "@/types/locale";
 import {
   completeTwoFactorChallenge,
   fetchLegalRequirements,
@@ -62,30 +63,39 @@ function AccountForm() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [loading, setLoading] = useState(false);
   const [legal, setLegal] = useState<LegalRequirements | null>(null);
+  const [legalLoading, setLegalLoading] = useState(true);
   const [resendIn, setResendIn] = useState(0);
 
   const login = mode === "login";
   const strength = useMemo(() => passwordStrength(form.password), [form.password]);
 
   const loadLegal = useCallback(async () => {
+    setLegalLoading(true);
     try {
       const data = await fetchLegalRequirements(locale);
       setLegal(data);
     } catch {
       setLegal(null);
+    } finally {
+      setLegalLoading(false);
     }
   }, [locale]);
 
   useEffect(() => {
-    void loadLegal();
+    const timer = window.setTimeout(() => { void loadLegal(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadLegal]);
 
   useEffect(() => {
     if (!ready) return;
     if (session?.user && !session.user.email_verified) {
-      setVerifying(true);
-      setForm((f) => ({ ...f, email: session.user.email, name: session.user.first_name }));
-      setMode("register");
+      const user = session.user;
+      const timer = window.setTimeout(() => {
+        setVerifying(true);
+        setForm((f) => ({ ...f, email: user.email, name: user.first_name }));
+        setMode("register");
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [ready, session]);
 
@@ -258,8 +268,8 @@ function AccountForm() {
     <section className="account-page mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <p className="text-xs font-extrabold uppercase tracking-[.19em] text-brand">{copy.eyebrow}</p>
-        <div className="ml-auto flex rounded-lg border border-blue-100 bg-white p-1 text-xs font-bold" role="group" aria-label="Language">
-          {(["nl", "en"] as const).map((l) => (
+        <div className="ml-auto flex rounded-lg border border-blue-100 bg-white p-1 text-xs font-bold" role="group" aria-label={locale === "de" ? "Sprache" : locale === "nl" ? "Taal" : "Language"}>
+          {LOCALES.map((l) => (
             <button
               key={l}
               type="button"
@@ -273,36 +283,12 @@ function AccountForm() {
         </div>
       </div>
       <h1 className="max-w-5xl text-[clamp(2rem,4.3vw,3.7rem)] font-extrabold leading-[1.12] tracking-tight text-navy">
-        {login ? (
-          <>
-            {locale === "nl" ? (
-              <>
-                Welkom terug bij <span className="text-brand">ShopBonus.</span>
-              </>
-            ) : (
-              <>
-                Welcome back to <span className="text-brand">ShopBonus.</span>
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            {locale === "nl" ? (
-              <>
-                Maak je <span className="text-brand">ShopBonus-account</span> aan
-              </>
-            ) : (
-              <>
-                Create your <span className="text-brand">ShopBonus</span> account
-              </>
-            )}
-          </>
-        )}
+        {login ? copy.titleLogin : copy.titleRegister}
       </h1>
       <p className="mt-3 text-lg text-muted sm:text-xl">{copy.subtitle}</p>
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1.05fr_1fr] lg:gap-8">
         <div className="surface p-5 sm:p-8">
-          <div className="segmented" aria-label="Accountactie">
+          <div className="segmented" aria-label={locale === "de" ? "Kontoaktion" : locale === "en" ? "Account action" : "Accountactie"}>
             {(
               [
                 ["register", copy.tabRegister],
@@ -370,6 +356,7 @@ function AccountForm() {
                       {copy.twoFactorRecoveryLabel}
                     </label>
                     <input
+                      key="recovery"
                       id="recovery"
                       autoFocus
                       autoComplete="off"
@@ -392,6 +379,7 @@ function AccountForm() {
                       {copy.twoFactorCodeLabel}
                     </label>
                     <input
+                      key="totp"
                       id="totp"
                       autoFocus
                       autoComplete="one-time-code"
@@ -639,7 +627,18 @@ function AccountForm() {
                 {error}
               </p>
             )}
-            <button type="submit" className="primary-button w-full" disabled={loading} aria-busy={loading}>
+            {!ready && <p role="status" className="text-sm text-muted">{copy.loading}</p>}
+            {!login && !verifying && !twoFactor && (legalLoading ? (
+              <p role="status" className="text-sm text-muted">{copy.loading}</p>
+            ) : !legal?.registration_available ? (
+              <div role="alert" className="text-sm text-red-700">
+                <p>{copy.legalUnavailable}</p>
+                <button type="button" onClick={() => void loadLegal()} className="mt-2 font-bold underline">
+                  {locale === "en" ? "Try again" : locale === "de" ? "Erneut versuchen" : "Opnieuw proberen"}
+                </button>
+              </div>
+            ) : null)}
+            <button type="submit" className="primary-button w-full" disabled={!ready || loading || (!login && !verifying && !twoFactor && (legalLoading || !legal?.registration_available))} aria-busy={!ready || loading || (!login && !verifying && !twoFactor && legalLoading)}>
               {loading
                 ? copy.submitting
                 : twoFactor
@@ -672,15 +671,7 @@ function AccountForm() {
               <Icon name="check" size={14} /> {copy.benefitsFree}
             </span>
             <h2 className="text-3xl font-extrabold tracking-tight text-navy">
-              {locale === "nl" ? (
-                <>
-                  In <span className="text-brand">2 minuten</span> gestart
-                </>
-              ) : (
-                <>
-                  Ready in <span className="text-brand">2 minutes</span>
-                </>
-              )}
+              {copy.benefitsTitle}
             </h2>
             <p className="mt-3 max-w-sm leading-relaxed text-muted">
               {role === "merchant" ? copy.benefitsMerchant : copy.benefitsConsumer}

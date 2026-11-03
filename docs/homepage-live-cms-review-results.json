@@ -1,0 +1,491 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.homepage-live.config.ts",
+      "--grep",
+      "12 another|13 inline|9 real|10 inspect"
+    ],
+    "configFile": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\playwright.homepage-live.config.ts",
+    "rootDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/.next-homepage-live/qa-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/wamp64/www/shopbonus/shopbonus_frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "homepage-live.spec.ts"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e",
+        "snapshotDir": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e",
+        "testIgnore": [],
+        "testMatch": "homepage-live.spec.ts",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://localhost:3017",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "chromium",
+          "channel": "chrome",
+          "trace": "off"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "docs/homepage-live-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "homepage-live.spec.ts",
+      "file": "homepage-live.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "12 another administrator changes the draft after browser save and before publication",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 60399,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: draft loading blocks editing and publication\n"
+                    },
+                    {
+                      "text": "Acceptance: changing heading\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: heading opened\n"
+                    },
+                    {
+                      "text": "Acceptance: heading filled\n"
+                    },
+                    {
+                      "text": "Acceptance: heading applied\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:34:42.581Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-2c3ac6e4aee1d8688cd5",
+          "file": "homepage-live.spec.ts",
+          "line": 58,
+          "column": 5
+        },
+        {
+          "title": "13 inline scheduling queues the saved revision while the current publication stays live",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 50157,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: opening editor\n"
+                    },
+                    {
+                      "text": "Acceptance: edit clicked\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: changing heading\n"
+                    },
+                    {
+                      "text": "Acceptance: heading opened\n"
+                    },
+                    {
+                      "text": "Acceptance: heading filled\n"
+                    },
+                    {
+                      "text": "Acceptance: heading applied\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:36:05.552Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-4bf9f0b03995ece13283",
+          "file": "homepage-live.spec.ts",
+          "line": 88,
+          "column": 5
+        },
+        {
+          "title": "9 real image crop/upload, responsive variants, navigation/footer, drag order and featured merchants publish",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 145732,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('popular-webshops')\nExpected substring: \u001b[32m\"\u001b[7mBeta Acceptance S\u001b[27mhop\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mPopulaire webshopsBekijk alle webshopsNog geen gepubliceerde webshops.Naar webs\u001b[27mhop\u001b[7ms\u001b[27m\"\u001b[39m\nTimeout: 90000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('popular-webshops') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('popular-webshops')\u001b[22m\n\u001b[2m    168 × locator resolved to <section data-testid=\"popular-webshops\" class=\"relative mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8\">…</section>\u001b[22m\n\u001b[2m        - unexpected value \"Populaire webshopsBekijk alle webshopsNog geen gepubliceerde webshops.Naar webshops\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('popular-webshops')\nExpected substring: \u001b[32m\"\u001b[7mBeta Acceptance S\u001b[27mhop\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mPopulaire webshopsBekijk alle webshopsNog geen gepubliceerde webshops.Naar webs\u001b[27mhop\u001b[7ms\u001b[27m\"\u001b[39m\nTimeout: 90000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('popular-webshops') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('popular-webshops')\u001b[22m\n\u001b[2m    168 × locator resolved to <section data-testid=\"popular-webshops\" class=\"relative mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8\">…</section>\u001b[22m\n\u001b[2m        - unexpected value \"Populaire webshopsBekijk alle webshopsNog geen gepubliceerde webshops.Naar webshops\"\u001b[22m\n\n    at C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:120:1161",
+                    "location": {
+                      "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                      "column": 1161,
+                      "line": 120
+                    },
+                    "snippet": "  118 | test('7 no selected voucher or savings goal produces no invented progress',async({browser})=>{const ctx=await context(browser,consumerState);const summary=await data(ctx,'/api/v1/consumer/wallet');expect(summary.savings_goal).toBeNull();const page=await home(ctx);await expect(page.getByTestId('wallet-available')).toContainText((summary.available_minor/100).toFixed(2).replace('.',','));await expect(page.getByTestId('wallet-preview-auth')).not.toContainText('%');await expect(page.getByTestId('wallet-preview-auth')).not.toContainText('50');await ctx.close();});\n  119 | test('8 actual coupon copy and details link use the accurately labelled internal destination',async({browser})=>{await action('coupon-reset');const ctx=await context(browser);await ctx.grantPermissions(['clipboard-read','clipboard-write']);const page=await home(ctx);const panel=page.getByTestId('discount-codes-panel');await expect(panel.getByRole('link',{name:'Bekijk webshopdetails'}).first()).toBeVisible();const rows=await data(ctx,'/api/v1/public/discount-codes');const first=rows[0];await panel.getByRole('button',{name:'Kopieer code '+first.code,exact:true}).click();await expect.poll(()=>page.evaluate(()=>navigator.clipboard.readText())).toBe(first.code);const link=panel.getByRole('link',{name:'Bekijk webshopdetails'}).first();await expect(link).toHaveAttribute('href',first.href);await link.click();await expect(page).toHaveURL(new RegExp('/webshops/'+first.webshop.slug+'$'));await expect(page.getByRole('heading',{level:1})).toContainText(first.webshop.name);await ctx.close();});\n> 120 | test('9 real image crop/upload, responsive variants, navigation/footer, drag order and featured merchants publish',async({browser})=>{const ctx=await context(browser,adminState);const page=await home(ctx,true);await edit(page);await page.getByRole('button',{name:'Inhoud, afbeeldingen en volgorde'}).click();await page.locator('summary').filter({hasText:/^nav$/}).click();await page.getByLabel('nav.links.0.label',{exact:true}).fill('Live edited navigation');await page.locator('summary').filter({hasText:/^footer$/}).click();await page.getByLabel('footer.blurb',{exact:true}).fill('Live accepted footer');await page.locator('summary').filter({hasText:/^popular_webshops$/}).click();await page.getByLabel('popular_webshops.mode').selectOption('featured');const popular=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^popular_webshops$/})});await popular.getByRole('button',{name:'Toevoegen',exact:true}).click();await page.getByLabel('popular_webshops.featured_slugs.0',{exact:true}).fill('acceptance-beta');await page.getByLabel('popular_webshops.limit',{exact:true}).fill('1');await expect(page.getByTestId('popular-webshops')).toContainText('Beta Acceptance Shop');await page.getByRole('button',{name:'Volgorde',exact:true}).click();const rows=page.locator('[draggable=\"true\"]');const hero=rows.filter({has:page.locator('span').filter({hasText:/^hero$/})});const search=rows.filter({has:page.locator('span').filter({hasText:/^search$/})});await hero.dragTo(search);await expect(page.locator('[data-home-section]').first()).toHaveAttribute('data-home-section','search');await page.getByRole('button',{name:'Afbeeldingen',exact:true}).click();const image=await page.screenshot();for(const variant of ['mobile','desktop','seo']){await page.getByLabel('Image variant').selectOption(variant);await page.getByLabel('Upload image').setInputFiles({name:'real-crop.png',mimeType:'image/png',buffer:image});await page.getByLabel('Crop ratio').selectOption('1');const response=page.waitForResponse(r=>r.url().endsWith('/admin/content/homepage/assets')&&r.request().method()==='POST');await page.getByRole('button',{name:'Uitsnede uploaden'}).click();const uploaded=await response;expect(uploaded.status()).toBe(201);const asset=(await uploaded.json()).data;const binary=await ctx.request.get(asset.url);expect(binary.status()).toBe(200);expect(binary.headers()['content-type']).toContain('image/webp');await expect(page.getByRole('button',{name:'Uitsnede uploaden'})).toHaveCount(0);}\n      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ^\n  121 |  await publish(page);const stored=(await data(ctx,'/api/v1/content/homepage?locale=nl')).content;expect(stored.nav.links[0].label).toBe('Live edited navigation');expect(stored.footer.blurb).toBe('Live accepted footer');expect(stored.hero.background_mobile_url).toBeTruthy();expect(stored.hero.background_url).toBeTruthy();expect(stored.seo_image_url).toBeTruthy();expect(stored.section_order[0]).toBe('search');const guest=await context(browser);const publicPage=await home(guest);await publicPage.setViewportSize({width:390,height:844});await expect(publicPage.locator('footer')).toContainText('Live accepted footer');await expect(publicPage.getByTestId('popular-webshops')).toContainText('Beta Acceptance Shop');expect(await publicPage.locator('[data-testid=\"homepage-hero\"] picture img').evaluate((img:HTMLImageElement)=>img.currentSrc)).toBe(stored.hero.background_mobile_url);await publicPage.screenshot({path:'docs/homepage-live-mobile.png',fullPage:true});await publicPage.setViewportSize({width:1440,height:900});await publicPage.screenshot({path:'docs/homepage-live-desktop.png',fullPage:true});await guest.close();await ctx.close();});\n  122 | test('10 inspect and restore a specifically selected historical publication with confirmation and access control',async({browser})=>{const ctx=await context(browser,adminState);const page=await home(ctx,true);await edit(page);await heading(page,'Historical publication A');await publish(page);const versionsA=await data(ctx,'/api/v1/admin/content/homepage/versions?locale=nl');const selected=versionsA[0];await edit(page);await heading(page,'Current publication B');await publish(page);await edit(page);await page.getByTestId('cms-restore').click();await page.getByLabel('Published version').selectOption(selected.id);await page.getByText('Geselecteerde inhoud bekijken').click();await expect(page.locator('pre')).toContainText('Historical publication A');page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Geselecteerde versie herstellen'}).click();expect(await publicHeading(ctx)).toBe('Current publication B');page.once('dialog',dialog=>dialog.accept());const restored=page.waitForResponse(r=>r.url().endsWith('/homepage/restore')&&r.request().method()==='POST');await page.getByRole('button',{name:'Geselecteerde versie herstellen'}).click();const response=await restored;expect(response.status()).toBe(200);expect((await response.json()).data.restored_from).toBe(selected.number);await expect(page.getByRole('heading',{level:1})).toHaveText('Historical publication A');expect(await publicHeading(ctx,'en')).toBe('Live EN publication');const guest=await context(browser);expect((await call(guest,'GET','/api/v1/admin/content/homepage/versions?locale=nl')).status()).toBe(401);const consumer=await context(browser,consumerState);expect((await call(consumer,'GET','/api/v1/admin/content/homepage/versions?locale=nl')).status()).toBe(403);await consumer.close();await guest.close();await ctx.close();});\n  123 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                        "column": 1161,
+                        "line": 120
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('popular-webshops')\nExpected substring: \u001b[32m\"\u001b[7mBeta Acceptance S\u001b[27mhop\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mPopulaire webshopsBekijk alle webshopsNog geen gepubliceerde webshops.Naar webs\u001b[27mhop\u001b[7ms\u001b[27m\"\u001b[39m\nTimeout: 90000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('popular-webshops') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('popular-webshops')\u001b[22m\n\u001b[2m    168 × locator resolved to <section data-testid=\"popular-webshops\" class=\"relative mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8\">…</section>\u001b[22m\n\u001b[2m        - unexpected value \"Populaire webshopsBekijk alle webshopsNog geen gepubliceerde webshops.Naar webshops\"\u001b[22m\n\n\n  118 | test('7 no selected voucher or savings goal produces no invented progress',async({browser})=>{const ctx=await context(browser,consumerState);const summary=await data(ctx,'/api/v1/consumer/wallet');expect(summary.savings_goal).toBeNull();const page=await home(ctx);await expect(page.getByTestId('wallet-available')).toContainText((summary.available_minor/100).toFixed(2).replace('.',','));await expect(page.getByTestId('wallet-preview-auth')).not.toContainText('%');await expect(page.getByTestId('wallet-preview-auth')).not.toContainText('50');await ctx.close();});\n  119 | test('8 actual coupon copy and details link use the accurately labelled internal destination',async({browser})=>{await action('coupon-reset');const ctx=await context(browser);await ctx.grantPermissions(['clipboard-read','clipboard-write']);const page=await home(ctx);const panel=page.getByTestId('discount-codes-panel');await expect(panel.getByRole('link',{name:'Bekijk webshopdetails'}).first()).toBeVisible();const rows=await data(ctx,'/api/v1/public/discount-codes');const first=rows[0];await panel.getByRole('button',{name:'Kopieer code '+first.code,exact:true}).click();await expect.poll(()=>page.evaluate(()=>navigator.clipboard.readText())).toBe(first.code);const link=panel.getByRole('link',{name:'Bekijk webshopdetails'}).first();await expect(link).toHaveAttribute('href',first.href);await link.click();await expect(page).toHaveURL(new RegExp('/webshops/'+first.webshop.slug+'$'));await expect(page.getByRole('heading',{level:1})).toContainText(first.webshop.name);await ctx.close();});\n> 120 | test('9 real image crop/upload, responsive variants, navigation/footer, drag order and featured merchants publish',async({browser})=>{const ctx=await context(browser,adminState);const page=await home(ctx,true);await edit(page);await page.getByRole('button',{name:'Inhoud, afbeeldingen en volgorde'}).click();await page.locator('summary').filter({hasText:/^nav$/}).click();await page.getByLabel('nav.links.0.label',{exact:true}).fill('Live edited navigation');await page.locator('summary').filter({hasText:/^footer$/}).click();await page.getByLabel('footer.blurb',{exact:true}).fill('Live accepted footer');await page.locator('summary').filter({hasText:/^popular_webshops$/}).click();await page.getByLabel('popular_webshops.mode').selectOption('featured');const popular=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^popular_webshops$/})});await popular.getByRole('button',{name:'Toevoegen',exact:true}).click();await page.getByLabel('popular_webshops.featured_slugs.0',{exact:true}).fill('acceptance-beta');await page.getByLabel('popular_webshops.limit',{exact:true}).fill('1');await expect(page.getByTestId('popular-webshops')).toContainText('Beta Acceptance Shop');await page.getByRole('button',{name:'Volgorde',exact:true}).click();const rows=page.locator('[draggable=\"true\"]');const hero=rows.filter({has:page.locator('span').filter({hasText:/^hero$/})});const search=rows.filter({has:page.locator('span').filter({hasText:/^search$/})});await hero.dragTo(search);await expect(page.locator('[data-home-section]').first()).toHaveAttribute('data-home-section','search');await page.getByRole('button',{name:'Afbeeldingen',exact:true}).click();const image=await page.screenshot();for(const variant of ['mobile','desktop','seo']){await page.getByLabel('Image variant').selectOption(variant);await page.getByLabel('Upload image').setInputFiles({name:'real-crop.png',mimeType:'image/png',buffer:image});await page.getByLabel('Crop ratio').selectOption('1');const response=page.waitForResponse(r=>r.url().endsWith('/admin/content/homepage/assets')&&r.request().method()==='POST');await page.getByRole('button',{name:'Uitsnede uploaden'}).click();const uploaded=await response;expect(uploaded.status()).toBe(201);const asset=(await uploaded.json()).data;const binary=await ctx.request.get(asset.url);expect(binary.status()).toBe(200);expect(binary.headers()['content-type']).toContain('image/webp');await expect(page.getByRole('button',{name:'Uitsnede uploaden'})).toHaveCount(0);}\n      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ^\n  121 |  await publish(page);const stored=(await data(ctx,'/api/v1/content/homepage?locale=nl')).content;expect(stored.nav.links[0].label).toBe('Live edited navigation');expect(stored.footer.blurb).toBe('Live accepted footer');expect(stored.hero.background_mobile_url).toBeTruthy();expect(stored.hero.background_url).toBeTruthy();expect(stored.seo_image_url).toBeTruthy();expect(stored.section_order[0]).toBe('search');const guest=await context(browser);const publicPage=await home(guest);await publicPage.setViewportSize({width:390,height:844});await expect(publicPage.locator('footer')).toContainText('Live accepted footer');await expect(publicPage.getByTestId('popular-webshops')).toContainText('Beta Acceptance Shop');expect(await publicPage.locator('[data-testid=\"homepage-hero\"] picture img').evaluate((img:HTMLImageElement)=>img.currentSrc)).toBe(stored.hero.background_mobile_url);await publicPage.screenshot({path:'docs/homepage-live-mobile.png',fullPage:true});await publicPage.setViewportSize({width:1440,height:900});await publicPage.screenshot({path:'docs/homepage-live-desktop.png',fullPage:true});await guest.close();await ctx.close();});\n  122 | test('10 inspect and restore a specifically selected historical publication with confirmation and access control',async({browser})=>{const ctx=await context(browser,adminState);const page=await home(ctx,true);await edit(page);await heading(page,'Historical publication A');await publish(page);const versionsA=await data(ctx,'/api/v1/admin/content/homepage/versions?locale=nl');const selected=versionsA[0];await edit(page);await heading(page,'Current publication B');await publish(page);await edit(page);await page.getByTestId('cms-restore').click();await page.getByLabel('Published version').selectOption(selected.id);await page.getByText('Geselecteerde inhoud bekijken').click();await expect(page.locator('pre')).toContainText('Historical publication A');page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Geselecteerde versie herstellen'}).click();expect(await publicHeading(ctx)).toBe('Current publication B');page.once('dialog',dialog=>dialog.accept());const restored=page.waitForResponse(r=>r.url().endsWith('/homepage/restore')&&r.request().method()==='POST');await page.getByRole('button',{name:'Geselecteerde versie herstellen'}).click();const response=await restored;expect(response.status()).toBe(200);expect((await response.json()).data.restored_from).toBe(selected.number);await expect(page.getByRole('heading',{level:1})).toHaveText('Historical publication A');expect(await publicHeading(ctx,'en')).toBe('Live EN publication');const guest=await context(browser);expect((await call(guest,'GET','/api/v1/admin/content/homepage/versions?locale=nl')).status()).toBe(401);const consumer=await context(browser,consumerState);expect((await call(consumer,'GET','/api/v1/admin/content/homepage/versions?locale=nl')).status()).toBe(403);await consumer.close();await guest.close();await ctx.close();});\n  123 |\n    at C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:120:1161"
+                    }
+                  ],
+                  "stdout": [
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: opening editor\n"
+                    },
+                    {
+                      "text": "Acceptance: edit clicked\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=q3mOO9BClNZHexY7 net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/webshops/acceptance-beta net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/webshops/acceptance-beta net::ERR_ABORTED\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:36:55.742Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results\\homepage-live-9-real-image-df771--featured-merchants-publish\\error-context.md"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results\\homepage-live-9-real-image-df771--featured-merchants-publish\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                    "column": 1161,
+                    "line": 120
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-dcb4a554ba8ae30130c2",
+          "file": "homepage-live.spec.ts",
+          "line": 120,
+          "column": 5
+        },
+        {
+          "title": "10 inspect and restore a specifically selected historical publication with confirmation and access control",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 118998,
+                  "error": {
+                    "message": "Error: response.json: Protocol error (Network.getResponseBody): No resource with given identifier found\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.",
+                    "stack": "Error: response.json: Protocol error (Network.getResponseBody): No resource with given identifier found\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.\n    at C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:122:1267",
+                    "location": {
+                      "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                      "column": 1267,
+                      "line": 122
+                    },
+                    "snippet": "  120 | test('9 real image crop/upload, responsive variants, navigation/footer, drag order and featured merchants publish',async({browser})=>{const ctx=await context(browser,adminState);const page=await home(ctx,true);await edit(page);await page.getByRole('button',{name:'Inhoud, afbeeldingen en volgorde'}).click();await page.locator('summary').filter({hasText:/^nav$/}).click();await page.getByLabel('nav.links.0.label',{exact:true}).fill('Live edited navigation');await page.locator('summary').filter({hasText:/^footer$/}).click();await page.getByLabel('footer.blurb',{exact:true}).fill('Live accepted footer');await page.locator('summary').filter({hasText:/^popular_webshops$/}).click();await page.getByLabel('popular_webshops.mode').selectOption('featured');const popular=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^popular_webshops$/})});await popular.getByRole('button',{name:'Toevoegen',exact:true}).click();await page.getByLabel('popular_webshops.featured_slugs.0',{exact:true}).fill('acceptance-beta');await page.getByLabel('popular_webshops.limit',{exact:true}).fill('1');await page.waitForLoadState('networkidle',{timeout:120000});await page.getByLabel('popular_webshops.mode').selectOption('popular');await page.waitForLoadState('networkidle',{timeout:120000});await page.getByLabel('popular_webshops.mode').selectOption('featured');await expect(page.getByTestId('popular-webshops')).toContainText('Beta Acceptance Shop');await page.getByRole('button',{name:'Volgorde',exact:true}).click();const rows=page.locator('[draggable=\"true\"]');const hero=rows.filter({has:page.locator('span').filter({hasText:/^hero$/})});const search=rows.filter({has:page.locator('span').filter({hasText:/^search$/})});await hero.dragTo(search);await expect(page.locator('[data-home-section]').first()).toHaveAttribute('data-home-section','search');await page.getByRole('button',{name:'Afbeeldingen',exact:true}).click();const image=await page.screenshot();for(const variant of ['mobile','desktop','seo']){await page.getByLabel('Image variant').selectOption(variant);await page.getByLabel('Upload image').setInputFiles({name:'real-crop.png',mimeType:'image/png',buffer:image});await page.getByLabel('Crop ratio').selectOption('1');const response=page.waitForResponse(r=>r.url().endsWith('/admin/content/homepage/assets')&&r.request().method()==='POST');await page.getByRole('button',{name:'Uitsnede uploaden'}).click();const uploaded=await response;expect(uploaded.status()).toBe(201);const asset=(await uploaded.json()).data;const binary=await ctx.request.get(asset.url);expect(binary.status()).toBe(200);expect(binary.headers()['content-type']).toContain('image/webp');await expect(page.getByRole('button',{name:'Uitsnede uploaden'})).toHaveCount(0);}\n  121 |  await publish(page);const stored=(await data(ctx,'/api/v1/content/homepage?locale=nl')).content;expect(stored.nav.links[0].label).toBe('Live edited navigation');expect(stored.footer.blurb).toBe('Live accepted footer');expect(stored.hero.background_mobile_url).toBeTruthy();expect(stored.hero.background_url).toBeTruthy();expect(stored.seo_image_url).toBeTruthy();expect(stored.section_order[0]).toBe('search');const guest=await context(browser);const publicPage=await home(guest);await publicPage.setViewportSize({width:390,height:844});await expect(publicPage.locator('footer')).toContainText('Live accepted footer');await expect(publicPage.getByTestId('popular-webshops')).toContainText('Beta Acceptance Shop');expect(await publicPage.locator('[data-testid=\"homepage-hero\"] picture img').evaluate((img:HTMLImageElement)=>img.currentSrc)).toBe(stored.hero.background_mobile_url);await publicPage.screenshot({path:'docs/homepage-live-mobile.png',fullPage:true});await publicPage.setViewportSize({width:1440,height:900});await publicPage.screenshot({path:'docs/homepage-live-desktop.png',fullPage:true});await guest.close();await ctx.close();});\n> 122 | test('10 inspect and restore a specifically selected historical publication with confirmation and access control',async({browser})=>{const ctx=await context(browser,adminState);const page=await home(ctx,true);await edit(page);await heading(page,'Historical publication A');await publish(page);const versionsA=await data(ctx,'/api/v1/admin/content/homepage/versions?locale=nl');const selected=versionsA[0];await edit(page);await heading(page,'Current publication B');await publish(page);await edit(page);await page.getByTestId('cms-restore').click();await page.getByLabel('Published version').selectOption(selected.id);await page.getByText('Geselecteerde inhoud bekijken').click();await expect(page.locator('pre')).toContainText('Historical publication A');page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Geselecteerde versie herstellen'}).click();expect(await publicHeading(ctx)).toBe('Current publication B');page.once('dialog',dialog=>dialog.accept());const restored=page.waitForResponse(r=>r.url().endsWith('/homepage/restore')&&r.request().method()==='POST');await page.getByRole('button',{name:'Geselecteerde versie herstellen'}).click();const response=await restored;expect(response.status()).toBe(200);expect((await response.json()).data.restored_from).toBe(selected.number);await expect(page.getByRole('heading',{level:1})).toHaveText('Historical publication A');expect(await publicHeading(ctx,'en')).toBe('Live EN publication');const guest=await context(browser);expect((await call(guest,'GET','/api/v1/admin/content/homepage/versions?locale=nl')).status()).toBe(401);const consumer=await context(browser,consumerState);expect((await call(consumer,'GET','/api/v1/admin/content/homepage/versions?locale=nl')).status()).toBe(403);await consumer.close();await guest.close();await ctx.close();});\n      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ^\n  123 |\n  124 | test('11 recent-password confirmation uses the real masked CMS dialog',async({browser})=>{const ctx=await context(browser);expect((await call(ctx,'POST','/login',{email:'homepage-admin@example.test',password})).status()).toBe(200);expect((await call(ctx,'POST','/two-factor-challenge',{recovery_code:recoveryCodes[1]})).status()).toBe(200);const page=await home(ctx,true);await edit(page);await heading(page,'Password-confirmed CMS publication');await page.getByTestId('cms-publish').click({timeout:15000});const dialog=page.getByRole('dialog',{name:'Bevestig je wachtwoord'});await expect(dialog).toBeVisible();await dialog.getByLabel('Huidig wachtwoord').fill(password);const confirmation=page.waitForResponse(r=>r.url().endsWith('/user/confirm-password')&&r.request().method()==='POST');await dialog.getByRole('button',{name:'Wachtwoord bevestigen',exact:true}).click({timeout:15000});expect((await confirmation).status()).toBe(201);await expect(dialog).toHaveCount(0);expect(await publicHeading(ctx)).toBe('Live NL publicatie');await publish(page);expect(await publicHeading(ctx)).toBe('Password-confirmed CMS publication');await ctx.close();});\n  125 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                        "column": 1267,
+                        "line": 122
+                      },
+                      "message": "Error: response.json: Protocol error (Network.getResponseBody): No resource with given identifier found\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.\n\n  120 | test('9 real image crop/upload, responsive variants, navigation/footer, drag order and featured merchants publish',async({browser})=>{const ctx=await context(browser,adminState);const page=await home(ctx,true);await edit(page);await page.getByRole('button',{name:'Inhoud, afbeeldingen en volgorde'}).click();await page.locator('summary').filter({hasText:/^nav$/}).click();await page.getByLabel('nav.links.0.label',{exact:true}).fill('Live edited navigation');await page.locator('summary').filter({hasText:/^footer$/}).click();await page.getByLabel('footer.blurb',{exact:true}).fill('Live accepted footer');await page.locator('summary').filter({hasText:/^popular_webshops$/}).click();await page.getByLabel('popular_webshops.mode').selectOption('featured');const popular=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^popular_webshops$/})});await popular.getByRole('button',{name:'Toevoegen',exact:true}).click();await page.getByLabel('popular_webshops.featured_slugs.0',{exact:true}).fill('acceptance-beta');await page.getByLabel('popular_webshops.limit',{exact:true}).fill('1');await page.waitForLoadState('networkidle',{timeout:120000});await page.getByLabel('popular_webshops.mode').selectOption('popular');await page.waitForLoadState('networkidle',{timeout:120000});await page.getByLabel('popular_webshops.mode').selectOption('featured');await expect(page.getByTestId('popular-webshops')).toContainText('Beta Acceptance Shop');await page.getByRole('button',{name:'Volgorde',exact:true}).click();const rows=page.locator('[draggable=\"true\"]');const hero=rows.filter({has:page.locator('span').filter({hasText:/^hero$/})});const search=rows.filter({has:page.locator('span').filter({hasText:/^search$/})});await hero.dragTo(search);await expect(page.locator('[data-home-section]').first()).toHaveAttribute('data-home-section','search');await page.getByRole('button',{name:'Afbeeldingen',exact:true}).click();const image=await page.screenshot();for(const variant of ['mobile','desktop','seo']){await page.getByLabel('Image variant').selectOption(variant);await page.getByLabel('Upload image').setInputFiles({name:'real-crop.png',mimeType:'image/png',buffer:image});await page.getByLabel('Crop ratio').selectOption('1');const response=page.waitForResponse(r=>r.url().endsWith('/admin/content/homepage/assets')&&r.request().method()==='POST');await page.getByRole('button',{name:'Uitsnede uploaden'}).click();const uploaded=await response;expect(uploaded.status()).toBe(201);const asset=(await uploaded.json()).data;const binary=await ctx.request.get(asset.url);expect(binary.status()).toBe(200);expect(binary.headers()['content-type']).toContain('image/webp');await expect(page.getByRole('button',{name:'Uitsnede uploaden'})).toHaveCount(0);}\n  121 |  await publish(page);const stored=(await data(ctx,'/api/v1/content/homepage?locale=nl')).content;expect(stored.nav.links[0].label).toBe('Live edited navigation');expect(stored.footer.blurb).toBe('Live accepted footer');expect(stored.hero.background_mobile_url).toBeTruthy();expect(stored.hero.background_url).toBeTruthy();expect(stored.seo_image_url).toBeTruthy();expect(stored.section_order[0]).toBe('search');const guest=await context(browser);const publicPage=await home(guest);await publicPage.setViewportSize({width:390,height:844});await expect(publicPage.locator('footer')).toContainText('Live accepted footer');await expect(publicPage.getByTestId('popular-webshops')).toContainText('Beta Acceptance Shop');expect(await publicPage.locator('[data-testid=\"homepage-hero\"] picture img').evaluate((img:HTMLImageElement)=>img.currentSrc)).toBe(stored.hero.background_mobile_url);await publicPage.screenshot({path:'docs/homepage-live-mobile.png',fullPage:true});await publicPage.setViewportSize({width:1440,height:900});await publicPage.screenshot({path:'docs/homepage-live-desktop.png',fullPage:true});await guest.close();await ctx.close();});\n> 122 | test('10 inspect and restore a specifically selected historical publication with confirmation and access control',async({browser})=>{const ctx=await context(browser,adminState);const page=await home(ctx,true);await edit(page);await heading(page,'Historical publication A');await publish(page);const versionsA=await data(ctx,'/api/v1/admin/content/homepage/versions?locale=nl');const selected=versionsA[0];await edit(page);await heading(page,'Current publication B');await publish(page);await edit(page);await page.getByTestId('cms-restore').click();await page.getByLabel('Published version').selectOption(selected.id);await page.getByText('Geselecteerde inhoud bekijken').click();await expect(page.locator('pre')).toContainText('Historical publication A');page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Geselecteerde versie herstellen'}).click();expect(await publicHeading(ctx)).toBe('Current publication B');page.once('dialog',dialog=>dialog.accept());const restored=page.waitForResponse(r=>r.url().endsWith('/homepage/restore')&&r.request().method()==='POST');await page.getByRole('button',{name:'Geselecteerde versie herstellen'}).click();const response=await restored;expect(response.status()).toBe(200);expect((await response.json()).data.restored_from).toBe(selected.number);await expect(page.getByRole('heading',{level:1})).toHaveText('Historical publication A');expect(await publicHeading(ctx,'en')).toBe('Live EN publication');const guest=await context(browser);expect((await call(guest,'GET','/api/v1/admin/content/homepage/versions?locale=nl')).status()).toBe(401);const consumer=await context(browser,consumerState);expect((await call(consumer,'GET','/api/v1/admin/content/homepage/versions?locale=nl')).status()).toBe(403);await consumer.close();await guest.close();await ctx.close();});\n      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ^\n  123 |\n  124 | test('11 recent-password confirmation uses the real masked CMS dialog',async({browser})=>{const ctx=await context(browser);expect((await call(ctx,'POST','/login',{email:'homepage-admin@example.test',password})).status()).toBe(200);expect((await call(ctx,'POST','/two-factor-challenge',{recovery_code:recoveryCodes[1]})).status()).toBe(200);const page=await home(ctx,true);await edit(page);await heading(page,'Password-confirmed CMS publication');await page.getByTestId('cms-publish').click({timeout:15000});const dialog=page.getByRole('dialog',{name:'Bevestig je wachtwoord'});await expect(dialog).toBeVisible();await dialog.getByLabel('Huidig wachtwoord').fill(password);const confirmation=page.waitForResponse(r=>r.url().endsWith('/user/confirm-password')&&r.request().method()==='POST');await dialog.getByRole('button',{name:'Wachtwoord bevestigen',exact:true}).click({timeout:15000});expect((await confirmation).status()).toBe(201);await expect(dialog).toHaveCount(0);expect(await publicHeading(ctx)).toBe('Live NL publicatie');await publish(page);expect(await publicHeading(ctx)).toBe('Password-confirmed CMS publication');await ctx.close();});\n  125 |\n    at C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts:122:1267"
+                    }
+                  ],
+                  "stdout": [
+                    {
+                      "text": "Acceptance: opening homepage\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: opening editor\n"
+                    },
+                    {
+                      "text": "Acceptance: edit clicked\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=q3mOO9BClNZHexY7 net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: changing heading\n"
+                    },
+                    {
+                      "text": "Acceptance: heading opened\n"
+                    },
+                    {
+                      "text": "Acceptance: heading filled\n"
+                    },
+                    {
+                      "text": "Acceptance: heading applied\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: opening editor\n"
+                    },
+                    {
+                      "text": "Acceptance: edit clicked\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: changing heading\n"
+                    },
+                    {
+                      "text": "Acceptance: heading opened\n"
+                    },
+                    {
+                      "text": "Acceptance: heading filled\n"
+                    },
+                    {
+                      "text": "Acceptance: heading applied\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:3017/?_rsc=d_HBULV8cXOOjBVa net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    },
+                    {
+                      "text": "Acceptance: opening editor\n"
+                    },
+                    {
+                      "text": "Acceptance: edit clicked\n"
+                    },
+                    {
+                      "text": "Browser request failed: http://localhost:8017/api/v1/public/discount-codes?limit=2&locale=nl net::ERR_ABORTED\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T04:39:39.793Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results\\homepage-live-10-inspect-a-6803e-irmation-and-access-control\\error-context.md"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\.next-homepage-live\\qa-results\\homepage-live-10-inspect-a-6803e-irmation-and-access-control\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\wamp64\\www\\shopbonus\\shopbonus_frontend\\e2e\\homepage-live.spec.ts",
+                    "column": 1267,
+                    "line": 122
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "40cd0409999609fcbec8-3379ce0d05f329d15543",
+          "file": "homepage-live.spec.ts",
+          "line": 122,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-03T04:34:09.917Z",
+    "duration": 485411.59699999995,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

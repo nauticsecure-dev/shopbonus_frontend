@@ -1,0 +1,5 @@
+# German CMS follow-up — 2026-11-03
+
+PARTIAL. Shared German locale dictionaries, role/auth copy, selectors, page editor locale tab, FAQ DE inputs and CMS hub labels implemented. Missing German landing fields merge blank content, never Dutch defaults; missing homepage publication shows German unavailable status. Node regressions check dictionary/key/placeholder parity and merge behavior; 10 Node CMS/locale tests and TypeScript pass. Locale/helper ESLint passes; broader touched UI retains existing three set-state-in-effect errors and two image-rule warnings.
+
+Real local demo Super Admin sign-in on localhost:3000 and German Content Studio observed, with no mocked API. Local CMS prerequisite/provenance migrations applied; no provider enabled or publication edited. Detailed evidence and limits: ../shopbonus_backend/docs/cms/STRUCTURED_BINDINGS_FOLLOWUP.md (sibling repository). Many page-specific editors, public/support/consent/notification/cockpit labels remain NL/EN-only. Full locale journeys, media editing/previews and T01–T23 staging acceptance remain incomplete. Changes uncommitted; unrelated edits preserved.

@@ -1,0 +1,7 @@
+{
+    "notification": "App\\Notifications\\EmailChangeCode",
+    "code_length": 6,
+    "numeric": true,
+    "matches_pending": true,
+    "expired": false
+}

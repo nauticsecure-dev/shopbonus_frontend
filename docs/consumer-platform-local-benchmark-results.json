@@ -1,0 +1,2552 @@
+{
+  "status": "LOCAL CHECKS FAILED; RELEASE PARTIAL",
+  "date": "2026-11-03",
+  "environment": {
+    "api": "http://127.0.0.1:50606",
+    "frontend": "http://127.0.0.1:3340",
+    "database": "isolated SQLite file",
+    "cache": "database",
+    "queue": "database (captured, no external delivery)",
+    "php": "Xdebug disabled",
+    "concurrency": 1
+  },
+  "response_interception": false,
+  "synthetic_catalog_and_eligibility": true,
+  "journeys": [
+    {
+      "id": 1,
+      "name": "Homepage, published CMS, locale, cookies and responsive navigation",
+      "result": "PASS",
+      "duration_ms": 96477,
+      "detail": "Published NL/EN CMS and persisted reject-optional consent; desktop/mobile navigation rendered."
+    },
+    {
+      "id": 2,
+      "name": "Discovery search, category, sort, pagination and public-only projection",
+      "result": "PASS",
+      "duration_ms": 66984,
+      "detail": {
+        "catalog_total": 200,
+        "page_size": 12,
+        "clean_slug": true
+      }
+    },
+    {
+      "id": 3,
+      "name": "Webshop details expose approved public fields only",
+      "result": "PASS",
+      "duration_ms": 34689,
+      "detail": "Clean-slug public detail rendered; private fields absent from API projection."
+    },
+    {
+      "id": 4,
+      "name": "Offer points price and paused/expired/sold-out protection",
+      "result": "PASS",
+      "duration_ms": 47025,
+      "detail": "No checkout from viewing; 250 integer points, safe anonymous destination, unavailable offer states."
+    },
+    {
+      "id": 5,
+      "name": "Real registration, queued OTP and intended-offer return",
+      "result": "PASS",
+      "duration_ms": 54085,
+      "detail": "Real UI registration/session/CSRF and OTP validation; code captured from encrypted local queue, not external email delivery."
+    },
+    {
+      "id": 6,
+      "name": "Activation invitation preview and exactly-once account association",
+      "result": "PASS",
+      "duration_ms": 27377,
+      "detail": "Browser activation and HTTP retry associate one voucher. Synthetic eligible order, no external Answer24 proof."
+    },
+    {
+      "id": 7,
+      "name": "Expired, revoked, forged, mismatched and cross-account replay protection",
+      "result": "PASS",
+      "duration_ms": 20904,
+      "detail": "Real 404/410/403 responses; denial audit exists; recipient data absent from failures."
+    },
+    {
+      "id": 8,
+      "name": "Authoritative points dashboard, pending isolation, actual voucher checkout and retry",
+      "result": "PASS",
+      "duration_ms": 127904,
+      "detail": {
+        "available_points": 50,
+        "pending_points": 1000,
+        "reserved_points": 100,
+        "eur_unchanged": true,
+        "points_debits": 1
+      }
+    },
+    {
+      "id": 9,
+      "name": "Profile persistence, language, consent and email re-verification",
+      "result": "FAIL",
+      "error": "Expected values to be strictly equal:\n\n422 !== 200\n"
+    },
+    {
+      "id": 10,
+      "name": "Local operational checks and real HTTP P95",
+      "result": "PASS",
+      "duration_ms": 331734,
+      "detail": "Real 401/403/404/419/422/429/500 handling and local cache invalidation exercised. Accessibility, security scans and staging remain separate."
+    }
+  ],
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/v1/public/cookie-consents/ab434902-91f9-4683-b34f-70e3fa2265d4",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?per_page=12&sort=name",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?per_page=12&page=2&sort=name",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Consumer%20Local&category=home_living&has_offers=1&sort=name",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops/consumer-local-shop",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/offers/local-points-voucher-qzef9d",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/offers/local-paused-voucher-koea1r",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/offers/local-expired-voucher-twogjd",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/offers/local-sold-out-voucher-qgbacs",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/email/verify-code",
+      "status": 409,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/complete",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 410,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 410,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/complete",
+      "status": 403,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/login",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/complete",
+      "status": 410,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/wallet",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/wallet",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/login",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/wallet/transactions?unit=points",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/wallet/transactions/01m6g4ca5an0fkhw5p8rrzc70e",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/consumer/profile",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/profile",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/consumer/preferences",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/preferences",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/email-change",
+      "status": 202,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/profile",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/email-change/confirm",
+      "status": 422,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/email-change/confirm",
+      "status": 422,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 401,
+      "request_id_present": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/consumer/profile",
+      "status": 422,
+      "request_id_present": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/consumer/profile",
+      "status": 419,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops/consumer-local-shop",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops/consumer-local-shop",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/wallet",
+      "status": 500,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/wallet",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 404,
+      "request_id_present": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consumer/activation/verify",
+      "status": 429,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?search=no-match&sort=name&per_page=12",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/dashboard",
+      "status": 200,
+      "request_id_present": true
+    }
+  ],
+  "limitations": [
+    "Local results do not establish staging performance",
+    "Synthetic eligible orders and claim tokens; no external Answer24 handoff",
+    "Verification codes read from encrypted local notification jobs; no external mailbox delivery",
+    "Full accessibility and approved reference comparison remain unverified",
+    "No production provider or customer data"
+  ],
+  "performance": {
+    "methodology": "Real loopback HTTP including bootstrap/network/SQL, sequential, Xdebug disabled; cache invalidation control outside timed sample",
+    "paths": [
+      "/api/v1/public/webshops?search=Benchmark&sort=most_offers&per_page=12",
+      "/api/v1/public/webshops?search=Local&category=home_living&has_offers=1&sort=most_offers&per_page=12",
+      "/api/v1/public/webshops?search=Shop%201&sort=name&per_page=12",
+      "/api/v1/public/webshops?search=no-match&sort=name&per_page=12"
+    ],
+    "results": {
+      "directory_cold": {
+        "samples_ms": [
+          733.75,
+          741.43,
+          781.08,
+          894.98,
+          1075.69,
+          819.79,
+          744.65,
+          1034.31,
+          724.92,
+          744.67,
+          752.6,
+          728,
+          801.52,
+          746.72,
+          902.14,
+          1100.06,
+          997.6,
+          754.47,
+          740.16,
+          688.52,
+          706.73,
+          1528.64,
+          732.23,
+          718.59,
+          737.76,
+          760.01,
+          826.66,
+          695.69,
+          720.48,
+          747.21,
+          984.36,
+          683.28,
+          781.79,
+          768.64,
+          952.89,
+          666.25,
+          737.74,
+          726.89,
+          715.72,
+          674.93,
+          685.4,
+          900.46,
+          699.32,
+          661.19,
+          685.16,
+          671.31,
+          685.87,
+          643.19,
+          721.37,
+          677.96,
+          682.93,
+          718.89,
+          1120.46,
+          921.6,
+          694.13,
+          665.72,
+          720.13,
+          892.15,
+          1042.45,
+          647.2,
+          703.78,
+          715.26,
+          817.82,
+          645.87,
+          706.05,
+          736.1,
+          712.61,
+          649.41,
+          697.64,
+          714.66,
+          707.04,
+          649.99,
+          728.94,
+          734.05,
+          701.4,
+          658.28,
+          899.65,
+          695.02,
+          762.63,
+          633.39,
+          737.79,
+          700.23,
+          719.35,
+          641.5,
+          681.28,
+          691.89,
+          694.56,
+          673.15,
+          727.11,
+          724.46,
+          704.72,
+          665.87,
+          703.6,
+          697.25,
+          914.17,
+          647.45,
+          714.92,
+          710.02,
+          940.56,
+          954.63
+        ],
+        "count": 100,
+        "p50_ms": 720.13,
+        "p95_ms": 1034.31,
+        "max_ms": 1528.64,
+        "target_300ms_met_locally": false
+      },
+      "directory_warm": {
+        "samples_ms": [
+          833.76,
+          700.7,
+          656.49,
+          621.32,
+          634.66,
+          615.1,
+          869,
+          624.52,
+          627.75,
+          606.24,
+          608.39,
+          644.51,
+          624.62,
+          615.2,
+          628.02,
+          666.37,
+          660.56,
+          621.98,
+          618.8,
+          619.4,
+          615.29,
+          616.45,
+          605.16,
+          665.73,
+          635.5,
+          630.47,
+          654.6,
+          648.15,
+          614.42,
+          627.24,
+          619.04,
+          615.4,
+          618.06,
+          647.95,
+          656.32,
+          651.98,
+          628.54,
+          664.02,
+          729.09,
+          643.24,
+          649.75,
+          650.78,
+          724.68,
+          628.52,
+          626.42,
+          608.74,
+          607.12,
+          702.04,
+          744.04,
+          754.42,
+          638.62,
+          626.1,
+          634.73,
+          601.28,
+          614.14,
+          637.68,
+          617.41,
+          652.16,
+          641.53,
+          648.36,
+          750.87,
+          637.17,
+          634.79,
+          664.46,
+          676.99,
+          641.84,
+          619.59,
+          634.99,
+          653.98,
+          623.76,
+          649.05,
+          650.2,
+          637.97,
+          631.21,
+          687.38,
+          633.83,
+          630.28,
+          611.99,
+          616.6,
+          657.79,
+          673.45,
+          631.65,
+          632.2,
+          635.15,
+          635.03,
+          659.28,
+          649.64,
+          662.2,
+          621.2,
+          628.04,
+          846.17,
+          629.3,
+          619.07,
+          639.69,
+          651.32,
+          799.49,
+          728.84,
+          755.1,
+          776.44,
+          633.61
+        ],
+        "count": 100,
+        "p50_ms": 635.15,
+        "p95_ms": 755.1,
+        "max_ms": 869,
+        "target_300ms_met_locally": false
+      },
+      "dashboard": {
+        "samples_ms": [
+          724.9,
+          628.86,
+          662.42,
+          641.36,
+          632.27,
+          623.75,
+          693.34,
+          745.63,
+          627.69,
+          650.2,
+          688.03,
+          631.78,
+          643.36,
+          641.34,
+          639.54,
+          671.63,
+          649.72,
+          689.15,
+          840.89,
+          643.97,
+          636.16,
+          673.3,
+          667.66,
+          638.35,
+          642.04,
+          659.93,
+          998.55,
+          786.48,
+          724.11,
+          685.43,
+          694.9,
+          778.29,
+          651.7,
+          681.32,
+          632.4,
+          647.32,
+          622.76,
+          692.52,
+          658.15,
+          658.15,
+          648.79,
+          662.04,
+          635.68,
+          667.75,
+          636.71,
+          767.23,
+          651.46,
+          649.67,
+          621.88,
+          645.16,
+          645.48,
+          645.11,
+          644.58,
+          614.47,
+          611.45,
+          638.88,
+          665.6,
+          658.5,
+          652.02,
+          633.4,
+          639.62,
+          639.52,
+          642.44,
+          665.11,
+          652.42,
+          646.52,
+          644.07,
+          660.33,
+          623,
+          629.43,
+          677.65,
+          640.82,
+          675.48,
+          616.84,
+          807.63,
+          656.12,
+          642.38,
+          623.12,
+          630.95,
+          624.18,
+          639.09,
+          624.48,
+          622.72,
+          716.82,
+          702.32,
+          691.28,
+          636.84,
+          635.13,
+          1125.15,
+          1143.32,
+          1259.82,
+          852.26,
+          654.08,
+          659.46,
+          703.82,
+          912.58,
+          1146.74,
+          757.92,
+          656.93,
+          675.02
+        ],
+        "count": 100,
+        "p50_ms": 651.46,
+        "p95_ms": 912.58,
+        "max_ms": 1259.82,
+        "target_300ms_met_locally": false
+      }
+    }
+  },
+  "database_evidence": {
+    "shop_count": 200,
+    "offer_count": 1001,
+    "code_count": 2008,
+    "checkouts": 1,
+    "points_debits": 1,
+    "claimed_invitations": 1,
+    "denied_audits": 18
+  }
+}

@@ -1,8 +1,10 @@
+import type { Locale } from "@/types/locale";
+import { discoveryCopy } from "@/i18n/discoveryCopy";
 import { apiRequest, ApiError } from "@/lib/api";
 
 export type DiscoveryCategory = {
   key: string;
-  label: { nl: string; en: string };
+  label: { nl: string; en: string; de?: string };
 };
 
 export type OfferKind = "cashback" | "discount_code" | "combined" | "voucher_purchase" | string;
@@ -20,6 +22,7 @@ export type DiscoveryOfferSummary = {
   currency: string | null;
   min_order_minor: number | null;
   price_minor: number | null;
+  price_points?: number | null;
   ends_at: string | null;
   availability: "available" | "sold_out" | "expired" | "upcoming" | string;
   cashback_label?: string | null;
@@ -73,6 +76,7 @@ export type PageMeta = {
 };
 
 export type WebshopListParams = {
+  locale?: Locale;
   search?: string;
   category?: string | null;
   sort?: DiscoverySort;
@@ -100,18 +104,20 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
   return s ? `?${s}` : "";
 }
 
-export async function fetchDiscoveryCategories(signal?: AbortSignal): Promise<DiscoveryCategory[]> {
+export async function fetchDiscoveryCategories(signal?: AbortSignal, locale?: Locale): Promise<DiscoveryCategory[]> {
   const res = await apiRequest<Data<DiscoveryCategory[]>>({
     path: "/api/v1/public/categories",
+    locale,
     signal,
   });
   return res.data;
 }
 
 export async function fetchDiscoveryWebshops(params: WebshopListParams = {}): Promise<ListResponse> {
-  const { signal, ...query } = params;
+  const { signal, locale, ...query } = params;
   return apiRequest<ListResponse>({
     path: `/api/v1/public/webshops${qs(query)}`,
+    locale,
     signal,
   });
 }
@@ -154,21 +160,21 @@ export function offerCountLabel(count: number): string {
 }
 
 /** Prefer backend badge; else format featured offer as customer-facing label. */
-export function shopBadgeLabel(shop: DiscoveryWebshopCard): string | null {
+export function shopBadgeLabel(shop: DiscoveryWebshopCard, locale: Locale = "nl"): string | null {
   if (shop.badge_label) return shop.badge_label;
   if (shop.cashback_label) return shop.cashback_label;
   const offer = shop.featured_offer;
   if (!offer || offer.availability === "expired") return null;
   if (offer.discount_type === "percentage" && offer.discount_value != null) {
     const pct = offer.discount_value / 100;
-    return Number.isInteger(pct) ? `${pct}% cashback` : `${pct.toFixed(1).replace(".", ",")}% cashback`;
+    return Number.isInteger(pct) ? `${pct}% cashback` : `${pct.toLocaleString(locale, { maximumFractionDigits: 1 })}% cashback`;
   }
   if (offer.discount_type === "fixed" && offer.discount_value != null) {
     const euros = offer.discount_value / 100;
-    return `€${euros.toLocaleString("nl-NL", { minimumFractionDigits: euros % 1 ? 2 : 0, maximumFractionDigits: 2 })} korting`;
+    return `€${euros.toLocaleString(locale, { minimumFractionDigits: euros % 1 ? 2 : 0, maximumFractionDigits: 2 })} ${discoveryCopy[locale].discount}`;
   }
   const count = shop.active_offer_count ?? shop.offer_count ?? 0;
-  if (count > 0) return offerCountLabel(count);
+  if (count > 0) return `${count} ${count === 1 ? discoveryCopy[locale].offerOne : discoveryCopy[locale].offerMany}`;
   return null;
 }
 

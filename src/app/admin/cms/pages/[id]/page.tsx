@@ -20,7 +20,7 @@ import {
 } from "@/lib/cms";
 import { emptyPageContent, type CmsPageContent } from "@/lib/richText";
 import { useLocale } from "@/i18n/LocaleContext";
-import type { Locale } from "@/types/locale";
+import { LOCALES, type Locale } from "@/types/locale";
 
 const LEGAL_TYPES = new Set(["privacy", "terms", "cookie_policy"]);
 
@@ -170,7 +170,7 @@ export default function AdminCmsPageEditor() {
       subtitle={`${page?.type ?? ""} · ${page?.audience ?? ""}`}
     >
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {(["nl", "en"] as const).map((code) => (
+        {LOCALES.map((code) => (
           <button
             key={code}
             type="button"

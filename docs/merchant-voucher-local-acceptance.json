@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-11-02T17:44:51.239Z",
+  "environment": "Local PHP HTTP/SQLite + Next dev + real Chrome; synthetic merchant session and records; no request interception",
+  "checks": [
+    "real login and CSRF",
+    "desktop dashboard",
+    "real import reflected after focus refresh",
+    "390px offer editor without horizontal overflow"
+  ],
+  "dataset": {
+    "webshops": 1,
+    "offers": 1,
+    "codes": 3
+  },
+  "timings": [
+    {
+      "path": "/api/v1/workspaces/01m6enqb0qj1rds08edf8v4rse/dashboard",
+      "samples": 30,
+      "warmup": 5,
+      "concurrency": 1,
+      "p95_ms": 583.82
+    },
+    {
+      "path": "/api/v1/workspaces/01m6enqb0qj1rds08edf8v4rse/offers",
+      "samples": 30,
+      "warmup": 5,
+      "concurrency": 1,
+      "p95_ms": 206.89
+    }
+  ],
+  "limitation": "Small local sequential dev-server sample; not representative staging P95 or provider/concurrency evidence"
+}

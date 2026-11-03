@@ -1,10 +1,11 @@
 "use client";
 import { useRoleCopy } from "@/i18n/roleCopy";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import DashboardIcon from "@/components/DashboardIcon";
+import NotificationDeliveryActions from "@/components/NotificationDeliveryActions";
 import AdminStepUpModal from "@/components/AdminStepUpModal";
 import NotificationTemplateEditor, { NotificationTemplatePreview } from "@/components/NotificationTemplateEditor";
 import { ApiError } from "@/lib/api";
@@ -15,7 +16,6 @@ import {
   fetchPlatformTemplates,
   generatePlatformTemplates,
   publishPlatformTemplate,
-  retryPlatformDelivery,
   retryPlatformEvent,
   rollbackPlatformTemplate,
   testPlatformTemplate,
@@ -48,6 +48,12 @@ function newIdempotencyKey(): string {
 
 export default function PlatformNotificationsPage() {
   const c = useRoleCopy();
+  const [templatePage, setTemplatePage] = useState(1);
+  const [deliveryPage, setDeliveryPage] = useState(1);
+  const [templateTotal, setTemplateTotal] = useState(0);
+  const [deliveryTotal, setDeliveryTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const loadSequence = useRef(0);
   const [tab, setTab] = useState<Tab>("overview");
   const [templates, setTemplates] = useState<PlatformTemplate[]>([]);
   const [events, setEvents] = useState<PlatformEventDef[]>([]);
@@ -72,27 +78,36 @@ export default function PlatformNotificationsPage() {
   });
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    setLoading(true);
     setError(null);
-    const [tpl, ev, del, pol] = await Promise.all([
-      fetchPlatformTemplates({ per_page: 50 }),
-      fetchPlatformEvents(),
-      fetchPlatformDeliveries({ per_page: 25 }),
-      fetchPlatformNotificationSettings(),
-    ]);
-    setTemplates(tpl.data);
-    setEvents(ev.data);
-    setFailures(ev.failures);
-    setDeliveries(del.data);
-    setOps(del.operations);
-    setSettings(pol.data);
-    setEmailAvailable(pol.email_delivery_available);
-    setSettingsDraft({
-      voucher_reminder_days: (pol.data.voucher_reminder_days ?? [30, 7, 1]).join(","),
-      offer_expiry_days: String(pol.data.offer_expiry_days ?? 7),
-      retention_days: String(pol.data.retention_days ?? 90),
-      reason: "",
-    });
-  }, []);
+    try {
+      const [tpl, ev, del, pol] = await Promise.all([
+        fetchPlatformTemplates({ page: templatePage, per_page: 50 }),
+        fetchPlatformEvents(),
+        fetchPlatformDeliveries({ page: deliveryPage, per_page: 25 }),
+        fetchPlatformNotificationSettings(),
+      ]);
+      if (sequence !== loadSequence.current) return;
+      setTemplateTotal(tpl.meta.total);
+      setDeliveryTotal(del.meta?.total ?? del.data.length);
+      setTemplates(tpl.data);
+      setEvents(ev.data);
+      setFailures(ev.failures);
+      setDeliveries(del.data);
+      setOps(del.operations);
+      setSettings(pol.data);
+      setEmailAvailable(pol.email_delivery_available);
+      setSettingsDraft({
+        voucher_reminder_days: (pol.data.voucher_reminder_days ?? [30, 7, 1]).join(","),
+        offer_expiry_days: String(pol.data.offer_expiry_days ?? 7),
+        retention_days: String(pol.data.retention_days ?? 90),
+        reason: "",
+      });
+    } finally {
+      if (sequence === loadSequence.current) setLoading(false);
+    }
+  }, [templatePage, deliveryPage]);
 
   useEffect(() => {
     queueMicrotask(() => void load().catch((err) => setError(err instanceof ApiError ? err.message : c("Could_not_load_notification_management"))));
@@ -230,6 +245,7 @@ export default function PlatformNotificationsPage() {
 
           <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-lg font-black text-navy">{c("Template_versions")}</h2>
+            <NotificationPagination page={templatePage} total={templateTotal} perPage={50} disabled={busy || loading} onChange={setTemplatePage} label={c("Template_versions")} />
             <div className="space-y-3">
               {templates.length === 0 && <p className="text-sm text-muted">{c("No_templates_yet")}</p>}
               {templates.map((tpl) => (
@@ -395,6 +411,7 @@ export default function PlatformNotificationsPage() {
       {tab === "deliveries" && (
         <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-lg font-black text-navy">{c("Delivery_logs")}</h2>
+          <NotificationPagination page={deliveryPage} total={deliveryTotal} perPage={25} disabled={busy || loading} onChange={setDeliveryPage} label={c("Delivery_logs")} />
           <div className="space-y-3">
             {deliveries.length === 0 && <p className="text-sm text-muted">{c("No_deliveries")}</p>}
             {deliveries.map((d) => (
@@ -409,23 +426,7 @@ export default function PlatformNotificationsPage() {
                     {d.sent_at ? ` · ${c("sent")} ${d.sent_at}` : ""}
                   </p>
                 </div>
-                {(d.status === "failed" || d.status === "uncertain") && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        await retryPlatformDelivery(
-                          d.id,
-                          "Reviewed delivery retry after transport investigation",
-                          d.status === "uncertain"
-                        );
-                      }, c("Delivery_retry_authorized"))
-                    }
-                    className="rounded-lg border border-blue-100 px-3 py-2 text-xs font-extrabold text-brand"
-                  >
-                    {c("Retry")}</button>
-                )}
+                <NotificationDeliveryActions key={`${d.id}-${d.status}-${d.attempts}`} delivery={d} busy={busy || loading} run={run} />
               </article>
             ))}
           </div>
@@ -495,4 +496,16 @@ export default function PlatformNotificationsPage() {
       )}
     </DashboardShell>
   );
+}
+
+function NotificationPagination({ page, total, perPage, disabled, onChange, label }: {
+  page: number; total: number; perPage: number; disabled: boolean; onChange: (page: number) => void; label: string;
+}) {
+  const c = useRoleCopy();
+  const pages = Math.max(1, Math.ceil(total / perPage));
+  return <nav aria-label={label} className="mb-4 flex items-center gap-3 text-sm">
+    <button type="button" disabled={disabled || page <= 1} onClick={() => onChange(page - 1)} className="rounded-lg border px-3 py-2 disabled:opacity-50">{c("Notification_previous")}</button>
+    <span aria-live="polite">{c("Notification_page")} {page} / {pages} · {total}</span>
+    <button type="button" disabled={disabled || page >= pages} onClick={() => onChange(page + 1)} className="rounded-lg border px-3 py-2 disabled:opacity-50">{c("Notification_next")}</button>
+  </nav>;
 }

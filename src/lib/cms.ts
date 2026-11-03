@@ -90,7 +90,7 @@ export type FaqItemAdmin = {
 export type FaqCategoryAdmin = {
   id: string;
   key: string;
-  names: Record<Locale, string>;
+  names: Partial<Record<Locale, string>>;
   position: number;
   items: FaqItemAdmin[];
 };
@@ -294,7 +294,7 @@ export async function listAdminFaq(locale?: Locale): Promise<FaqCategoryAdmin[]>
 
 export async function createFaqCategory(body: {
   key: string;
-  names: Record<Locale, string>;
+  names: Partial<Record<Locale, string>>;
   locale?: Locale;
 }): Promise<{ id: string; key: string; names: Record<Locale, string>; position: number }> {
   const { locale, ...payload } = body;

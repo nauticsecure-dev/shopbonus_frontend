@@ -4,6 +4,11 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 // ownership, OTP, reminder dispatch and password sessions are backend tests;
 // this suite does not claim the ten real-service acceptance journeys.
 async function setup(page: Page) {
+  // The API client now requires a readable CSRF cookie before initial reads.
+  await page.context().addCookies([{
+    name: "XSRF-TOKEN", value: "profile-browser-fixture",
+    url: test.info().project.use.baseURL!,
+  }]);
   const state = {
     profile: {
       id: "consumer-1", first_name: "Anna", email: "anna@example.nl",
@@ -222,14 +227,56 @@ test("password confirmation UI and existing Fortify 2FA interface", async ({ pag
   expect(confirmed).toBe(true);
 });
 
-test("failed wallet refresh marks a previous balance stale on desktop and mobile", async ({ page }, testInfo) => {
+for (const copy of [
+  { locale: "nl", label: "Mijn ShopBonus-tegoed", available: "beschikbaar", loading: "Tegoed laden…", stale: "Verouderd", outdated: " (verouderd)", error: "Saldo mogelijk verouderd:", menu: "Navigatiemenu" },
+  { locale: "en", label: "My ShopBonus credit", available: "available", loading: "Loading wallet…", stale: "Stale", outdated: " (outdated)", error: "Balance may be outdated:", menu: "Navigation menu" },
+] as const) {
+  test(`header wallet labels follow ${copy.locale} on desktop and mobile through loading, failure and recovery`, async ({ page }) => {
+    const state = await setup(page);
+    await open(page);
+    await page.getByRole("button", { name: copy.locale, exact: true }).click();
+    const header = page.getByTestId("site-header");
+    const wallet = header.locator('a[href="/mijn-voordelen"]').filter({ hasText: copy.label }).first();
+    await expect(wallet).toBeVisible();
+    await expect(wallet).toHaveAttribute("title", new RegExp(copy.available + "$"));
+
+    const wait = gate();
+    await page.route("**/api/v1/me/wallet", async (route) => {
+      await wait.promise;
+      await route.fallback();
+    });
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(wallet).toHaveAttribute("title", copy.loading);
+    wait.release();
+    await expect(wallet).toHaveAttribute("title", new RegExp(copy.available + "$"));
+
+    state.failWallet = true;
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(wallet).toContainText(copy.stale);
+    await expect(wallet).toHaveAttribute("title", new RegExp("^" + copy.error));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await header.getByRole("button", { name: copy.menu, exact: true }).click();
+    const mobileWallet = header.getByRole("navigation").getByRole("link", { name: new RegExp(copy.label) });
+    await expect(mobileWallet).toContainText(copy.label + copy.outdated);
+    await expect(mobileWallet).toHaveAttribute("href", "/mijn-voordelen");
+
+    state.failWallet = false;
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(mobileWallet).not.toContainText(copy.outdated);
+    await expect(wallet).toHaveAttribute("title", new RegExp(copy.available + "$"));
+  });
+}
+
+test("failed wallet refresh marks the balance unavailable on desktop and mobile", async ({ page }, testInfo) => {
   const state = await setup(page);
   await open(page);
   await expect(page.locator("header")).toContainText("12,20");
   state.failWallet = true;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.locator("header")).toContainText("Verouderd");
-  await expect(page.locator("header")).toContainText("12,20");
+  // The current wallet context hides amounts until an authoritative refresh succeeds.
+  await expect(page.locator("header")).not.toContainText("12,20");
+  await expect(page.locator("header")).toContainText("…");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Navigatiemenu", exact: true }).click();
   await expect(page.getByText("Mijn ShopBonus-tegoed (verouderd)", { exact: true })).toBeVisible();

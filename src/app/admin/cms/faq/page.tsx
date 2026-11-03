@@ -25,11 +25,14 @@ export default function AdminFaqPage() {
   const [catKey, setCatKey] = useState("");
   const [catNl, setCatNl] = useState("");
   const [catEn, setCatEn] = useState("");
+  const [catDe, setCatDe] = useState("");
   const [itemCat, setItemCat] = useState("");
   const [qNl, setQNl] = useState("");
   const [qEn, setQEn] = useState("");
+  const [qDe, setQDe] = useState("");
   const [aNl, setANl] = useState(emptyDoc());
   const [aEn, setAEn] = useState(emptyDoc());
+  const [aDe, setADe] = useState(emptyDoc());
   const [audience, setAudience] = useState<FaqAudience>("public");
 
   const load = async () => {
@@ -53,12 +56,13 @@ export default function AdminFaqPage() {
     try {
       await createFaqCategory({
         key: catKey.trim().toLowerCase(),
-        names: { nl: catNl || catKey, en: catEn || catKey },
+        names: { nl: catNl || catKey, en: catEn || catKey, ...(catDe.trim() ? { de: catDe.trim() } : {}) },
         locale,
       });
       setCatKey("");
       setCatNl("");
       setCatEn("");
+      setCatDe("");
       setMessage(locale === "en" ? "Category created" : "Categorie aangemaakt");
       await load();
     } catch (err) {
@@ -80,13 +84,16 @@ export default function AdminFaqPage() {
         translations: {
           nl: { question: qNl, answer: aNl },
           en: { question: qEn || qNl, answer: aEn },
+          ...(qDe.trim() ? { de: { question: qDe.trim(), answer: aDe } } : {}),
         },
         locale,
       });
       setQNl("");
       setQEn("");
+      setQDe("");
       setANl(emptyDoc());
       setAEn(emptyDoc());
+      setADe(emptyDoc());
       setMessage(locale === "en" ? "FAQ item created" : "FAQ-item aangemaakt");
       await load();
     } catch (err) {
@@ -168,6 +175,7 @@ export default function AdminFaqPage() {
         >
           {locale === "en" ? "Add category" : "Categorie toevoegen"}
         </button>
+        <input value={catDe} onChange={e => setCatDe(e.target.value)} placeholder="Name DE" aria-label="Name DE" className="rounded-xl border border-blue-100 px-3 py-2 text-sm" />
       </div>
 
       <div className="mb-8 space-y-3 rounded-2xl border border-blue-100 p-4">
@@ -209,6 +217,8 @@ export default function AdminFaqPage() {
         />
         <RichTextEditor label="Antwoord NL" value={aNl} onChange={setANl} rows={4} />
         <RichTextEditor label="Answer EN" value={aEn} onChange={setAEn} rows={4} />
+        <input value={qDe} onChange={e => setQDe(e.target.value)} placeholder="Frage DE" aria-label="Frage DE" className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm" />
+        <RichTextEditor label="Antwort DE" value={aDe} onChange={setADe} rows={4} />
         <button
           type="button"
           disabled={busy}

@@ -177,6 +177,21 @@ export async function fetchOfferCodes(
   });
 }
 
+export async function fetchOfferBatches(offerId: string, workspaceId: string, signal?: AbortSignal): Promise<string[]> {
+  const ids: string[] = [];
+  let page = 1;
+  let lastPage = 1;
+  do {
+    const result = await apiRequest<{ data: { id: string }[]; meta: { last_page: number } }>({
+      path: ws(`/offers/${offerId}/code-batches?per_page=200&page=${page}`, workspaceId), signal,
+    });
+    ids.push(...result.data.map((batch) => batch.id));
+    lastPage = result.meta.last_page;
+    page += 1;
+  } while (page <= lastPage);
+  return ids;
+}
+
 export async function revealCode(codeId: string, workspaceId: string): Promise<{ id: string; code: string }> {
   const res = await apiRequest<Data<{ id: string; code: string }>>({
     path: ws(`/codes/${codeId}/reveal`, workspaceId),
@@ -204,7 +219,7 @@ export async function fetchCodeHistory(codeId: string, workspaceId: string): Pro
 export async function verifyCodePlatform(
   codeId: string,
   workspaceId: string,
-  body: { mode: "provider_check" | "manual_confirm"; note?: string }
+  body: { mode: "provider_check" | "manual_confirm"; note?: string; voucher_id?: string }
 ): Promise<{ data: InventoryCode; verification: PlatformVerification }> {
   return apiRequest({
     path: ws(`/codes/${codeId}/platform-validation`, workspaceId),
@@ -281,6 +296,8 @@ export function platformValidationLabel(status: string): string {
   switch (status) {
     case "verified":
       return "Geverifieerd";
+    case "manually_confirmed":
+      return "Handmatig bevestigd (geen providerbewijs)";
     case "verification_pending":
       return "Verificatie loopt";
     case "merchant_verification_required":

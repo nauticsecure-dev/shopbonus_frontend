@@ -1,0 +1,101 @@
+import { test, expect, type BrowserContext, type Browser } from '@playwright/test';
+import { createHmac } from 'node:crypto';
+import { writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+const api = 'http://localhost:8026', password = 'Acceptance-only-2026!';
+let adminState: Awaited<ReturnType<BrowserContext['storageState']>>;
+const security: number[] = [];
+let recoveryCodes: string[] = [];
+const evidence: {method: string; path: string; status: number}[] = [];
+async function call(ctx:BrowserContext,method:string,path:string,data?:unknown){
+ if(!['GET','HEAD'].includes(method))await ctx.request.get(api+'/sanctum/csrf-cookie',{headers:{Origin:'http://localhost:3026',Referer:'http://localhost:3026/'}});
+ const cookie=(await ctx.cookies(api)).find(c=>c.name==='XSRF-TOKEN');
+ const response = await ctx.request.fetch(api+path,{method,data,headers:{Accept:'application/json',Origin:'http://localhost:3026',Referer:'http://localhost:3026/',...(cookie?{'X-XSRF-TOKEN':decodeURIComponent(cookie.value)}:{})}});
+ evidence.push({method,path,status:response.status()}); return response;
+}
+async function data(ctx:BrowserContext,path:string){const r=await call(ctx,'GET',path);expect(r.status(),path+': '+await r.text()).toBe(200);return (await r.json()).data;}
+function totp(secret:string){let bits='';for(const c of secret)bits+='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'.indexOf(c).toString(2).padStart(5,'0');const key=Buffer.from(bits.match(/.{8}/g)!.map(b=>parseInt(b,2)));const counter=Buffer.alloc(8);counter.writeBigUInt64BE(BigInt(Math.floor(Date.now()/30000)));const hash=createHmac('sha1',key).update(counter).digest();const offset=hash.at(-1)!&15;return String((hash.readUInt32BE(offset)&0x7fffffff)%1000000).padStart(6,'0');}
+
+async function context(browser: Browser) { const ctx = await browser.newContext(); await ctx.addCookies([{ name:'shopbonus-locale',value:'nl',domain:'localhost',path:'/' }]); await ctx.addInitScript(() => localStorage.setItem('shopbonus-locale','nl')); return ctx; }
+test.beforeAll(async ({browser}) => { execFileSync('php',['scripts/merchant-review.php','reset-mfa'],{cwd:'../shopbonus_backend',windowsHide:true});  const ctx=await context(browser);let r=await call(ctx,'POST','/login',{email:'merchant-review@example.test',password});expect(r.status()).toBe(200);
+ r=await call(ctx,'GET','/api/v1/admin/content/voor-webshops?locale=nl');security.push(r.status());expect(r.status()).toBe(403);expect((await r.json()).error.code).toBe('mfa_required');
+ expect((await call(ctx,'POST','/user/confirm-password',{password})).status()).toBe(201);
+ expect((await call(ctx,'POST','/user/two-factor-authentication',{})).status()).toBe(200);
+ const secretResponse=await call(ctx,'GET','/user/two-factor-secret-key');const secret=(await secretResponse.json()).secretKey;
+ expect((await call(ctx,'POST','/user/confirmed-two-factor-authentication',{code:totp(secret)})).status()).toBe(200);
+ recoveryCodes=await (await call(ctx,'GET','/user/two-factor-recovery-codes')).json();const recovery=recoveryCodes[0];
+ await call(ctx,'POST','/logout',{});r=await call(ctx,'POST','/login',{email:'merchant-review@example.test',password});expect((await r.json()).two_factor).toBe(true);
+ expect((await call(ctx,'GET','/api/v1/me')).status()).toBe(401);
+ expect((await call(ctx,'POST','/two-factor-challenge',{recovery_code:recovery})).status()).toBe(200);
+ r=await call(ctx,'POST','/api/v1/admin/content/voor-webshops/publish',{locale:'nl'});security.push(r.status());expect(r.status()).toBe(423);
+ expect((await call(ctx,'POST','/user/confirm-password',{password})).status()).toBe(201);
+ const noCsrf=await ctx.request.post(api+'/api/v1/admin/content/voor-webshops/publish',{data:{locale:'nl'},headers:{Origin:'http://localhost:3026',Accept:'application/json'}});security.push(noCsrf.status());expect(noCsrf.status()).toBe(419);
+
+ const initialVersions = await data(ctx,'/api/v1/admin/content/voor-webshops/versions?locale=nl');
+ const initial = initialVersions.find((v: {number: number}) => v.number === 1);
+ expect((await call(ctx,'POST','/api/v1/admin/content/voor-webshops/restore',{locale:'nl',revision_id:initial.id})).status()).toBe(200);
+ adminState = await ctx.storageState(); await ctx.close();
+});
+test.afterAll(async () => { await writeFile('docs/merchant-landing/real-service-http.json', JSON.stringify({environment:'Real Laravel and Next HTTP, isolated SQLite, cookie login, CSRF, TOTP and password confirmation; no intercepted API responses. Local filesystem uploads. No external providers.',security,requests:evidence}, null, 2)); });
+
+test('real authenticated edit, save, publish, comparison, restore, upload and due schedule', async ({browser}) => {
+ test.setTimeout(420000);
+ const ctx = await browser.newContext({storageState:adminState});
+ await ctx.addInitScript(() => localStorage.setItem('shopbonus-locale','nl'));
+ const page = await ctx.newPage();
+ await page.goto('/voor-webshops');
+ await page.getByTestId('cms-edit-voor-webshops').click();
+ await expect(page.locator('[data-cms-edit="hero.heading"]')).toBeEnabled();
+ await page.locator('[data-cms-edit="hero.heading"]').click();
+ await page.locator('textarea').fill('Echt opgeslagen concept');
+ await page.getByRole('button',{name:'Toepassen',exact:true}).click();
+ await expect.poll(async () => (await data(ctx,'/api/v1/admin/content/voor-webshops?locale=nl')).draft.hero.heading).toBe('Echt opgeslagen concept');
+ expect((await data(ctx,'/api/v1/content/voor-webshops?locale=nl')).content.hero.heading).toBe('Echte goedgekeurde publicatie');
+ await page.getByRole('button',{name:'Voorbeeld',exact:true}).click();
+ await expect(page.getByRole('heading',{level:1})).toContainText('Echt opgeslagen concept');
+ await page.getByRole('button',{name:'Terug naar bewerken',exact:true}).click();
+ await page.getByRole('button',{name:/Pagina-instellingen/}).click();
+ await page.getByRole('button',{name:'Media',exact:true}).click();
+ const image = await page.screenshot();
+ await page.getByLabel('Afbeeldingsvariant').selectOption('mobile');
+ await page.getByLabel('Alternatieve tekst').fill('Echte geüploade afbeelding');
+ await page.getByLabel('Afbeelding vervangen').setInputFiles({name:'review.png',mimeType:'image/png',buffer:image});
+ await page.getByRole('button',{name:'Bijgesneden afbeelding uploaden'}).click();
+ await expect.poll(async () => (await data(ctx,'/api/v1/admin/content/voor-webshops?locale=nl')).draft.media?.hero?.mobile_asset_id).toBeTruthy();
+ await page.getByRole('button',{name:/Pagina-instellingen/}).click();
+ await page.getByRole('button',{name:'Publiceren',exact:true}).click();
+ await expect(page.getByTestId('cms-edit-voor-webshops')).toBeVisible();
+ const publication = (await data(ctx,'/api/v1/content/voor-webshops?locale=nl')).content;
+ expect(publication.hero.heading).toBe('Echt opgeslagen concept');
+ expect((await ctx.request.get(publication.media.hero.mobile_url)).status()).toBe(200);
+ await page.getByTestId('cms-edit-voor-webshops').click();
+ await page.getByRole('button',{name:/Pagina-instellingen/}).click();
+ await page.getByRole('button',{name:'Geschiedenis',exact:true}).click();
+ const versions = await data(ctx,'/api/v1/admin/content/voor-webshops/versions?locale=nl&include_content=1');
+ await writeFile('../shopbonus_backend/docs/api/MERCHANT_HISTORY_HTTP_CAPTURE.json',JSON.stringify({method:'GET',path:'/api/v1/admin/content/voor-webshops/versions?locale=nl&include_content=1',status:200,environment:'Isolated real Laravel HTTP with authenticated MFA/CSRF session and synthetic publications',response:{data:versions}},null,2));
+ const first = versions.find((v: {number:number}) => v.number === 1);
+ await page.getByLabel('Gepubliceerde versie').selectOption(first.id);
+ await expect(page.getByRole('region',{name:'Vergelijken vóór herstellen'})).toContainText('Echte goedgekeurde publicatie');
+ await page.screenshot({path:'docs/merchant-landing/revision-comparison.png',fullPage:true});
+ await page.getByRole('button',{name:'Geselecteerde publicatie herstellen'}).click();
+ await expect(page.getByTestId('cms-edit-voor-webshops')).toBeVisible();
+ expect((await data(ctx,'/api/v1/content/voor-webshops?locale=nl')).content.hero.heading).toBe('Echte goedgekeurde publicatie');
+ await page.getByTestId('cms-edit-voor-webshops').click();
+ await page.locator('[data-cms-edit="hero.heading"]').click();
+ await page.locator('textarea').fill('Werkelijk ingeplande publicatie');
+ await page.getByRole('button',{name:'Toepassen',exact:true}).click();
+ await page.getByRole('button',{name:/Pagina-instellingen/}).click();
+ await page.getByRole('button',{name:'Planning',exact:true}).click();
+ const due = new Date(Math.ceil((Date.now()+125000)/60000)*60000);
+ const local = new Date(due.getTime()-due.getTimezoneOffset()*60000).toISOString().slice(0,16);
+ await page.getByLabel('Publiceren op',{exact:true}).fill(local);
+ await page.getByRole('button',{name:'Publicatie inplannen',exact:true}).click();
+ await expect(page.getByTestId('cms-edit-voor-webshops')).toBeVisible();
+ expect((await data(ctx,'/api/v1/content/voor-webshops?locale=nl')).content.hero.heading).toBe('Echte goedgekeurde publicatie');
+ await expect.poll(async () => { execFileSync('php',['scripts/merchant-review.php','run-schedules'],{cwd:'../shopbonus_backend',windowsHide:true}); return (await data(ctx,'/api/v1/content/voor-webshops?locale=nl')).content.hero.heading; },{timeout:240000,intervals:[10000]}).toBe('Werkelijk ingeplande publicatie');
+ await page.reload();
+ await page.screenshot({path:'docs/merchant-landing/real-service-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await page.screenshot({path:'docs/merchant-landing/real-service-mobile.png',fullPage:true});
+ await ctx.close();
+});

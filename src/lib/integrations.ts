@@ -58,6 +58,7 @@ export type WebshopConnection = {
   last_verified_order_at: string | null;
   connected_at: string | null;
   disconnected_at: string | null;
+  paused_at?: string | null;
   last_error: { code: string; at: string | null } | null;
   created_at: string;
   setup?: ConnectionSetup;
@@ -162,6 +163,7 @@ export type ShopifyOAuthStart = {
 
 /** Merchant-facing capability badge — never invents VERIFIED without server evidence. */
 export type CapabilityBadgeKind =
+  | "PAUSED"
   | "VERIFIED"
   | "LIMITED"
   | "SETUP REQUIRED"
@@ -233,6 +235,9 @@ export function connectionBadge(
   if (!connection || connection.status === "disconnected") {
     return { kind: "DISCONNECTED", detail: "No active connection for this shop." };
   }
+  if (connection.paused_at) {
+    return { kind: "PAUSED", detail: "Integration paused. Credentials and connection history are retained." };
+  }
   const life = connectionLifecycle(connection, checklist);
   if (life === "error") {
     return {
@@ -282,8 +287,8 @@ export function capabilityBadgeFromState(
   return { kind: "UNSUPPORTED", label, detail: cap.reason ?? "Unsupported in this boundary." };
 }
 
-export function summarizeCapabilities(caps: Record<string, PlatformCapability> | undefined): string {
-  if (!caps) return "Capability matrix not loaded.";
+export function summarizeCapabilities(caps: Record<string, PlatformCapability> | undefined, translate: (text: string) => string = (text) => text): string {
+  if (!caps) return translate("Capability matrix not loaded.");
   const parts: string[] = [];
   const order = caps.orders;
   const coupons = caps.coupons_read;
@@ -291,12 +296,14 @@ export function summarizeCapabilities(caps: Record<string, PlatformCapability> |
   if (order?.state === "AVAILABLE") parts.push("Orders available");
   else if (order?.state === "LIMITED") parts.push("Orders limited");
   else parts.push("Orders unsupported");
-  if (coupons?.state === "UNSUPPORTED") parts.push("coupon reading unsupported");
+  if (!coupons) parts.push("coupon reading not reported");
+  else if (coupons.state === "UNSUPPORTED") parts.push("coupon reading unsupported");
   else if (coupons?.state === "LIMITED") parts.push("coupon reading limited");
   else parts.push("coupons readable");
-  if (banner?.state === "UNSUPPORTED") parts.push("banner unsupported");
+  if (!banner) parts.push("banner capability not reported");
+  else if (banner.state === "UNSUPPORTED") parts.push("banner unsupported");
   else parts.push("banner requires manual/native install");
-  return parts.join("; ") + ".";
+  return parts.map(translate).join("; ") + ".";
 }
 
 export async function fetchPlatforms(signal?: AbortSignal): Promise<PlatformCatalogueItem[]> {
@@ -465,13 +472,47 @@ export async function fetchConnectionCoupons(
   return res.data ?? [];
 }
 
+export type CatalogSyncResult = {
+  run_id: string;
+  imported: number;
+  exhausted: boolean;
+  cursor: string | null;
+  status: "queued" | "running" | "processing" | "completed" | "partial" | "failed" | "unsupported";
+  error_code: string | null;
+};
+
+export async function fetchCatalogSyncs(workspaceId: string, connectionId: string, signal?: AbortSignal): Promise<{ id: string; status: CatalogSyncResult["status"]; items: number; error_code: string | null }[]> {
+  const res = await apiRequest<Data<{ id: string; status: CatalogSyncResult["status"]; items: number; error_code: string | null }[]>>({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/catalog-syncs`, signal,
+  });
+  return res.data ?? [];
+}
+
+export async function setConnectionPaused(workspaceId: string, connectionId: string, paused: boolean): Promise<WebshopConnection> {
+  const res = await apiRequest<Data<WebshopConnection>>({
+    path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/${paused ? "pause" : "resume"}`,
+    method: "POST",
+  });
+  return res.data;
+}
+
+/** A row count is never evidence that a provider capability is unsupported. */
+export function catalogSyncState(result: CatalogSyncResult): "queued" | "processing" | "partial" | "empty" | "completed" | "failed" | "unsupported" {
+  if (result.error_code === "capability_unsupported" || result.status === "unsupported") return "unsupported";
+  if (result.status === "failed") return "failed";
+  if (result.status === "queued") return "queued";
+  if (result.status === "partial") return "partial";
+  if (result.status === "completed") return result.imported === 0 ? "empty" : "completed";
+  return "processing";
+}
+
 export async function syncConnectionProducts(
   workspaceId: string,
   connectionId: string,
   cursor?: string | null
-): Promise<{ run_id: string; imported: number; exhausted: boolean; cursor: string | null }> {
+): Promise<CatalogSyncResult> {
   const res = await apiRequest<
-    Data<{ run_id: string; imported: number; exhausted: boolean; cursor: string | null }>
+    Data<CatalogSyncResult>
   >({
     path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/sync/products`,
     method: "POST",
@@ -484,9 +525,9 @@ export async function syncConnectionCoupons(
   workspaceId: string,
   connectionId: string,
   cursor?: string | null
-): Promise<{ run_id: string; imported: number; exhausted: boolean; cursor: string | null }> {
+): Promise<CatalogSyncResult> {
   const res = await apiRequest<
-    Data<{ run_id: string; imported: number; exhausted: boolean; cursor: string | null }>
+    Data<CatalogSyncResult>
   >({
     path: `/api/v1/workspaces/${workspaceId}/connections/${connectionId}/sync/coupons`,
     method: "POST",
@@ -570,7 +611,7 @@ export const SERVICE_APPS: ServiceAppCard[] = [
     purpose: "Affiliate network commissions",
     status: "ADMIN_ONLY",
     href: "/admin/affiliate",
-    note: "Verified affiliate flow — Super Admin only; never double-credits a direct shop order.",
+    note: "Super Admin configures the affiliate connection; provider acceptance is required.",
   },
   {
     id: "tradetracker",

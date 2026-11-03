@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Eyebrow } from "@/components/Cards";
 import SupportChatPanel from "@/components/SupportChatPanel";
+import ConsumerPointsOverview from "@/components/ConsumerPointsOverview";
 import { ApiError } from "@/lib/api";
 import {
   createDispute,
@@ -20,7 +21,9 @@ import {
 } from "@/lib/benefits";
 import { fetchConsumerDashboard, type ConsumerDashboard } from "@/lib/dashboard";
 import { formatMinor, formatNlDate } from "@/lib/money";
+import type { Dictionary } from "@/i18n/dictionaries";
 import { useLocale } from "@/i18n/LocaleContext";
+import { consumerActivityStatus } from "@/i18n/consumerActivityCopy";
 import { useSession } from "@/store/SessionContext";
 import { useShopBonus } from "@/store/ShopBonusContext";
 
@@ -28,40 +31,40 @@ type VoucherFilter = "alle" | "actief" | "used" | "verlopen" | "geannuleerd";
 type TxFilter = "all" | "earned" | "spent" | "adjustments" | "holds";
 type BenefitsTab = "vouchers" | "transacties" | "aankopen";
 
-function signedMinorLabel(amountMinor: number, sign?: "credit" | "debit"): string {
+function signedMinorLabel(amountMinor: number, sign?: "credit" | "debit", intlLocale = "nl-NL"): string {
   const credit = sign ? sign === "credit" : amountMinor >= 0;
   const abs = Math.abs(amountMinor);
-  return `${credit ? "+" : "−"} ${formatMinor(abs)}`;
+  return `${credit ? "+" : "−"} ${formatMinor(abs, "EUR", intlLocale)}`;
 }
 
-const DISPUTE_REASONS: { value: DisputeReason; label: string }[] = [
-  { value: "code_invalid", label: "Code ongeldig bij afrekenen" },
-  { value: "code_already_used", label: "Code al gebruikt" },
-  { value: "refused_by_webshop", label: "Webshop weigert geldige code" },
-  { value: "terms_differ", label: "Korting wijkt af van voorwaarden" },
-  { value: "missing_after_payment", label: "Betaald maar voucher ontbreekt" },
-  { value: "other", label: "Anders" },
+const disputeReasons = (c: Dictionary): { value: DisputeReason; label: string }[] => [
+  { value: "code_invalid", label: c.benefitsInvalidCode },
+  { value: "code_already_used", label: c.benefitsUsedCode },
+  { value: "refused_by_webshop", label: c.benefitsRefusedCode },
+  { value: "terms_differ", label: c.benefitsDifferentTerms },
+  { value: "missing_after_payment", label: c.benefitsMissingVoucher },
+  { value: "other", label: c.benefitsOther },
 ];
 
-function statusUi(status: string): { label: string; active: boolean; used: boolean } {
+function statusUi(status: string, c: Dictionary): { label: string; active: boolean; used: boolean } {
   const s = status.toUpperCase();
-  if (s === "ACTIVE") return { label: "Actief", active: true, used: false };
-  if (s === "USED") return { label: "Gebruikt", active: false, used: true };
-  if (s === "CANCELLED") return { label: "Geannuleerd", active: false, used: false };
-  return { label: "Verlopen", active: false, used: false };
+  if (s === "ACTIVE") return { label: c.benefitsActive, active: true, used: false };
+  if (s === "USED") return { label: c.benefitsUsed, active: false, used: true };
+  if (s === "CANCELLED") return { label: c.benefitsCancelled, active: false, used: false };
+  return { label: c.benefitsExpired, active: false, used: false };
 }
 
-function discountLabel(v: ConsumerVoucher): string {
+function discountLabel(v: ConsumerVoucher, intlLocale: string): string {
   if (v.discount_type === "percentage" || v.discount_type === "percent") {
     const n = v.discount_value ?? 0;
-    return `${Number.isInteger(n) ? n : n.toLocaleString("nl-NL", { maximumFractionDigits: 1 })}%`;
+    return `${Number.isInteger(n) ? n : n.toLocaleString(intlLocale, { maximumFractionDigits: 1 })}%`;
   }
   if (typeof v.discount_value === "number") {
     // Fixed offers store cents in terms snapshots.
     if (v.discount_type === "fixed" || v.discount_type === "amount" || v.discount_value >= 100) {
-      return formatMinor(v.discount_value);
+      return formatMinor(v.discount_value, "EUR", intlLocale);
     }
-    return `€${v.discount_value}`;
+    return formatMinor(Math.round(v.discount_value * 100), "EUR", intlLocale);
   }
   return "—";
 }
@@ -73,12 +76,11 @@ function logoInitials(name: string | null | undefined): string {
 }
 
 export default function MijnVoordelenPage() {
+  const { dictionary: c } = useLocale();
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-[50vh] place-items-center text-muted" role="status">
-          Mijn voordelen laden…
-        </div>
+        <div className="grid min-h-[50vh] place-items-center text-muted" role="status">{c.benefitsLoading}</div>
       }
     >
       <MijnVoordelenInner />
@@ -89,11 +91,19 @@ export default function MijnVoordelenPage() {
 function MijnVoordelenInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { locale } = useLocale();
+  const { locale, dictionary: c, intlLocale } = useLocale();
+  const formatMoney = (minor: number) => formatMinor(minor, "EUR", intlLocale);
+  const formatDate = (iso: string | null | undefined) => formatNlDate(iso, intlLocale);
+  const signedMoney = (minor: number, sign?: "credit" | "debit") => signedMinorLabel(minor, sign, intlLocale);
+  const signedReward = (amount: number, unit: string | undefined, sign?: "credit" | "debit") => {
+    if (unit === "points") return `${(sign ? sign === "credit" : amount >= 0) ? "+" : "−"} ${Math.abs(amount).toLocaleString(intlLocale)} ${c.benefitsPointsUnit}`;
+    return unit === "eur_credit" ? signedMoney(amount, sign) : "—";
+  };
   const { session, ready: sessionReady } = useSession();
   const {
     availableMinor,
     reservedMinor,
+    pendingMinor,
     totalEarnedMinor,
     totalSpentMinor,
     savingsGoal,
@@ -136,7 +146,18 @@ function MijnVoordelenInner() {
   const [supportVoucher, setSupportVoucher] = useState<ConsumerVoucher | null>(null);
   const [conditionsId, setConditionsId] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
-  const [dashboard, setDashboard] = useState<ConsumerDashboard | null>(null);
+  const [dashboardEpoch, setDashboardEpoch] = useState(0);
+  const dashboardScope = `${session?.user.id ?? ""}:${locale}`;
+  const dashboardKey = `${dashboardScope}:${financialRevision}:${dashboardEpoch}`;
+  const [dashboardResult, setDashboardResult] = useState<{
+    scope: string;
+    key: string;
+    data: ConsumerDashboard | null;
+    status: "success" | "error";
+  } | null>(null);
+  const dashboard = apiMode && dashboardResult?.scope === dashboardScope ? dashboardResult.data : null;
+  const dashboardLoading = apiMode && dashboardResult?.key !== dashboardKey;
+  const dashboardError = apiMode && dashboardResult?.key === dashboardKey && dashboardResult.status === "error";
   const [detail, setDetail] = useState<ConsumerVoucher | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [disputeVoucher, setDisputeVoucher] = useState<ConsumerVoucher | null>(null);
@@ -165,15 +186,20 @@ function MijnVoordelenInner() {
     let cancelled = false;
     void fetchConsumerDashboard(locale)
       .then((data) => {
-        if (!cancelled) setDashboard(data);
+        if (!cancelled) setDashboardResult({ scope: dashboardScope, key: dashboardKey, data, status: "success" });
       })
       .catch(() => {
-        if (!cancelled) setDashboard(null);
+        if (!cancelled) setDashboardResult((previous) => ({
+          scope: dashboardScope,
+          key: dashboardKey,
+          data: previous?.scope === dashboardScope ? previous.data : null,
+          status: "error",
+        }));
       });
     return () => {
       cancelled = true;
     };
-  }, [session?.user, apiMode, locale, financialRevision]);
+  }, [session?.user, apiMode, locale, dashboardScope, dashboardKey]);
 
   const loadLedger = useCallback(async () => {
     if (!apiMode) return;
@@ -196,18 +222,18 @@ function MijnVoordelenInner() {
       setLedgerMayBeStale(false);
     } catch (err) {
       if (reqId !== ledgerReqId.current) return;
-      const message = err instanceof ApiError ? err.message : "Probeer opnieuw.";
+      const message = err instanceof ApiError ? err.message : c.benefitsRetryHint;
       setLedgerError(message);
       setLedgerMayBeStale(true);
       pushToast({
-        title: "Transacties laden mislukt",
+        title: c.benefitsLedgerError,
         message,
         kind: "error",
       });
     } finally {
       if (reqId === ledgerReqId.current) setLedgerLoading(false);
     }
-  }, [apiMode, txFilter, txQuery, txPage, locale, pushToast]);
+  }, [apiMode, txFilter, txQuery, txPage, locale, pushToast, c]);
 
   useEffect(() => {
     if (tab === "transacties" && apiMode) void loadLedger();
@@ -230,8 +256,8 @@ function MijnVoordelenInner() {
       .catch((err) => {
         if (!cancelled) {
           pushToast({
-            title: "Affiliate-activiteit laden mislukt",
-            message: err instanceof ApiError ? err.message : "Probeer opnieuw.",
+            title: c.benefitsAffiliateError,
+            message: err instanceof ApiError ? err.message : c.benefitsRetryHint,
             kind: "error",
           });
         }
@@ -242,7 +268,7 @@ function MijnVoordelenInner() {
     return () => {
       cancelled = true;
     };
-  }, [tab, apiMode, locale, pushToast, affiliateEpoch]);
+  }, [tab, apiMode, locale, pushToast, c, affiliateEpoch]);
 
   useEffect(() => {
     if (!apiMode) return;
@@ -268,15 +294,15 @@ function MijnVoordelenInner() {
         setDetail(v);
       } catch (err) {
         pushToast({
-          title: "Details laden mislukt",
-          message: err instanceof ApiError ? err.message : "Probeer opnieuw.",
+          title: c.benefitsDetailError,
+          message: err instanceof ApiError ? err.message : c.benefitsRetryHint,
           kind: "error",
         });
       } finally {
         setDetailLoading(false);
       }
     },
-    [apiMode, locale, pushToast]
+    [apiMode, locale, pushToast, c]
   );
 
   useEffect(() => {
@@ -322,8 +348,8 @@ function MijnVoordelenInner() {
   const submitDispute = async () => {
     if (!disputeVoucher || disputeDescription.trim().length < 10) {
       pushToast({
-        title: "Omschrijving te kort",
-        message: "Beschrijf het probleem in minstens 10 tekens.",
+        title: c.benefitsShortDescription,
+        message: c.benefitsDescriptionHint,
         kind: "error",
       });
       return;
@@ -340,8 +366,8 @@ function MijnVoordelenInner() {
         locale
       );
       pushToast({
-        title: "Melding ontvangen",
-        message: "Je geschil is geopend. Je kunt de status later volgen.",
+        title: c.benefitsReportSuccess,
+        message: c.benefitsReportSuccessHint,
         kind: "success",
       });
       setDisputeVoucher(null);
@@ -349,8 +375,8 @@ function MijnVoordelenInner() {
       setDisputeScreenshot(null);
     } catch (err) {
       pushToast({
-        title: "Melding mislukt",
-        message: err instanceof ApiError ? err.message : "Probeer opnieuw.",
+        title: c.benefitsReportError,
+        message: err instanceof ApiError ? err.message : c.benefitsRetryHint,
         kind: "error",
       });
     } finally {
@@ -368,19 +394,15 @@ function MijnVoordelenInner() {
     }
   };
 
-  if (!sessionReady || (session && !walletReady && apiMode)) {
+  if (!sessionReady || (session && !walletReady && !walletError && apiMode)) {
     return (
-      <div className="grid min-h-[50vh] place-items-center text-muted" role="status">
-        Mijn voordelen laden…
-      </div>
+      <div className="grid min-h-[50vh] place-items-center text-muted" role="status">{c.benefitsLoading}</div>
     );
   }
 
   if (!session) {
     return (
-      <div className="grid min-h-[50vh] place-items-center text-muted" role="status">
-        Doorsturen naar inloggen…
-      </div>
+      <div className="grid min-h-[50vh] place-items-center text-muted" role="status">{c.benefitsRedirecting}</div>
     );
   }
 
@@ -390,36 +412,32 @@ function MijnVoordelenInner() {
       <div className="page-blob right-[-160px] top-[120px] h-[30rem] w-[30rem] bg-sky-100" />
 
       <section className="relative mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
-        <div className="grid items-end gap-6 lg:grid-cols-2">
+        <div className="grid items-start gap-6 lg:grid-cols-2">
           <div>
-            <Eyebrow>Jouw tegoed. Jouw voordeel.</Eyebrow>
+            <Eyebrow>{c.benefitsEyebrow}</Eyebrow>
             <h1 className="mt-2 text-[clamp(2.6rem,6vw,4.2rem)] font-black leading-none tracking-tight">
-              <span className="text-navy">Mijn</span> <span className="text-brand">voordelen</span>
+              <span className="text-navy">{c.benefitsTitlePrefix}</span> <span className="text-brand">{c.benefitsTitleAccent}</span>
             </h1>
             <p className="mt-4 max-w-md text-lg text-muted">
               {dashboard?.first_name
-                ? `Welkom terug, ${dashboard.first_name}. `
-                : ""}
-              Gebruik je ShopBonus-tegoed voor exclusieve kortingsvouchers bij deelnemende webshops.
-              Cashback wordt na een geverifieerde, kwalificerende conversie direct bijgeschreven.
-            </p>
+                ? c.benefitsWelcome.replace("{name}", dashboard.first_name)
+                : ""}{c.benefitsIntroduction}</p>
             {dashboard && (
               <p className="mt-2 text-sm font-semibold text-muted">
-                {dashboard.vouchers.issued} actieve voucher(s)
-                {dashboard.vouchers.expiring_within_30_days > 0
-                  ? ` · ${dashboard.vouchers.expiring_within_30_days} verloopt binnen 30 dagen`
+                {dashboard.vouchers.issued}{" "}{c.benefitsActiveVouchers}{dashboard.vouchers.expiring_within_30_days > 0
+                  ? c.benefitsExpiringCount.replace("{count}", String(dashboard.vouchers.expiring_within_30_days))
                   : ""}
               </p>
             )}
             <nav
-              aria-label="Dashboardnavigatie"
+              aria-label={c.benefitsNavigation}
               className="mt-4 flex flex-wrap gap-2 text-sm font-extrabold"
             >
               {(
                 [
-                  ["vouchers", "Mijn vouchers"],
-                  ["transacties", "Mijn punten"],
-                  ["aankopen", "Aankopen"],
+                  ["vouchers", c.benefitsVouchers],
+                  ["transacties", c.benefitsPoints],
+                  ["aankopen", c.benefitsPurchases],
                 ] as const
               ).map(([key, label]) => (
                 <button
@@ -436,16 +454,13 @@ function MijnVoordelenInner() {
                   {label}
                 </button>
               ))}
-              <Link href="/webshops" className="rounded-full bg-white px-4 py-2 text-navy shadow-sm hover:bg-brand-light">
-                Ontdek webshops
-              </Link>
-              <Link href="/profiel" className="rounded-full bg-white px-4 py-2 text-navy shadow-sm hover:bg-brand-light">
-                Profiel
-              </Link>
+              <Link href="/webshops" className="rounded-full bg-white px-4 py-2 text-navy shadow-sm hover:bg-brand-light">{c.benefitsDiscover}</Link>
+              <Link href="/profiel" className="rounded-full bg-white px-4 py-2 text-navy shadow-sm hover:bg-brand-light">{c.benefitsProfile}</Link>
             </nav>
           </div>
 
           <div className="rounded-[1.75rem] border border-blue-100 bg-white/80 p-6 shadow-[0_18px_50px_-20px_rgba(11,116,255,0.4)] backdrop-blur sm:p-7">
+            <ConsumerPointsOverview key={`${session.user.id}:${locale}`} />
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-4">
                 <span className="grid h-[72px] w-[72px] place-items-center rounded-3xl bg-gradient-to-br from-[#2b94ff] to-[#0b63ee] text-white shadow-lg">
@@ -457,17 +472,13 @@ function MijnVoordelenInner() {
                   </svg>
                 </span>
                 <div>
-                  <p className="font-bold text-navy">Mijn ShopBonus-tegoed</p>
+                  <p className="font-bold text-navy">{c.benefitsCredit}</p>
                   <p className="text-[44px] font-black leading-none tracking-tight text-navy">
-                    {formatMinor(availableMinor)}
+                    {formatMoney(availableMinor)}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-navy">
-                    {formatMinor(availableMinor)} beschikbaar
-                  </p>
-                  <p className="mt-1 text-sm text-muted">
-                    Alleen beschikbaar tegoed is inwisselbaar voor vouchers. Geverifieerde cashback wordt
-                    direct bijgeschreven — geen consumenten-pending saldo.
-                  </p>
+                    {formatMoney(availableMinor)}{" "}{c.benefitsAvailableSuffix}</p>
+                  <p className="mt-1 text-sm text-muted">{c.benefitsWalletExplanation}</p>
                 </div>
               </div>
               <span className="hidden rotate-[8deg] rounded-2xl bg-gradient-to-br from-[#2b94ff] to-[#0b63ee] p-4 text-3xl font-black text-white shadow-lg sm:block">
@@ -477,30 +488,32 @@ function MijnVoordelenInner() {
 
             <div className="mt-5 grid grid-cols-3 gap-3">
               <div className="rounded-2xl bg-mist/80 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Beschikbaar</p>
-                <p className="mt-1 text-lg font-black text-navy">{formatMinor(availableMinor)}</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">{c.benefitsAvailable}</p>
+                <p className="mt-1 text-lg font-black text-navy">{formatMoney(availableMinor)}</p>
               </div>
               <div className="rounded-2xl bg-mist/80 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Totaal verdiend</p>
-                <p className="mt-1 text-lg font-black text-navy">{formatMinor(totalEarnedMinor)}</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">{c.benefitsEarnedTotal}</p>
+                <p className="mt-1 text-lg font-black text-navy">{formatMoney(totalEarnedMinor)}</p>
               </div>
               <div className="rounded-2xl bg-mist/80 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Totaal besteed</p>
-                <p className="mt-1 text-lg font-black text-navy">{formatMinor(totalSpentMinor)}</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">{c.benefitsSpentTotal}</p>
+                <p className="mt-1 text-lg font-black text-navy">{formatMoney(totalSpentMinor)}</p>
               </div>
             </div>
+            {pendingMinor > 0 && (
+              <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-sm font-semibold text-navy">
+                {formatMoney(pendingMinor)}{" "}{c.benefitsPending}</p>
+            )}
             {reservedMinor > 0 && (
               <p className="mt-3 rounded-2xl bg-blue-50 px-3 py-2 text-sm font-semibold text-navy">
-                {formatMinor(reservedMinor)} gereserveerd voor een lopende checkout — dit is geen pending
-                cashback.
-              </p>
+                {formatMoney(reservedMinor)}{" "}{c.benefitsReserved}</p>
             )}
 
             {progress !== null && goalTarget !== null && (
               <div className="mt-5 flex items-center gap-3">
                 <p className="whitespace-nowrap text-sm font-bold text-navy">
-                  {formatMinor(Math.min(availableMinor, goalTarget))}{" "}
-                  <span className="font-medium text-muted">van {formatMinor(goalTarget)}</span>
+                  {formatMoney(Math.min(availableMinor, goalTarget))}{" "}
+                  <span className="font-medium text-muted">{c.benefitsOf}{" "}{formatMoney(goalTarget)}</span>
                 </p>
                 <div className="h-3 flex-1 overflow-hidden rounded-full bg-blue-100">
                   <div
@@ -518,15 +531,13 @@ function MijnVoordelenInner() {
                 <button
                   onClick={() => void refreshWallet()}
                   className="font-extrabold text-brand hover:underline"
-                >
-                  Opnieuw
-                </button>
+                >{c.benefitsRetryShort}</button>
               </div>
             )}
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-3" role="tablist" aria-label="Mijn voordelen secties">
+        <div className="mt-8 flex flex-wrap gap-3" role="tablist" aria-label={c.benefitsSections}>
           <button
             role="tab"
             aria-selected={tab === "vouchers"}
@@ -541,9 +552,7 @@ function MijnVoordelenInner() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z" stroke="currentColor" strokeWidth="2" />
               <path d="M13 7v2m0 6v2m0-8.5v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="1 3" />
-            </svg>
-            Mijn vouchers
-          </button>
+            </svg>{c.benefitsVouchers}</button>
           <button
             role="tab"
             aria-selected={tab === "transacties"}
@@ -558,9 +567,7 @@ function MijnVoordelenInner() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <rect x="4" y="3" width="16" height="18" rx="2.5" stroke="currentColor" strokeWidth="2" />
               <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            Transacties
-          </button>
+            </svg>{c.benefitsTransactions}</button>
           <button
             role="tab"
             aria-selected={tab === "aankopen"}
@@ -574,9 +581,7 @@ function MijnVoordelenInner() {
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M4 7h16M6 7l1.2 12h9.6L18 7M9 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Affiliate-aankopen
-          </button>
+            </svg>{c.benefitsAffiliatePurchases}</button>
         </div>
 
         <div className="mt-6 grid gap-6 pb-16 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
@@ -586,11 +591,11 @@ function MijnVoordelenInner() {
               <div className="mb-4 flex flex-wrap gap-2">
                 {(
                   [
-                    ["alle", "Alle"],
-                    ["actief", "Actief"],
-                    ["used", "Gebruikt"],
-                    ["verlopen", "Verlopen"],
-                    ["geannuleerd", "Geannuleerd"],
+                    ["alle", c.benefitsAll],
+                    ["actief", c.benefitsActive],
+                    ["used", c.benefitsUsed],
+                    ["verlopen", c.benefitsExpired],
+                    ["geannuleerd", c.benefitsCancelled],
                   ] as const
                 ).map(([v, l]) => (
                   <button
@@ -608,17 +613,15 @@ function MijnVoordelenInner() {
               <div className="space-y-5">
                 {apiMode && shownApi.length === 0 && (
                   <div className="rounded-3xl bg-white p-12 text-center shadow-sm">
-                    <h3 className="text-xl font-black text-navy">Nog geen vouchers hier</h3>
-                    <p className="mt-2 text-muted">Ontgrendel je eerste voucher met je tegoed.</p>
-                    <Link href="/webshops" className="mt-5 inline-block rounded-2xl bg-brand px-6 py-3 font-extrabold text-white">
-                      Ontdek webshops
-                    </Link>
+                    <h3 className="text-xl font-black text-navy">{c.benefitsEmptyVouchers}</h3>
+                    <p className="mt-2 text-muted">{c.benefitsFirstVoucher}</p>
+                    <Link href="/webshops" className="mt-5 inline-block rounded-2xl bg-brand px-6 py-3 font-extrabold text-white">{c.benefitsDiscover}</Link>
                   </div>
                 )}
 
                 {apiMode &&
                   shownApi.map((v) => {
-                    const ui = statusUi(v.status);
+                    const ui = statusUi(v.status, c);
                     const minMinor = v.minimum_order_minor ?? v.min_order_minor;
                     const maxMinor = v.maximum_discount_minor ?? v.max_discount_minor;
                     const canCopy = v.can_copy_code;
@@ -643,7 +646,7 @@ function MijnVoordelenInner() {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <h3 className="text-xl font-black text-navy">{v.merchant_name ?? "Webshop"}</h3>
+                            <h3 className="text-xl font-black text-navy">{v.merchant_name ?? c.benefitsShop}</h3>
                             <p className="text-sm text-muted">{v.summary ?? v.title}</p>
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               {(v.webshop.categories ?? []).slice(0, 4).map((t) => (
@@ -652,27 +655,21 @@ function MijnVoordelenInner() {
                                 </span>
                               ))}
                             </div>
-                            <p className="mt-2 text-xs font-semibold text-muted">Ref. {v.voucher_id}</p>
+                            <p className="mt-2 text-xs font-semibold text-muted">{c.benefitsReferenceShort}{" "}{v.voucher_id}</p>
                             {ui.active && (v.expires_soon || (v.days_left != null && v.days_left <= 14)) && (
-                              <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">
-                                Let op: deze voucher verloopt binnenkort
-                                {v.days_left != null ? ` (nog ${v.days_left} dagen)` : ""}.
+                              <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">{c.benefitsExpiring}{v.days_left != null ? c.benefitsDaysRemaining.replace("{count}", String(v.days_left)) : ""}.
                               </p>
                             )}
                             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                               <button
                                 onClick={() => void openDetail(v.id)}
                                 className="flex items-center gap-1.5 font-bold text-brand hover:underline"
-                              >
-                                Bekijk details
-                              </button>
+                              >{c.benefitsDetails}</button>
                               <span className="h-4 w-px bg-slate-200" />
                               <button
                                 onClick={() => setConditionsId(conditionsId === v.id ? null : v.id)}
                                 className="flex items-center gap-1.5 font-bold text-brand hover:underline"
-                              >
-                                Voorwaarden
-                              </button>
+                              >{c.benefitsTerms}</button>
                               {(v.website_url || v.webshop.slug) && (
                                 <>
                                   <span className="h-4 w-px bg-slate-200" />
@@ -682,16 +679,12 @@ function MijnVoordelenInner() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="flex items-center gap-1.5 font-bold text-brand hover:underline"
-                                    >
-                                      Bezoek webshop
-                                    </a>
+                                    >{c.benefitsVisit}</a>
                                   ) : (
                                     <Link
                                       href={`/webshops/${v.webshop.slug}`}
                                       className="flex items-center gap-1.5 font-bold text-brand hover:underline"
-                                    >
-                                      Bezoek webshop
-                                    </Link>
+                                    >{c.benefitsVisit}</Link>
                                   )}
                                 </>
                               )}
@@ -705,23 +698,19 @@ function MijnVoordelenInner() {
                                       setDisputeDescription("");
                                     }}
                                     className="flex items-center gap-1.5 font-bold text-brand hover:underline"
-                                  >
-                                    Probleem melden
-                                  </button>
+                                  >{c.benefitsReport}</button>
                                   <span className="h-4 w-px bg-slate-200" />
                                   <button
                                     onClick={() => openSupport(v)}
                                     className="flex items-center gap-1.5 font-bold text-muted hover:underline"
-                                  >
-                                    Chat
-                                  </button>
+                                  >{c.benefitsChat}</button>
                                 </>
                               )}
                             </div>
                             {conditionsId === v.id && (
                               <p className="mt-3 rounded-2xl bg-mist px-3 py-2 text-sm text-navy">
                                 {v.summary ||
-                                  "Voer de code in bij het afrekenen. Minimale bestelling en maximumkorting gelden zoals getoond. Bezoeken of kopiëren markeert de voucher niet als gebruikt."}
+                                  c.benefitsTermsFallback}
                               </p>
                             )}
                           </div>
@@ -729,13 +718,13 @@ function MijnVoordelenInner() {
                           <div className="flex shrink-0 flex-row items-center gap-4 sm:flex-col sm:justify-center sm:gap-1">
                             <div className={`rounded-2xl px-5 py-3 text-center ${ui.active ? "bg-brand-light" : "bg-slate-100"}`}>
                               <p className={`text-[32px] font-black leading-none ${ui.active ? "text-brand" : "text-muted"}`}>
-                                {discountLabel(v)}
+                                {discountLabel(v, intlLocale)}
                               </p>
-                              <p className={`text-sm font-extrabold ${ui.active ? "text-brand" : "text-muted"}`}>korting</p>
+                              <p className={`text-sm font-extrabold ${ui.active ? "text-brand" : "text-muted"}`}>{c.benefitsDiscount}</p>
                             </div>
                             <div className="text-sm font-semibold text-navy">
-                              {minMinor != null && <p>vanaf {formatMinor(minMinor)}</p>}
-                              {maxMinor != null && <p className="text-muted">max. {formatMinor(maxMinor)}</p>}
+                              {minMinor != null && <p>{c.benefitsFrom}{" "}{formatMoney(minMinor)}</p>}
+                              {maxMinor != null && <p className="text-muted">{c.benefitsMaximum}{" "}{formatMoney(maxMinor)}</p>}
                             </div>
                           </div>
 
@@ -754,13 +743,13 @@ function MijnVoordelenInner() {
                                 <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                               </svg>
                               {ui.active && v.days_left != null
-                                ? `Geldig nog ${v.days_left} dagen`
+                                ? c.benefitsValidDays.replace("{count}", String(v.days_left))
                                 : ui.used
-                                  ? `Gebruikt ${formatNlDate(v.redeemed_at)}`
-                                  : `Verlopen ${formatNlDate(v.expires_at)}`}
+                                  ? c.benefitsUsedDate.replace("{date}", formatDate(v.redeemed_at))
+                                  : c.benefitsExpiredDate.replace("{date}", formatDate(v.expires_at))}
                             </p>
                             {ui.active && v.expires_at && (
-                              <p className="text-sm text-muted">t/m {formatNlDate(v.expires_at)}</p>
+                              <p className="text-sm text-muted">{c.benefitsUntil}{" "}{formatDate(v.expires_at)}</p>
                             )}
                             <div className="mt-1 flex items-center gap-2">
                               <span
@@ -777,7 +766,7 @@ function MijnVoordelenInner() {
                                   canCopy ? "bg-brand hover:bg-brand-dark" : "cursor-not-allowed bg-slate-200 text-muted"
                                 }`}
                               >
-                                {justCopied && copyingId === v.id ? "Gekopieerd!" : "Kopieer code"}
+                                {justCopied && copyingId === v.id ? c.benefitsCopied : c.benefitsCopy}
                               </button>
                             </div>
                           </div>
@@ -808,10 +797,8 @@ function MijnVoordelenInner() {
                   %
                 </span>
                 <div className="flex-1">
-                  <p className="font-black text-navy">Meer voordeel?</p>
-                  <p className="text-[13px] leading-snug text-muted">
-                    Ontdek nieuwe webshops en verdien meer ShopBonus-tegoed.
-                  </p>
+                  <p className="font-black text-navy">{c.benefitsMore}</p>
+                  <p className="text-[13px] leading-snug text-muted">{c.benefitsMoreHint}</p>
                 </div>
                 <span className="grid h-9 w-9 place-items-center rounded-full bg-blue-100 text-brand">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -823,15 +810,15 @@ function MijnVoordelenInner() {
           ) : tab === "aankopen" ? (
             <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
               <div className="border-b border-slate-100 px-6 py-5">
-                <h3 className="text-lg font-black text-navy">Affiliate-aankopen</h3>
+                <h3 className="text-lg font-black text-navy">{c.benefitsAffiliatePurchases}</h3>
                 <p className="text-sm text-muted">
                   {affiliateNotice ||
-                    "Na een geverifieerde, kwalificerende conversie wordt cashback direct bijgeschreven. Aankoopstatus kan apart zichtbaar blijven."}
+                    c.benefitsAffiliateExplanation}
                 </p>
               </div>
-              {affiliateLoading && <p className="px-6 py-8 text-sm text-muted">Laden…</p>}
+              {affiliateLoading && <p className="px-6 py-8 text-sm text-muted">{c.benefitsLoadingShort}</p>}
               {!affiliateLoading && affiliateRows.length === 0 && (
-                <p className="px-6 py-8 text-sm text-muted">Nog geen gekoppelde affiliate-aankopen.</p>
+                <p className="px-6 py-8 text-sm text-muted">{c.benefitsEmptyPurchases}</p>
               )}
               {affiliateRows.map((row) => {
                 const reward = row.reward;
@@ -840,10 +827,10 @@ function MijnVoordelenInner() {
                   <div key={row.id} className="border-b border-slate-50 px-6 py-4 last:border-0">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="font-extrabold text-navy">{row.webshop || "Webshop"}</p>
+                        <p className="font-extrabold text-navy">{row.webshop || c.benefitsShop}</p>
                         <p className="text-sm text-muted">
-                          {formatNlDate(row.purchased_at)} · {row.status}
-                          {reward ? ` · reward ${reward.status}` : ""}
+                          {formatDate(row.purchased_at)} · {consumerActivityStatus(row.status, locale)}
+                          {reward ? c.benefitsRewardStatus.replace("{status}", consumerActivityStatus(reward.status, locale)) : ""}
                         </p>
                         {row.explanation && <p className="mt-1 text-sm text-muted">{row.explanation}</p>}
                       </div>
@@ -853,10 +840,10 @@ function MijnVoordelenInner() {
                             {credited ? "+" : ""}
                             {reward.unit === "points"
                               ? `${reward.amount} pt`
-                              : formatMinor(reward.amount)}
+                              : formatMoney(reward.amount)}
                           </p>
                         ) : (
-                          <p className="text-sm font-bold text-muted">Geen beloning</p>
+                          <p className="text-sm font-bold text-muted">{c.benefitsNoReward}</p>
                         )}
                       </div>
                     </div>
@@ -867,19 +854,19 @@ function MijnVoordelenInner() {
           ) : (
             <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
               <div className="border-b border-slate-100 px-6 py-5">
-                <h3 className="text-lg font-black text-navy">Alle transacties</h3>
+                <h3 className="text-lg font-black text-navy">{c.benefitsAllTransactions}</h3>
                 <p className="text-sm text-muted">
-                  {apiMode ? `${ledgerMeta.total} transacties in je walletgeschiedenis.` : `${demoTransactions.length} demo-transacties.`}
+                  {apiMode ? c.benefitsTransactionCount.replace("{count}", String(ledgerMeta.total)) : c.benefitsDemoCount.replace("{count}", String(demoTransactions.length))}
                 </p>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="flex flex-wrap gap-2">
                     {(
                       [
-                        ["all", "Alles"],
-                        ["earned", "Verdiend"],
-                        ["spent", "Besteed"],
-                        ["holds", "Reserveringen"],
-                        ["adjustments", "Correcties"],
+                        ["all", c.benefitsAllFilters],
+                        ["earned", c.benefitsEarned],
+                        ["spent", c.benefitsSpent],
+                        ["holds", c.benefitsHolds],
+                        ["adjustments", c.benefitsAdjustments],
                       ] as const
                     ).map(([k, label]) => (
                       <button
@@ -902,9 +889,9 @@ function MijnVoordelenInner() {
                       setTxQuery(e.target.value);
                       setTxPage(1);
                     }}
-                    placeholder="Zoeken…"
+                    placeholder={c.benefitsSearch}
                     className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm sm:ml-auto sm:max-w-xs"
-                    aria-label="Zoek transacties"
+                    aria-label={c.benefitsSearchTransactions}
                   />
                 </div>
               </div>
@@ -915,21 +902,19 @@ function MijnVoordelenInner() {
                     <div className="mx-6 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700">
                       <span>
                         {ledgerMayBeStale
-                          ? "Laden mislukt. Onderstaande rijen kunnen bij een eerdere zoekopdracht horen."
+                          ? c.benefitsStaleLedger
                           : ledgerError}
                       </span>
                       <button
                         type="button"
                         onClick={() => void loadLedger()}
                         className="font-extrabold text-brand hover:underline"
-                      >
-                        Opnieuw proberen
-                      </button>
+                      >{c.benefitsRetry}</button>
                     </div>
                   )}
-                  {ledgerLoading && <p className="px-6 py-8 text-sm text-muted">Laden…</p>}
+                  {ledgerLoading && <p className="px-6 py-8 text-sm text-muted">{c.benefitsLoadingShort}</p>}
                   {!ledgerLoading && !ledgerError && ledger.length === 0 && (
-                    <p className="px-6 py-8 text-sm text-muted">Geen transacties voor dit filter.</p>
+                    <p className="px-6 py-8 text-sm text-muted">{c.benefitsEmptyTransactions}</p>
                   )}
                   {ledger.map((t) => {
                     const credit = t.sign === "credit" || t.amount_minor > 0;
@@ -950,11 +935,11 @@ function MijnVoordelenInner() {
                         <div className="min-w-0 flex-1">
                           <p className="font-extrabold text-navy">{t.title}</p>
                           <p className="text-sm text-muted">
-                            {t.subtitle || t.merchant_name || "—"} • {formatNlDate(t.created_at)}
+                            {t.subtitle || t.merchant_name || "—"} • {formatDate(t.created_at)}
                           </p>
                         </div>
                         <p className={`text-lg font-black ${credit ? "text-green-600" : "text-navy"}`}>
-                          {signedMinorLabel(t.amount_minor, t.sign)}
+                          {signedReward(t.amount, t.unit, t.sign)}
                         </p>
                       </button>
                     );
@@ -965,19 +950,14 @@ function MijnVoordelenInner() {
                         disabled={txPage <= 1}
                         onClick={() => setTxPage((p) => Math.max(1, p - 1))}
                         className="rounded-xl bg-mist px-4 py-2 text-sm font-bold disabled:opacity-40"
-                      >
-                        Vorige
-                      </button>
-                      <span className="text-sm text-muted">
-                        Pagina {ledgerMeta.current_page} / {ledgerMeta.last_page}
+                      >{c.benefitsPrevious}</button>
+                      <span className="text-sm text-muted">{c.benefitsPage}{" "}{ledgerMeta.current_page} / {ledgerMeta.last_page}
                       </span>
                       <button
                         disabled={txPage >= ledgerMeta.last_page}
                         onClick={() => setTxPage((p) => p + 1)}
                         className="rounded-xl bg-mist px-4 py-2 text-sm font-bold disabled:opacity-40"
-                      >
-                        Volgende
-                      </button>
+                      >{c.benefitsNext}</button>
                     </div>
                   )}
                 </>
@@ -998,7 +978,7 @@ function MijnVoordelenInner() {
                       </p>
                     </div>
                     <p className={`text-lg font-black ${t.type === "credit" ? "text-green-600" : "text-navy"}`}>
-                      {t.type === "credit" ? "+" : "−"} {formatMinor(Math.round(t.amount * 100))}
+                      {t.type === "credit" ? "+" : "−"} {formatMoney(Math.round(t.amount * 100))}
                     </p>
                   </div>
                 ))
@@ -1009,21 +989,37 @@ function MijnVoordelenInner() {
 
           <aside className="space-y-5 lg:sticky lg:top-24">
             <section className="rounded-3xl bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-black text-navy">Recente activiteit</h2>
-              {(dashboard?.recent_activity?.length ?? 0) === 0 ? (
-                <p className="mt-3 text-sm text-muted">Nog geen recente walletbewegingen.</p>
-              ) : (
+              <h2 className="text-lg font-black text-navy">{c.benefitsActivity}</h2>
+              {dashboardLoading && (
+                <p role="status" className="mt-3 text-sm text-muted">{c.benefitsActivityLoading}</p>
+              )}
+              {dashboardError && (
+                <div role="alert" className="mt-3 space-y-2 text-sm text-red-700">
+                  <p>{c.benefitsActivityError}</p>
+                  <button type="button" onClick={() => setDashboardEpoch((n) => n + 1)} className="font-extrabold text-brand hover:underline">
+                    {c.benefitsRetry}
+                  </button>
+                </div>
+              )}
+              {(dashboardLoading || dashboardError) && dashboard && (
+                <p className="mt-2 text-sm text-muted">{c.benefitsActivityStale}</p>
+              )}
+              {!apiMode && <p className="mt-3 text-sm text-muted">{c.benefitsActivityUnavailable}</p>}
+              {!dashboardLoading && !dashboardError && dashboard && dashboard.recent_activity.length === 0 && (
+                <p className="mt-3 text-sm text-muted">{c.benefitsEmptyActivity}</p>
+              )}
+              {dashboard && dashboard.recent_activity.length > 0 && (
                 <ul className="mt-4 space-y-3">
                   {dashboard!.recent_activity.slice(0, 6).map((row) => (
                     <li key={row.id} className="flex items-start justify-between gap-3 text-sm">
                       <span>
                         <span className="font-bold text-navy">{row.reason || row.type}</span>
                         {row.at && (
-                          <span className="mt-0.5 block text-xs text-muted">{formatNlDate(row.at)}</span>
+                          <span className="mt-0.5 block text-xs text-muted">{formatDate(row.at)}</span>
                         )}
                       </span>
                       <strong className={row.amount >= 0 ? "text-green-600" : "text-navy"}>
-                        {signedMinorLabel(row.amount)}
+                        {signedReward(row.amount, row.unit)}
                       </strong>
                     </li>
                   ))}
@@ -1032,7 +1028,7 @@ function MijnVoordelenInner() {
             </section>
             {(dashboard?.relevant_offers?.length ?? 0) > 0 && (
               <section className="rounded-3xl bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-black text-navy">Relevante aanbiedingen</h2>
+                <h2 className="text-lg font-black text-navy">{c.benefitsOffers}</h2>
                 <ul className="mt-4 space-y-3">
                   {dashboard!.relevant_offers.slice(0, 5).map((offer) => (
                     <li key={offer.slug || offer.title}>
@@ -1062,91 +1058,87 @@ function MijnVoordelenInner() {
 
       {selectedTx && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy/40 p-4 sm:items-center">
-          <button className="absolute inset-0" aria-label="Sluiten" onClick={() => setSelectedTx(null)} />
+          <button className="absolute inset-0" aria-label={c.benefitsClose} onClick={() => setSelectedTx(null)} />
           <div className="relative z-10 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
             <h3 className="text-lg font-black text-navy">{selectedTx.title}</h3>
             <p className="mt-1 text-sm text-muted">{selectedTx.subtitle || selectedTx.merchant_name}</p>
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-muted">Bedrag</dt>
+                <dt className="text-muted">{c.benefitsAmount}</dt>
                 <dd className="font-extrabold text-navy">
-                  {signedMinorLabel(selectedTx.amount_minor, selectedTx.sign)}
+                  {signedReward(selectedTx.amount, selectedTx.unit, selectedTx.sign)}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted">Type</dt>
+                <dt className="text-muted">{c.benefitsType}</dt>
                 <dd className="font-semibold text-navy">{selectedTx.type}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted">Status</dt>
-                <dd className="font-semibold text-navy">{selectedTx.status}</dd>
+                <dt className="text-muted">{c.benefitsStatus}</dt>
+                <dd className="font-semibold text-navy">{consumerActivityStatus(selectedTx.status, locale)}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted">Datum</dt>
-                <dd className="font-semibold text-navy">{formatNlDate(selectedTx.created_at)}</dd>
+                <dt className="text-muted">{c.benefitsDate}</dt>
+                <dd className="font-semibold text-navy">{formatDate(selectedTx.created_at)}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted">Referentie</dt>
+                <dt className="text-muted">{c.benefitsReference}</dt>
                 <dd className="truncate font-mono text-xs text-navy">{selectedTx.id}</dd>
               </div>
             </dl>
             <button
               onClick={() => setSelectedTx(null)}
               className="mt-6 w-full rounded-2xl bg-brand py-3 font-extrabold text-white"
-            >
-              Sluiten
-            </button>
+            >{c.benefitsClose}</button>
           </div>
         </div>
       )}
 
       {(detail || detailLoading) && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy/40 p-4 sm:items-center">
-          <button className="absolute inset-0" aria-label="Sluiten" onClick={() => setDetail(null)} />
+          <button className="absolute inset-0" aria-label={c.benefitsClose} onClick={() => setDetail(null)} />
           <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
             {detailLoading && !detail ? (
-              <p className="text-muted">Details laden…</p>
+              <p className="text-muted">{c.benefitsDetailLoading}</p>
             ) : detail ? (
               <>
-                <h3 className="text-lg font-black text-navy">{detail.merchant_name ?? "Voucher"}</h3>
-                <p className="mt-1 text-sm text-muted">{detail.title ?? discountLabel(detail)}</p>
+                <h3 className="text-lg font-black text-navy">{detail.merchant_name ?? c.benefitsVoucher}</h3>
+                <p className="mt-1 text-sm text-muted">{detail.title ?? discountLabel(detail, intlLocale)}</p>
                 {detail.expires_soon && (
-                  <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">
-                    Verloopt binnenkort — er wordt geen vervangende code automatisch uitgegeven.
-                  </p>
+                  <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">{c.benefitsExpiryWarning}</p>
                 )}
                 <dl className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between gap-4">
-                    <dt className="text-muted">Referentie</dt>
+                    <dt className="text-muted">{c.benefitsReference}</dt>
                     <dd className="truncate font-mono text-xs text-navy">{detail.voucher_id}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-muted">Status</dt>
-                    <dd className="font-semibold text-navy">{statusUi(detail.status).label}</dd>
+                    <dt className="text-muted">{c.benefitsStatus}</dt>
+                    <dd className="font-semibold text-navy">{statusUi(detail.status, c).label}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-muted">Uitgegeven</dt>
-                    <dd className="font-semibold text-navy">{formatNlDate(detail.issued_at)}</dd>
+                    <dt className="text-muted">{c.benefitsIssued}</dt>
+                    <dd className="font-semibold text-navy">{formatDate(detail.issued_at)}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-muted">Geldig tot</dt>
-                    <dd className="font-semibold text-navy">{formatNlDate(detail.expires_at)}</dd>
+                    <dt className="text-muted">{c.benefitsValidUntil}</dt>
+                    <dd className="font-semibold text-navy">{formatDate(detail.expires_at)}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-muted">Min. bestelling</dt>
+                    <dt className="text-muted">{c.benefitsMinimumOrder}</dt>
                     <dd className="font-semibold text-navy">
-                      {formatMinor(detail.minimum_order_minor ?? detail.min_order_minor ?? 0)}
+                      {formatMoney(detail.minimum_order_minor ?? detail.min_order_minor ?? 0)}
                     </dd>
                   </div>
                   {detail.purchase && (
                     <div className="flex justify-between gap-4">
-                      <dt className="text-muted">Checkout</dt>
+                      <dt className="text-muted">{c.benefitsCheckout}</dt>
                       <dd className="truncate font-mono text-xs text-navy">{detail.purchase.checkout_id}</dd>
                     </div>
                   )}
                 </dl>
                 <div className="mt-4 rounded-2xl bg-mist p-4">
-                  <p className="text-xs font-bold uppercase text-muted">Code</p>
+                  <p className="text-xs font-bold uppercase text-muted">{c.benefitsCode}</p>
                   <p className="mt-1 break-all font-black tracking-wider text-navy">
                     {detail.code ?? detail.code_masked}
                   </p>
@@ -1161,7 +1153,7 @@ function MijnVoordelenInner() {
                       onClick={() => void onCopy(detail)}
                       className="rounded-2xl bg-brand px-4 py-2.5 text-sm font-extrabold text-white"
                     >
-                      {justCopied && copyingId === detail.id ? "Gekopieerd!" : "Kopieer code"}
+                      {justCopied && copyingId === detail.id ? c.benefitsCopied : c.benefitsCopy}
                     </button>
                   )}
                   {detail.website_url && (
@@ -1170,9 +1162,7 @@ function MijnVoordelenInner() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="rounded-2xl border border-blue-100 px-4 py-2.5 text-sm font-extrabold text-navy"
-                    >
-                      Bezoek webshop
-                    </a>
+                    >{c.benefitsVisit}</a>
                   )}
                   {detail.can_report_problem && (
                     <button
@@ -1182,17 +1172,13 @@ function MijnVoordelenInner() {
                         setDetail(null);
                       }}
                       className="rounded-2xl border border-blue-100 px-4 py-2.5 text-sm font-extrabold text-navy"
-                    >
-                      Probleem melden
-                    </button>
+                    >{c.benefitsReport}</button>
                   )}
                 </div>
                 <button
                   onClick={() => setDetail(null)}
                   className="mt-4 w-full rounded-2xl bg-mist py-3 font-extrabold text-navy"
-                >
-                  Sluiten
-                </button>
+                >{c.benefitsClose}</button>
               </>
             ) : null}
           </div>
@@ -1201,39 +1187,33 @@ function MijnVoordelenInner() {
 
       {disputeVoucher && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-navy/40 p-4 sm:items-center">
-          <button className="absolute inset-0" aria-label="Sluiten" onClick={() => setDisputeVoucher(null)} />
+          <button className="absolute inset-0" aria-label={c.benefitsClose} onClick={() => setDisputeVoucher(null)} />
           <div className="relative z-10 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-black text-navy">Probleem melden</h3>
+            <h3 className="text-lg font-black text-navy">{c.benefitsReport}</h3>
             <p className="mt-1 text-sm text-muted">
               {disputeVoucher.merchant_name} · {disputeVoucher.code_masked}
             </p>
-            <label className="mt-4 block text-sm font-bold text-navy">
-              Reden
-              <select
+            <label className="mt-4 block text-sm font-bold text-navy">{c.benefitsReason}<select
                 value={disputeReason}
                 onChange={(e) => setDisputeReason(e.target.value as DisputeReason)}
                 className="form-input mt-1 w-full"
               >
-                {DISPUTE_REASONS.map((r) => (
+                {disputeReasons(c).map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>
                 ))}
               </select>
             </label>
-            <label className="mt-3 block text-sm font-bold text-navy">
-              Omschrijving
-              <textarea
+            <label className="mt-3 block text-sm font-bold text-navy">{c.benefitsDescription}<textarea
                 value={disputeDescription}
                 onChange={(e) => setDisputeDescription(e.target.value)}
                 rows={4}
                 className="form-input mt-1 w-full"
-                placeholder="Wat ging er mis? Kort en duidelijk."
+                placeholder={c.benefitsProblemPlaceholder}
               />
             </label>
-            <label className="mt-3 block text-sm font-bold text-navy">
-              Screenshot (optioneel)
-              <input
+            <label className="mt-3 block text-sm font-bold text-navy">{c.benefitsScreenshot}<input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 className="form-input mt-1 w-full text-sm font-normal file:mr-3 file:rounded-lg file:border-0 file:bg-mist file:px-3 file:py-1.5 file:font-bold file:text-navy"
@@ -1247,15 +1227,13 @@ function MijnVoordelenInner() {
                 onClick={() => void submitDispute()}
                 className="flex-1 rounded-2xl bg-brand py-3 font-extrabold text-white disabled:opacity-50"
               >
-                {disputeBusy ? "Versturen…" : "Verstuur melding"}
+                {disputeBusy ? c.benefitsSending : c.benefitsSendReport}
               </button>
               <button
                 type="button"
                 onClick={() => setDisputeVoucher(null)}
                 className="rounded-2xl bg-mist px-4 py-3 font-extrabold text-navy"
-              >
-                Annuleren
-              </button>
+              >{c.benefitsCancel}</button>
             </div>
           </div>
         </div>

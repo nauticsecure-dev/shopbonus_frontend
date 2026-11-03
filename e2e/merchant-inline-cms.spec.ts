@@ -28,7 +28,7 @@ async function setup(page: Page) {
     }
     if (path.endsWith('/schedules') && request.method() === 'POST') { state.scheduled = request.postDataJSON(); return route.fulfill({ status: 201, json: { data: { id: 'schedule1', status: 'scheduled' } } }); }
     if (path.endsWith('/publish')) { state.publishes++; state.published = structuredClone(state.draft); return route.fulfill({ json: { data: {} } }); }
-    if (path.endsWith('/versions')) return route.fulfill({ json: { data: [{ id: 'v3', number: 3, locale: 'nl', published_at: '2026-10-30T12:00:00Z' }, { id: 'v1', number: 1, locale: 'nl', published_at: '2026-10-28T12:00:00Z' }] } });
+    if (path.endsWith('/versions')) return route.fulfill({ json: { data: [{ id: 'v3', number: 3, locale: 'nl', published_at: '2026-10-30T12:00:00Z', content: state.published }, { id: 'v1', number: 1, locale: 'nl', published_at: '2026-10-28T12:00:00Z', content: { ...state.published, hero: { ...state.published.hero, heading: 'Earlier approved heading' } } }] } });
     if (path.endsWith('/restore')) { state.restored = request.postDataJSON().revision_id; return route.fulfill({ json: { data: {} } }); }
     if (path.endsWith('/assets') && request.method() === 'POST') { state.uploads++; return route.fulfill({ json: { data: { id: 'cropped-image', url: '/favicon.ico', width: 768, height: 768 } } }); }
     if (path.endsWith('/assets')) return route.fulfill({ json: { data: [{ id: 'asset1', url: '/favicon.ico', width: 600, height: 400 }], meta: { current_page: 1, last_page: 1 } } });
@@ -36,7 +36,7 @@ async function setup(page: Page) {
   });
   await page.goto('/voor-webshops');
   await page.getByTestId('cms-edit-voor-webshops').click();
-  await expect(page.getByRole('heading', { name: 'Saved unpublished draft' })).toBeVisible();
+  await expect(page.getByRole('Koptekst', { name: 'Saved unpublished draft' })).toBeVisible();
   return state;
 }
 async function changeHeading(page: Page, text: string) {
@@ -47,94 +47,98 @@ async function changeHeading(page: Page, text: string) {
 for (const status of [422, 409]) test('save failure ' + status + ' prevents publication', async ({ page }) => {
   const state = await setup(page); state.fail = status;
   await changeHeading(page, 'Invalid or conflicted draft');
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publiceren', exact: true }).click();
   await expect.poll(() => state.saves).toBeGreaterThan(0);
-  await expect(page.getByRole('status').filter({ hasText: status === 409 ? 'Revision conflict' : 'Validation failed' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: status === 409 ? 'Versieconflict' : 'Validatie mislukt' })).toBeVisible();
   expect(state.publishes).toBe(0);
 });
 test('cancel shows approved snapshot and reentry retains saved draft', async ({ page }) => {
   await setup(page);
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Goedgekeurde publicatie' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Saved unpublished draft' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Annuleren', exact: true }).click();
+  await expect(page.getByRole('Koptekst', { name: 'Goedgekeurde publicatie' })).toBeVisible();
+  await expect(page.getByRole('Koptekst', { name: 'Saved unpublished draft' })).toHaveCount(0);
   await page.getByTestId('cms-edit-voor-webshops').click();
-  await expect(page.getByRole('heading', { name: 'Saved unpublished draft' })).toBeVisible();
+  await expect(page.getByRole('Koptekst', { name: 'Saved unpublished draft' })).toBeVisible();
 });
 test('preview keeps edits and autosave persists before successful publication', async ({ page }) => {
   const state = await setup(page);
   await changeHeading(page, 'New draft for preview');
-  await page.getByRole('button', { name: 'Preview', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'New draft for preview' })).toBeVisible();
+  await page.getByRole('button', { name: 'Voorbeeld', exact: true }).click();
+  await expect(page.getByRole('Koptekst', { name: 'New draft for preview' })).toBeVisible();
   expect(state.adminLoads).toBe(1);
   await expect.poll(() => state.saves).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publiceren', exact: true }).click();
   await expect.poll(() => state.publishes).toBe(1);
   await expect(page.getByTestId('cms-edit-voor-webshops')).toBeVisible();
 });
 test('administrator selects the exact historical publication to restore', async ({ page }) => {
   const state = await setup(page);
-  await page.getByRole('button', { name: /Page settings/ }).click();
-  await page.getByRole('button', { name: 'history', exact: true }).click();
-  await page.getByLabel('Published version').selectOption('v1');
-  await page.getByRole('button', { name: 'Restore selected publication' }).click();
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
+  await page.getByRole('button', { name: 'Geschiedenis', exact: true }).click();
+  await page.getByLabel('Gepubliceerde versie').selectOption('v1');
+  const comparison = page.getByRole('region', { name: 'Vergelijken vóór herstellen' });
+  await expect(comparison).toContainText('Earlier approved heading');
+  await expect(comparison).toContainText('Saved unpublished draft');
+  expect(state.restored).toBe('');
+  await page.getByRole('button', { name: 'Geselecteerde publicatie herstellen' }).click();
   await expect.poll(() => state.restored).toBe('v1');
 });
 test('section order, visibility and reusable mobile imagery are editable', async ({ page }) => {
   const state = await setup(page);
-  await page.getByRole('button', { name: /Page settings/ }).click();
-  await page.getByLabel('Move hero down', { exact: true }).click();
-  await page.getByLabel('benefits', { exact: true }).uncheck();
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
+  await page.getByLabel('Verplaats Introductie omlaag', { exact: true }).click();
+  await page.getByLabel('Voordelen', { exact: true }).uncheck();
   await expect(page.getByTestId('merchant-benefits')).toHaveCount(0);
-  await page.getByRole('button', { name: 'media', exact: true }).click();
-  await page.getByLabel('Image variant').selectOption('mobile');
-  await page.getByLabel('Alternative text').fill('Approved merchant screenshot');
+  await page.getByRole('button', { name: 'Media', exact: true }).click();
+  await page.getByLabel('Afbeeldingsvariant').selectOption('mobile');
+  await page.getByLabel('Alternatieve tekst').fill('Approved merchant screenshot');
   await page.getByRole('button', { name: 'asset1' }).click();
-  await page.getByRole('button', { name: /Page settings/ }).click();
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
   await expect.poll(() => state.draft.media?.hero?.mobile_asset_id).toBe('asset1');
   expect(state.draft.section_order[0]).toBe('platforms');
   expect(state.draft.section_visibility.benefits).toBe(false);
 });
 test('public switching to English refreshes content and metadata', async ({ page }) => {
-  await setup(page); await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await setup(page); await page.getByRole('button', { name: 'Annuleren', exact: true }).click();
   await page.getByRole('group', { name: /Taal|Language/i }).getByRole('button', { name: /^en$/i }).click();
-  await expect(page.getByRole('heading', { name: 'Approved English publication' })).toBeVisible();
+  await expect(page.getByRole('Koptekst', { name: 'Approved English publication' })).toBeVisible();
   await expect(page).toHaveTitle('Approved English SEO');
 });
 
 test('image crop upload assigns a reusable responsive variant', async ({ page }) => {
   const state = await setup(page);
   const image = await page.screenshot();
-  await page.getByRole('button', { name: /Page settings/ }).click();
-  await page.getByRole('button', { name: 'media', exact: true }).click();
-  await page.getByLabel('Image variant').selectOption('mobile');
-  await page.getByLabel('Alternative text').fill('Mobile merchant dashboard');
-  await page.getByLabel('Replace image').setInputFiles({ name: 'merchant.png', mimeType: 'image/png', buffer: image });
-  await page.getByLabel('Crop ratio').selectOption('1');
-  await page.getByLabel('Horizontal crop focus').press('ArrowRight');
-  await page.getByRole('button', { name: 'Upload cropped image' }).click();
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
+  await page.getByRole('button', { name: 'Media', exact: true }).click();
+  await page.getByLabel('Afbeeldingsvariant').selectOption('mobile');
+  await page.getByLabel('Alternatieve tekst').fill('Mobile merchant dashboard');
+  await page.getByLabel('Afbeelding vervangen').setInputFiles({ name: 'merchant.png', mimeType: 'image/png', buffer: image });
+  await page.getByLabel('Beeldverhouding').selectOption('1');
+  await page.getByLabel('Horizontaal focuspunt van uitsnede').press('ArrowRight');
+  await page.getByRole('button', { name: 'Bijgesneden afbeelding uploaden' }).click();
   await expect.poll(() => state.uploads).toBe(1);
   await expect.poll(() => state.draft.media?.hero?.mobile_asset_id).toBe('cropped-image');
 });
 test('FAQ collections, footer links and benefit icons can be authored', async ({ page }) => {
   const state = await setup(page);
-  await page.getByRole('button', { name: /Page settings/ }).click();
-  await page.getByRole('button', { name: 'content', exact: true }).click();
-  await page.locator('summary').filter({ hasText: /^faq$/ }).click();
-  await page.getByRole('button', { name: 'Add items', exact: true }).click();
-  await page.getByLabel('faq.items.8.question', { exact: true }).fill('New merchant FAQ');
-  await page.getByLabel('faq.items.8.answer', { exact: true }).fill('A reviewed answer');
-  await page.locator('summary').filter({ hasText: /^benefits$/ }).click();
-  await page.getByLabel('benefits.items.0.icon', { exact: true }).selectOption('shield');
-  await page.locator('summary').filter({ hasText: /^footer$/ }).click();
-  await page.getByRole('button', { name: 'Add links', exact: true }).click();
-  await page.getByLabel('footer.links.0.label').fill('Merchant help');
-  await page.getByLabel('footer.links.0.href').fill('/help');
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
+  await page.getByRole('button', { name: 'Inhoud', exact: true }).click();
+  await page.locator('summary').filter({ hasText: /^Veelgestelde vragen$/ }).click();
+  await page.getByRole('button', { name: 'Toevoegen Onderdelen', exact: true }).click();
+  await page.locator('[data-cms-field="faq.items.8.question"]').fill('New merchant FAQ');
+  await page.locator('[data-cms-field="faq.items.8.answer"]').fill('A reviewed answer');
+  await page.locator('summary').filter({ hasText: /^Voordelen$/ }).click();
+  await page.locator('[data-cms-field="benefits.items.0.icon"]').selectOption('shield');
+  await page.locator('summary').filter({ hasText: /^Voettekst$/ }).click();
+  await page.getByRole('button', { name: 'Toevoegen Links', exact: true }).click();
+  await page.locator('[data-cms-field="footer.links.0.label"]').fill('Merchant help');
+  await page.locator('[data-cms-field="footer.links.0.href"]').fill('/help');
   await expect.poll(() => state.draft.footer.links?.[0]?.label).toBe('Merchant help');
   expect(state.draft.faq.items.at(-1)?.question).toBe('New merchant FAQ');
   expect(state.draft.benefits.items[0].icon).toBe('shield');
 });
 test('public layouts fit desktop and mobile widths', async ({ page }, info) => {
-  await setup(page); await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await setup(page); await page.getByRole('button', { name: 'Annuleren', exact: true }).click();
   await page.screenshot({ path: info.outputPath('merchant-landing-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId('hero-primary-cta')).toBeVisible();
@@ -144,34 +148,34 @@ test('public layouts fit desktop and mobile widths', async ({ page }, info) => {
 
 test('scheduled publication stays clearly marked outside its visibility window', async ({ page }) => {
   const state = await setup(page);
-  await page.getByRole('button', { name: /Page settings/ }).click();
-  await page.getByRole('button', { name: 'schedule', exact: true }).click();
-  await page.getByLabel('publish_at', { exact: true }).fill('2099-01-01T12:00');
-  await page.getByRole('button', { name: /Page settings/ }).click();
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
+  await page.getByRole('button', { name: 'Planning', exact: true }).click();
+  await page.getByLabel('Publiceren op', { exact: true }).fill('2099-01-01T12:00');
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
+  await page.getByRole('button', { name: 'Publiceren', exact: true }).click();
   await expect.poll(() => state.publishes).toBe(1);
-  await expect(page.getByRole('status').filter({ hasText: 'outside its scheduled visibility window' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Back to edit', exact: true })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'buiten het geplande zichtbaarheidsvenster' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Terug naar bewerken', exact: true })).toBeVisible();
 });
 
 test('queued publication pins the saved revision and keeps the existing page live', async ({ page }) => {
   const state = await setup(page);
-  await page.getByRole('button', { name: /Page settings/ }).click();
-  await page.getByRole('button', { name: 'schedule', exact: true }).click();
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
+  await page.getByRole('button', { name: 'Planning', exact: true }).click();
   const due = new Date(Date.now() + 600000); due.setSeconds(0, 0);
   const local = new Date(due.getTime() - due.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  await page.getByLabel('publish_at', { exact: true }).fill(local);
-  await page.getByRole('button', { name: 'Schedule publication', exact: true }).click();
+  await page.getByLabel('Publiceren op', { exact: true }).fill(local);
+  await page.getByRole('button', { name: 'Publicatie inplannen', exact: true }).click();
   await expect.poll(() => state.scheduled?.revision === state.revision).toBe(true);
   expect(state.publishes).toBe(0);
-  await expect(page.getByRole('heading', { name: 'Goedgekeurde publicatie' })).toBeVisible();
+  await expect(page.getByRole('Koptekst', { name: 'Goedgekeurde publicatie' })).toBeVisible();
 });
 
 test('integration selection survives the onboarding URL and later navigation', async ({ page }) => {
   await setup(page);
   await page.goto('/voor-webshops/aanmelden?platform=woocommerce');
   await expect(page.getByText('Geselecteerde integratie: woocommerce.', { exact: false })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Bekijk integratie en aansluitvoorwaarden/ })).toHaveAttribute('href', '/dashboard/app-store?platform=woocommerce');
+  await expect(page.getByRole('Koppeling', { name: /Bekijk integratie en aansluitvoorwaarden/ })).toHaveAttribute('Linkadres', '/dashboard/app-store?platform=woocommerce');
   await page.goto('/voor-webshops/aanmelden');
   await expect(page.getByText('Geselecteerde integratie: woocommerce.', { exact: false })).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('shopbonus-onboarding-platform'))).toBe('woocommerce');
@@ -188,4 +192,24 @@ test('leaving the editor saves first and stays on the page if that save fails', 
   await page.getByTestId('hero-primary-cta').click();
   await expect(page).toHaveURL(/\/voor-webshops\/aanmelden/);
   expect(state.draft.hero.heading).toBe('Save before navigation');
+});
+
+test('history refuses restoration when revision content is unavailable', async ({ page }) => {
+  await setup(page);
+  await page.route('**/api/v1/admin/content/voor-webshops/versions?*', route => route.fulfill({ json: { data: [{ id: 'missing', number: 1, locale: 'nl', published_at: '2026-10-28T12:00:00Z' }] } }));
+  await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
+  await page.getByRole('button', { name: 'Geschiedenis', exact: true }).click();
+  await page.getByLabel('Gepubliceerde versie').selectOption('missing');
+  await expect(page.getByRole('alert')).toContainText('Vergelijking niet beschikbaar');
+  await expect(page.getByRole('button', { name: 'Geselecteerde publicatie herstellen' })).toBeDisabled();
+});
+
+test('English selection localizes the editing interface', async ({ page }) => {
+  await setup(page);
+  await page.getByRole('group', { name: /Taal|Language/i }).getByRole('button', { name: /^en$/i }).click();
+  await expect(page.getByRole('button', { name: 'Save draft', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /Page settings/ }).click();
+  await page.getByRole('button', { name: 'media', exact: true }).click();
+  await expect(page.getByLabel('Replace image')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Clear variant' })).toBeVisible();
 });

@@ -5,7 +5,6 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DiscoveryCardSkeleton, DiscoveryWebshopCard } from "@/components/DiscoveryWebshopCard";
 import {
-  discoveryErrorMessage,
   fetchDiscoveryCategories,
   fetchDiscoveryWebshops,
   isDiscoveryAbort,
@@ -14,23 +13,25 @@ import {
   type DiscoveryWebshopCard as ShopCard,
   type PageMeta,
 } from "@/lib/discovery";
+import { useLocale } from "@/i18n/LocaleContext";
+import { discoveryCopy } from "@/i18n/discoveryCopy";
 import { formatMinor } from "@/lib/money";
 import { useSession } from "@/store/SessionContext";
 import { useShopBonus } from "@/store/ShopBonusContext";
 
-const PRIMARY_PILLS: { key: string | null; label: string; icon: "grid" | "home" | "fashion" | "tech" | "beauty" }[] = [
-  { key: null, label: "Alle categorieën", icon: "grid" },
-  { key: "home_living", label: "Wonen", icon: "home" },
-  { key: "fashion", label: "Mode", icon: "fashion" },
-  { key: "electronics", label: "Elektronica", icon: "tech" },
-  { key: "beauty_health", label: "Beauty", icon: "beauty" },
+const PRIMARY_PILLS: { key: string | null; label: keyof (typeof discoveryCopy)["nl"]; icon: "grid" | "home" | "fashion" | "tech" | "beauty" }[] = [
+  { key: null, label: "all", icon: "grid" },
+  { key: "home_living", label: "home", icon: "home" },
+  { key: "fashion", label: "fashion", icon: "fashion" },
+  { key: "electronics", label: "tech", icon: "tech" },
+  { key: "beauty_health", label: "beauty", icon: "beauty" },
 ];
 
-const SORT_OPTIONS: { value: DiscoverySort; label: string }[] = [
-  { value: "relevance", label: "Relevantie" },
-  { value: "most_offers", label: "Meeste aanbiedingen" },
-  { value: "name", label: "Naam A–Z" },
-  { value: "newest", label: "Recent toegevoegd" },
+const SORT_OPTIONS: { value: DiscoverySort; label: keyof (typeof discoveryCopy)["nl"] }[] = [
+  { value: "relevance", label: "relevance" },
+  { value: "most_offers", label: "mostOffers" },
+  { value: "name", label: "name" },
+  { value: "newest", label: "newest" },
 ];
 
 function CategoryIcon({ name }: { name: (typeof PRIMARY_PILLS)[number]["icon"] }) {
@@ -104,6 +105,8 @@ function buildDirectoryQuery(state: {
 }
 
 function WebshopsInner() {
+  const { locale } = useLocale();
+  const copy = discoveryCopy[locale];
   const params = useSearchParams();
   const router = useRouter();
   const { session } = useSession();
@@ -122,7 +125,7 @@ function WebshopsInner() {
   const [categories, setCategories] = useState<DiscoveryCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   const requestId = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -167,13 +170,13 @@ function WebshopsInner() {
 
   useEffect(() => {
     const ac = new AbortController();
-    fetchDiscoveryCategories(ac.signal)
+    fetchDiscoveryCategories(ac.signal, locale)
       .then(setCategories)
       .catch((err) => {
         if (!isDiscoveryAbort(err)) console.warn("categories", err);
       });
     return () => ac.abort();
-  }, []);
+  }, [locale]);
 
   const activeVoucherCount = useMemo(
     () => apiVouchers.filter((v) => String(v.status).toUpperCase() === "ACTIVE").length,
@@ -187,7 +190,7 @@ function WebshopsInner() {
     const id = ++requestId.current;
     queueMicrotask(() => {
       if (id !== requestId.current || ac.signal.aborted) return;
-      setError(null);
+      setError(false);
       setSearching(true);
       setLoading(true);
       setShops([]);
@@ -205,6 +208,7 @@ function WebshopsInner() {
     void (async () => {
       try {
         const res = await fetchDiscoveryWebshops({
+          locale,
           search: q.trim() || undefined,
           category: category || undefined,
           has_offers: hasOffers || undefined,
@@ -229,7 +233,7 @@ function WebshopsInner() {
         }
       } catch (err) {
         if (isDiscoveryAbort(err) || id !== requestId.current) return;
-        setError(discoveryErrorMessage(err));
+        setError(true);
         setShops([]);
         setMeta(null);
       } finally {
@@ -241,12 +245,12 @@ function WebshopsInner() {
     })();
 
     return () => ac.abort();
-  }, [q, category, hasOffers, sort, page]);
+  }, [q, category, hasOffers, sort, page, locale]);
 
   const retry = () => {
     setPage((p) => p);
     setLoading(true);
-    setError(null);
+    setError(false);
     // bump by toggling a no-op via resetting same filters
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -255,6 +259,7 @@ function WebshopsInner() {
     const effectiveSort: DiscoverySort =
       sort === "relevance" && !q.trim() ? "most_offers" : sort;
     void fetchDiscoveryWebshops({
+      locale,
       search: q.trim() || undefined,
       category: category || undefined,
       has_offers: hasOffers || undefined,
@@ -267,11 +272,11 @@ function WebshopsInner() {
         if (id !== requestId.current) return;
         setShops(res.data);
         setMeta(res.meta);
-        setError(null);
+        setError(false);
       })
       .catch((err) => {
         if (isDiscoveryAbort(err) || id !== requestId.current) return;
-        setError(discoveryErrorMessage(err));
+        setError(true);
       })
       .finally(() => {
         if (id === requestId.current) setLoading(false);
@@ -295,12 +300,12 @@ function WebshopsInner() {
   const hasFilters = Boolean(q.trim()) || Boolean(category) || hasOffers || sort !== "relevance";
   const voucherLabel =
     (voucherStatus === "loading" || voucherStatus === "idle")
-      ? "Vouchers laden…"
+      ? copy.voucherLoading
       : voucherStatus === "error"
-        ? "Vouchers niet beschikbaar"
+        ? copy.voucherUnavailable
         : activeVoucherCount === 1
-          ? "1 actieve voucher"
-          : `${activeVoucherCount} actieve vouchers`;
+          ? `1 ${copy.voucherOne}`
+          : `${activeVoucherCount} ${copy.voucherMany}`;
 
   return (
     <div className="relative overflow-hidden pb-16">
@@ -312,13 +317,13 @@ function WebshopsInner() {
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand">
-              MEER WEBSHOPS. MEER VOORDEEL.
+              {copy.eyebrow}
             </p>
             <h1 className="mt-3 text-[clamp(2rem,4.5vw,3.25rem)] font-black leading-[1.1] tracking-tight text-navy">
-              Ontdek webshops en aanbiedingen.
+              {copy.title}
             </h1>
             <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted sm:text-base">
-              Blader door honderden webshops en profiteer van unieke kortingsvouchers via ShopBonus.
+              {copy.introduction}
             </p>
           </div>
 
@@ -336,8 +341,8 @@ function WebshopsInner() {
                   </svg>
                 </span>
                 <span>
-                  <span className="block text-[11px] font-semibold text-muted">Mijn ShopBonus-tegoed</span>
-                  <strong className="text-xl font-black text-navy">{formatMinor(availableMinor)}</strong>
+                  <span className="block text-[11px] font-semibold text-muted">{copy.credit}</span>
+                  <strong className="text-xl font-black text-navy">{formatMinor(availableMinor, "EUR", locale)}</strong>
                 </span>
               </div>
               <div className="flex items-center gap-3 border-l border-blue-50 px-5 py-4">
@@ -359,14 +364,14 @@ function WebshopsInner() {
           ) : (
             <div className="flex w-full max-w-md flex-col gap-3 rounded-[1.35rem] bg-white p-5 shadow-[0_16px_40px_-20px_rgba(10,27,63,0.35)] sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-bold text-navy">Bekijk jouw tegoed en vouchers</p>
-                <p className="mt-1 text-sm text-muted">Log in om je ShopBonus-saldo te zien.</p>
+                <p className="text-sm font-bold text-navy">{copy.guestTitle}</p>
+                <p className="mt-1 text-sm text-muted">{copy.guestHint}</p>
               </div>
               <Link
                 href="/account?mode=login"
                 className="inline-flex items-center justify-center rounded-2xl bg-brand px-5 py-3 text-sm font-extrabold text-white"
               >
-                Inloggen
+                {copy.login}
               </Link>
             </div>
           )}
@@ -382,9 +387,9 @@ function WebshopsInner() {
             <input
               value={qInput}
               onChange={(e) => setQInput(e.target.value)}
-              placeholder="Zoek een webshop..."
+              placeholder={copy.searchPlaceholder}
               className="w-full bg-transparent text-[15px] font-medium text-navy placeholder:text-muted/80 focus:outline-none"
-              aria-label="Zoek een webshop"
+              aria-label={copy.search}
             />
             {searching && (
               <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
@@ -399,7 +404,7 @@ function WebshopsInner() {
               const active = pill.key === category || (pill.key === null && category === null);
               return (
                 <button
-                  key={pill.label}
+                  key={copy[pill.label]}
                   type="button"
                   onClick={() => {
                     setCategory(pill.key);
@@ -412,7 +417,7 @@ function WebshopsInner() {
                   }`}
                 >
                   <CategoryIcon name={pill.icon} />
-                  {pill.label}
+                  {copy[pill.label]}
                 </button>
               );
             })}
@@ -432,7 +437,7 @@ function WebshopsInner() {
                       : "border border-blue-100 bg-white text-navy hover:bg-brand-light"
                   }`}
                 >
-                  {c.label.nl}
+                  {c.label[locale] || c.label.en || c.label.nl}
                 </button>
               );
             })}
@@ -452,10 +457,10 @@ function WebshopsInner() {
                   : "border border-blue-100 bg-white text-navy hover:bg-brand-light"
               }`}
             >
-              Met actieve aanbieding
+              {copy.hasOffers}
             </button>
             <label className="relative inline-flex shrink-0 items-center">
-              <span className="sr-only">Sorteren</span>
+              <span className="sr-only">{copy.sort}</span>
               <select
                 value={sort}
                 onChange={(e) => {
@@ -466,7 +471,7 @@ function WebshopsInner() {
               >
                 {SORT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
-                    {o.label}
+                    {copy[o.label]}
                   </option>
                 ))}
               </select>
@@ -482,14 +487,14 @@ function WebshopsInner() {
         {/* States */}
         {error ? (
           <div className="mt-10 rounded-[1.5rem] bg-white p-10 text-center shadow-sm">
-            <h3 className="text-xl font-black text-navy">Kon webshops niet laden</h3>
-            <p className="mt-2 text-muted">{error}</p>
+            <h3 className="text-xl font-black text-navy">{copy.errorTitle}</h3>
+            <p className="mt-2 text-muted">{copy.errorHint}</p>
             <button
               type="button"
               onClick={retry}
               className="mt-5 rounded-2xl bg-brand px-6 py-3 font-extrabold text-white"
             >
-              Opnieuw proberen
+              {copy.retry}
             </button>
           </div>
         ) : loading && shops.length === 0 ? (
@@ -500,9 +505,9 @@ function WebshopsInner() {
           </div>
         ) : shops.length === 0 ? (
           <div className="mt-10 rounded-[1.5rem] bg-white p-12 text-center shadow-sm">
-            <h3 className="text-xl font-black text-navy">Geen webshops gevonden</h3>
+            <h3 className="text-xl font-black text-navy">{copy.emptyTitle}</h3>
             <p className="mt-2 text-muted">
-              Geen webshops gevonden. Probeer een andere zoekterm of categorie.
+              {copy.emptyHint}
             </p>
             {hasFilters && (
               <button
@@ -510,7 +515,7 @@ function WebshopsInner() {
                 onClick={clearFilters}
                 className="mt-5 rounded-2xl bg-brand px-6 py-3 font-extrabold text-white"
               >
-                Wis filters
+                {copy.clear}
               </button>
             )}
           </div>
@@ -532,10 +537,10 @@ function WebshopsInner() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   className="rounded-full border border-blue-100 bg-white px-5 py-2.5 text-sm font-bold text-navy disabled:opacity-40"
                 >
-                  Vorige
+                  {copy.previous}
                 </button>
                 <span className="text-sm font-semibold text-muted">
-                  Pagina {meta.current_page} van {meta.last_page}
+                  {copy.page} {meta.current_page} {copy.of} {meta.last_page}
                 </span>
                 <button
                   type="button"
@@ -543,7 +548,7 @@ function WebshopsInner() {
                   onClick={() => setPage((p) => p + 1)}
                   className="rounded-full border border-blue-100 bg-white px-5 py-2.5 text-sm font-bold text-navy disabled:opacity-40"
                 >
-                  Volgende
+                  {copy.next}
                 </button>
               </div>
             )}

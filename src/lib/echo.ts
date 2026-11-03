@@ -228,22 +228,47 @@ const NOTIFICATION_EVENTS: NotificationInboxEvent[] = [
  * Subscribe to private notification invalidation events.
  * Payload is intentionally minimal — callers must refetch via HTTP.
  */
+type NotificationSubscriber = {
+  onEvent: (event: NotificationInboxEvent, payload: NotificationInboxPayload) => void;
+  onSubscribed?: () => void;
+};
+
+// Keep one channel alive until its final consumer leaves.
+const notificationSubscriptions = new Map<string, {
+  subscribers: Set<NotificationSubscriber>;
+  cleanup: () => void;
+}>();
+
 export async function subscribeNotifications(
   userPublicId: string,
-  onEvent: (event: NotificationInboxEvent, payload: NotificationInboxPayload) => void
+  onEvent: NotificationSubscriber["onEvent"],
+  onSubscribed?: () => void
 ): Promise<() => void> {
   const echo = await getEcho();
   if (!echo || !userPublicId) return () => undefined;
 
   const name = notificationChannelName(userPublicId);
+  const subscriber = { onEvent, onSubscribed };
+  const existing = notificationSubscriptions.get(name);
+  if (existing) {
+    existing.subscribers.add(subscriber);
+    return notificationDisposer(name, subscriber);
+  }
   const channel = echo.private(name);
   const cleaners: Array<() => void> = [];
+  const subscribers = new Set([subscriber]);
+  let active = true;
+  // Pusher acknowledges private subscriptions again after each reconnect.
+  // Catch up after authorization succeeds, also covering initial HTTP races.
+  channel.subscribed?.(() => {
+    if (active) for (const listener of subscribers) listener.onSubscribed?.();
+  });
 
   for (const eventName of NOTIFICATION_EVENTS) {
     const handler = (payload: unknown) => {
       const data =
         payload && typeof payload === "object" ? (payload as NotificationInboxPayload) : {};
-      onEvent(eventName, data);
+      for (const listener of subscribers) listener.onEvent(eventName, data);
     };
     channel.listen(`.${eventName}`, handler);
     channel.listen(eventName, handler);
@@ -257,12 +282,28 @@ export async function subscribeNotifications(
     });
   }
 
+  notificationSubscriptions.set(name, {
+    subscribers,
+    cleanup: () => {
+      active = false;
+      cleaners.forEach((fn) => fn());
+      try {
+        echo.leave(name);
+      } catch {
+        /* ignore */
+      }
+    },
+  });
+  return notificationDisposer(name, subscriber);
+}
+
+function notificationDisposer(name: string, subscriber: NotificationSubscriber): () => void {
   return () => {
-    cleaners.forEach((fn) => fn());
-    try {
-      echo.leave(name);
-    } catch {
-      /* ignore */
+    const shared = notificationSubscriptions.get(name);
+    if (!shared?.subscribers.delete(subscriber)) return;
+    if (shared.subscribers.size === 0) {
+      notificationSubscriptions.delete(name);
+      shared.cleanup();
     }
   };
 }

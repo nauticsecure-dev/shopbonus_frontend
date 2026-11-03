@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-03T07:10:53.349Z",
+  "environment": "isolated local SQLite / Mailpit",
+  "interception": false,
+  "status": "PARTIAL PASS",
+  "checks": [
+    "Real registration with legal versions and CSRF/session protection",
+    "Database queue → real SMTP capture → six-digit email verification → verified identity",
+    "Quote leaves points intact; purchase/replay debits 250 points once; EUR and pending points unchanged",
+    "Real unit-filtered central wallet activity"
+  ],
+  "failed_step": null,
+  "limits": [
+    "API smoke, not full browser journeys",
+    "SMTP capture, not external mailbox delivery",
+    "No provider/staging/visual acceptance"
+  ]
+}

@@ -7,9 +7,9 @@
   ],
   "verify": {
     "users": 2,
-    "revisions": 2,
-    "assets": 0,
-    "publish_audits": 5,
+    "revisions": 3,
+    "assets": 3,
+    "publish_audits": 12,
     "wallet_reconciles": true
   },
   "requests": [
@@ -17,2193 +17,1163 @@
       "method": "GET",
       "path": "/api/v1/health",
       "status": 200,
-      "request_id": "01a1925f-1ad2-73fd-a7b0-c3782a772b35",
+      "request_id": "01a19fbd-b944-72c5-bfad-d1b68184f5d2",
       "cache_control": "no-cache, private",
-      "duration_ms": 847
+      "duration_ms": 635
     },
     {
       "method": "GET",
       "path": "/api/v1/content/homepage?locale=nl",
       "status": 200,
-      "request_id": "01a1925f-77e9-7339-a0f9-e5ccafa0ce2a",
+      "request_id": "01a19fbd-fda8-7204-be78-4f537fd8a075",
       "cache_control": "no-store, private",
-      "duration_ms": 1111
+      "duration_ms": 1075
     },
     {
       "method": "GET",
       "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
       "status": 200,
-      "request_id": "01a1925f-7d0c-7075-b4b6-59d6f9b653aa",
+      "request_id": "01a19fbe-0214-714e-97c7-830260898fea",
       "cache_control": "no-store, private",
-      "duration_ms": 905
+      "duration_ms": 747
     },
     {
       "method": "GET",
       "path": "/api/v1/public/webshops?sort=most_offers&per_page=4",
       "status": 200,
-      "request_id": "01a1925f-822f-7105-8b90-2c8eda97de8a",
+      "request_id": "01a19fbe-0695-71f5-aeaa-ccb0c3b0c70f",
       "cache_control": "no-cache, private",
-      "duration_ms": 2335
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a19260-7cf7-7000-935a-b76511a5e9f7",
-      "cache_control": "no-cache, private",
-      "duration_ms": 626
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a19260-7f33-7040-9118-b14f2acca6c8",
-      "cache_control": "no-cache, private",
-      "duration_ms": 550
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19260-8298-715c-932c-05793313c3d5",
-      "cache_control": "no-store, private",
-      "duration_ms": 529
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19260-8562-70f2-a54e-0f128f87e057",
-      "cache_control": "no-store, private",
-      "duration_ms": 644
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/webshops?sort=most_offers&per_page=4",
-      "status": 200,
-      "request_id": "01a19260-8853-7166-a0ef-3ef1d9741f6c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1480
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19260-8bd3-723f-a837-082bfbd339d0",
-      "cache_control": "no-store, private",
-      "duration_ms": 1456
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19260-8f04-7209-921f-ffea5bfc4a55",
-      "cache_control": "no-store, private",
-      "duration_ms": 672
+      "duration_ms": 2015
     },
     {
       "method": "GET",
       "path": "/sanctum/csrf-cookie",
       "status": 204,
-      "request_id": "01a19260-9d4b-7260-9013-09cc9b31fde3",
+      "request_id": "01a19fbe-207f-7288-8f57-aa9a0051ecfa",
       "cache_control": "no-cache, private",
-      "duration_ms": 478
+      "duration_ms": 1331
     },
     {
       "method": "POST",
       "path": "/login",
       "status": 200,
-      "request_id": "01a19260-9f57-7312-baaa-6392bb1af58b",
+      "request_id": "01a19fbe-25ac-7311-a45d-9ffbf78de7d0",
       "cache_control": "no-cache, private",
-      "duration_ms": 1329
+      "duration_ms": 2066
     },
     {
       "method": "GET",
       "path": "/api/v1/admin/content/homepage?locale=nl",
       "status": 403,
-      "request_id": "01a19260-a4e2-71a7-9304-8b988eed47cd",
+      "request_id": "01a19fbe-2c5c-72c0-86fb-4c957bc074fc",
       "cache_control": "no-cache, private",
-      "duration_ms": 718
+      "duration_ms": 819
     },
     {
       "method": "GET",
       "path": "/sanctum/csrf-cookie",
       "status": 204,
-      "request_id": "01a19260-a79e-73fb-9460-39f67d50bc2e",
+      "request_id": "01a19fbe-3577-72bd-9f59-92480fef3483",
       "cache_control": "no-cache, private",
-      "duration_ms": 568
+      "duration_ms": 2254
     },
     {
       "method": "POST",
       "path": "/user/confirm-password",
       "status": 201,
-      "request_id": "01a19260-a99e-726d-846a-8c70e699885a",
+      "request_id": "01a19fbe-39e2-7366-9fbe-f3d2d290cc1b",
       "cache_control": "no-cache, private",
-      "duration_ms": 822
+      "duration_ms": 1515
     },
     {
       "method": "GET",
       "path": "/sanctum/csrf-cookie",
       "status": 204,
-      "request_id": "01a19260-ace5-708d-9111-681e4bbf0da7",
+      "request_id": "01a19fbe-3f97-7342-aa97-a6b7fc829e67",
       "cache_control": "no-cache, private",
-      "duration_ms": 503
+      "duration_ms": 1009
     },
     {
       "method": "POST",
       "path": "/user/two-factor-authentication",
       "status": 200,
-      "request_id": "01a19260-aee7-70f4-a65b-e760824ce624",
+      "request_id": "01a19fbe-431b-7296-a280-9c8961537dcf",
       "cache_control": "no-cache, private",
-      "duration_ms": 541
+      "duration_ms": 964
     },
     {
       "method": "GET",
       "path": "/user/two-factor-secret-key",
       "status": 200,
-      "request_id": "01a19260-b118-73b3-a688-3812837ba9d1",
+      "request_id": "01a19fbe-46bf-7308-9cea-30c6a8554303",
       "cache_control": "no-cache, private",
-      "duration_ms": 524
+      "duration_ms": 819
     },
     {
       "method": "GET",
       "path": "/sanctum/csrf-cookie",
       "status": 204,
-      "request_id": "01a19260-b31d-73d1-8672-84a634f37a96",
+      "request_id": "01a19fbe-4a1d-72bf-8d7b-2cbdc7a6f7e7",
       "cache_control": "no-cache, private",
-      "duration_ms": 528
+      "duration_ms": 810
     },
     {
       "method": "POST",
       "path": "/user/confirmed-two-factor-authentication",
       "status": 200,
-      "request_id": "01a19260-b536-71ee-9c86-df2ab648bde7",
+      "request_id": "01a19fbe-4cec-721e-a481-f44cfbd78d55",
       "cache_control": "no-cache, private",
-      "duration_ms": 523
+      "duration_ms": 705
     },
     {
       "method": "GET",
       "path": "/user/two-factor-recovery-codes",
       "status": 200,
-      "request_id": "01a19260-b761-71d8-9d98-de7e6fc7e157",
+      "request_id": "01a19fbe-4f5d-71b2-b1b2-8ef9ea39a594",
       "cache_control": "no-cache, private",
-      "duration_ms": 528
+      "duration_ms": 586
     },
     {
       "method": "GET",
       "path": "/sanctum/csrf-cookie",
       "status": 204,
-      "request_id": "01a19260-b962-7193-8851-81a452c5057e",
+      "request_id": "01a19fbe-519b-7048-bbde-bc5f39fc43a4",
       "cache_control": "no-cache, private",
-      "duration_ms": 477
+      "duration_ms": 544
     },
     {
       "method": "POST",
       "path": "/logout",
       "status": 204,
-      "request_id": "01a19260-bb5a-734f-840f-c23aaf184178",
+      "request_id": "01a19fbe-53d2-724c-b38b-583ffc73a70d",
       "cache_control": "no-cache, private",
-      "duration_ms": 552
+      "duration_ms": 615
     },
     {
       "method": "GET",
       "path": "/sanctum/csrf-cookie",
       "status": 204,
-      "request_id": "01a19260-bdac-70f7-a4ef-1177602c2de2",
+      "request_id": "01a19fbe-5633-7255-8f53-c8898433f33f",
       "cache_control": "no-cache, private",
-      "duration_ms": 514
+      "duration_ms": 510
     },
     {
       "method": "POST",
       "path": "/login",
       "status": 200,
-      "request_id": "01a19260-bfaf-71da-adc7-332c2dd36352",
+      "request_id": "01a19fbe-5891-7066-975b-35c3d8425a92",
       "cache_control": "no-cache, private",
-      "duration_ms": 883
+      "duration_ms": 1028
     },
     {
       "method": "GET",
       "path": "/api/v1/me",
       "status": 401,
-      "request_id": "01a19260-c314-7148-847e-f68c8444d3fe",
+      "request_id": "01a19fbe-5cc6-739f-b5d9-9985bd9f93ee",
       "cache_control": "no-cache, private",
-      "duration_ms": 556
+      "duration_ms": 720
     },
     {
       "method": "GET",
       "path": "/sanctum/csrf-cookie",
       "status": 204,
-      "request_id": "01a19260-c594-71b9-a463-68c2486d56c8",
+      "request_id": "01a19fbe-5f2f-7036-a7c2-291c647973c3",
       "cache_control": "no-cache, private",
-      "duration_ms": 559
+      "duration_ms": 532
     },
     {
       "method": "POST",
       "path": "/two-factor-challenge",
       "status": 200,
-      "request_id": "01a19260-c7a0-72c7-a988-8210200dc5c7",
+      "request_id": "01a19fbe-618a-7147-937e-41adc4b8fe55",
       "cache_control": "no-cache, private",
-      "duration_ms": 689
+      "duration_ms": 762
     },
     {
       "method": "GET",
       "path": "/sanctum/csrf-cookie",
       "status": 204,
-      "request_id": "01a19260-ca80-72cc-b284-0dc6e938b011",
+      "request_id": "01a19fbe-64a7-73a9-b5b1-e2d5f751c4df",
       "cache_control": "no-cache, private",
-      "duration_ms": 568
+      "duration_ms": 632
     },
     {
       "method": "POST",
       "path": "/api/v1/admin/content/homepage/publish",
       "status": 423,
-      "request_id": "01a19260-cc87-7276-86ec-709be4550f5e",
+      "request_id": "01a19fbe-66d3-7060-a006-22225a2e9725",
       "cache_control": "no-cache, private",
-      "duration_ms": 547
+      "duration_ms": 577,
+      "response": {
+        "error": {
+          "status": 423,
+          "code": "password_confirmation_required",
+          "message": "Confirm your password to continue.",
+          "request_id": "01a19fbe-66d3-7060-a006-22225a2e9725"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/sanctum/csrf-cookie",
+      "status": 204,
+      "request_id": "01a19fbe-692d-7355-8988-0e45e3c0ac92",
+      "cache_control": "no-cache, private",
+      "duration_ms": 551
+    },
+    {
+      "method": "POST",
+      "path": "/user/confirm-password",
+      "status": 201,
+      "request_id": "01a19fbe-6b65-71b0-9931-63622be7f78d",
+      "cache_control": "no-cache, private",
+      "duration_ms": 895
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/content/homepage/publish",
+      "status": 419,
+      "request_id": "01a19fbe-6eee-72aa-92ab-2d828023cdeb",
+      "cache_control": "no-cache, private",
+      "duration_ms": 619,
+      "response": {
+        "error": {
+          "status": 419,
+          "code": "csrf_token_mismatch",
+          "message": "The session or CSRF token has expired. Refresh and try again.",
+          "request_id": "01a19fbe-6eee-72aa-92ab-2d828023cdeb"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbe-7182-725f-a7dd-1f43ff43edad",
+      "cache_control": "no-store, private",
+      "duration_ms": 688
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/homepage?locale=en",
+      "status": 200,
+      "request_id": "01a19fbe-744a-7014-ac98-34d5e6d88ded",
+      "cache_control": "no-store, private",
+      "duration_ms": 639
+    },
+    {
+      "method": "GET",
+      "path": "/sanctum/csrf-cookie",
+      "status": 204,
+      "request_id": "01a19fbe-76f6-73b0-b161-ab7cb3249c22",
+      "cache_control": "no-cache, private",
+      "duration_ms": 505
+    },
+    {
+      "method": "POST",
+      "path": "/login",
+      "status": 200,
+      "request_id": "01a19fbe-7908-7345-b322-04419fcfb106",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1385
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbe-8385-722a-9cef-82f3fdaa589b",
+      "cache_control": "no-store, private",
+      "duration_ms": 848
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/homepage?locale=en",
+      "status": 200,
+      "request_id": "01a19fbe-86fe-7036-b03d-3ef0d262a9a9",
+      "cache_control": "no-store, private",
+      "duration_ms": 884
     },
     {
       "method": "GET",
       "path": "/api/v1/content/homepage?locale=nl",
       "status": 200,
-      "request_id": "01a19260-d134-72ec-bf0d-c2b252ff8149",
+      "request_id": "01a19fbe-8e1c-73b3-8669-88af2a8d9a25",
       "cache_control": "no-store, private",
-      "duration_ms": 658
+      "duration_ms": 1019
     },
     {
       "method": "GET",
       "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
       "status": 200,
-      "request_id": "01a19260-d3b2-735d-8b98-63e3854082e7",
+      "request_id": "01a19fbe-91e4-700d-bb6c-3226b9dfd8e6",
       "cache_control": "no-store, private",
-      "duration_ms": 620
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19260-e262-716a-8aab-abdc7af1db53",
-      "cache_control": "no-cache, private",
-      "duration_ms": 971
+      "duration_ms": 739
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/public/cookie-policy?locale=nl",
       "status": 204,
-      "request_id": "01a19260-e4cc-71f4-8440-49dd149b3ea4",
+      "request_id": "01a19fbe-a982-7197-bf4c-53d3a76d7fa0",
       "cache_control": "no-cache, private",
-      "duration_ms": 1572
+      "duration_ms": 984
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/content/homepage?locale=nl",
       "status": 204,
-      "request_id": "01a19260-e727-70ab-838a-59f528230b64",
+      "request_id": "01a19fbe-abe0-71a3-8a41-96d1cd9d9a28",
       "cache_control": "no-cache, private",
-      "duration_ms": 2168
+      "duration_ms": 1587
     },
     {
       "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a19260-ea55-712a-82b1-d3931729cd46",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2997
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a19260-efe7-7352-ad57-520c6cf10d2e",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4224
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19260-f2dd-7225-a255-91c967e6acda",
-      "cache_control": "no-store, private",
-      "duration_ms": 5005
-    },
-    {
-      "method": "GET",
       "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 204,
+      "request_id": "01a19fbe-ae32-7317-9b67-83b4d3ab3ff3",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2183
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/cookie-policy?locale=nl",
+      "status": 204,
+      "request_id": "01a19fbe-b0a7-7383-9ffd-7eb8f6c62ea6",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2817
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 204,
+      "request_id": "01a19fbe-b5cd-71b7-9384-35b51ceca996",
+      "cache_control": "no-cache, private",
+      "duration_ms": 4127
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me",
+      "status": 204,
+      "request_id": "01a19fbe-b8b8-71f4-a545-3c0bbf197a1a",
+      "cache_control": "no-cache, private",
+      "duration_ms": 4852
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
       "status": 200,
-      "request_id": "01a19260-f53d-7294-b277-f52b099044ac",
+      "request_id": "01a19fbe-bc00-70b2-a450-9ab49f708e4a",
       "cache_control": "no-store, private",
-      "duration_ms": 5012
+      "duration_ms": 5646
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me",
+      "status": 204,
+      "request_id": "01a19fbe-c001-71b5-ad6f-d23979cccf2a",
+      "cache_control": "no-cache, private",
+      "duration_ms": 5759
     },
     {
       "method": "GET",
       "path": "/api/v1/public/cookie-policy?locale=nl",
       "status": 200,
-      "request_id": "01a19260-f7ac-730a-a44a-285069b01857",
-      "cache_control": "max-age=60, public",
-      "duration_ms": 4950
+      "request_id": "01a19fbe-c258-7352-ae38-3f877a16130e",
+      "cache_control": "no-store, private",
+      "duration_ms": 8074
     },
     {
       "method": "GET",
       "path": "/api/v1/content/homepage?locale=nl",
       "status": 200,
-      "request_id": "01a19260-f9de-70a3-9feb-2177aefb035d",
+      "request_id": "01a19fbe-cb77-7016-bef1-7dcc5939d6af",
       "cache_control": "no-store, private",
-      "duration_ms": 4945
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a19260-fc36-73bd-b2ee-5f3ed7f30233",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4709
+      "duration_ms": 8267
     },
     {
       "method": "GET",
       "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
       "status": 200,
-      "request_id": "01a19260-fed0-7012-9b98-4ce3ba001a11",
+      "request_id": "01a19fbe-ce55-732a-b818-b5443b033cae",
       "cache_control": "no-store, private",
-      "duration_ms": 3095
+      "duration_ms": 8454
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/cookie-policy?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbe-d1aa-733f-ae4d-8802599a92fa",
+      "cache_control": "no-store, private",
+      "duration_ms": 8604
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbe-d490-7294-a051-8763519825d0",
+      "cache_control": "no-store, private",
+      "duration_ms": 8025
     },
     {
       "method": "GET",
       "path": "/api/v1/me",
       "status": 200,
-      "request_id": "01a19261-0361-71ab-a10c-8e6390601ea9",
+      "request_id": "01a19fbe-d73d-70be-b240-4da4a58be0f8",
       "cache_control": "no-cache, private",
-      "duration_ms": 1849
+      "duration_ms": 7981
     },
     {
-      "method": "OPTIONS",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 204,
-      "request_id": "01a19261-0634-7263-8386-cfcfc64893b3",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2352
+      "method": "GET",
+      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 200,
+      "request_id": "01a19fbe-da71-73f1-af31-05691c9876f5",
+      "cache_control": "no-store, private",
+      "duration_ms": 7611
     },
     {
-      "method": "OPTIONS",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 204,
-      "request_id": "01a19261-082e-73b9-8699-3d1d67938e8a",
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 200,
+      "request_id": "01a19fbe-ddca-7107-8c55-b209f20816fc",
       "cache_control": "no-cache, private",
-      "duration_ms": 2846
+      "duration_ms": 1797
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/me/wallet",
       "status": 204,
-      "request_id": "01a19261-0a19-7195-9fd8-9d67b8f34c53",
+      "request_id": "01a19fbe-e0d4-7340-be7f-b316a88dca8d",
       "cache_control": "no-cache, private",
-      "duration_ms": 3331
+      "duration_ms": 2192
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/consumer/vouchers",
       "status": 204,
-      "request_id": "01a19261-0bb3-738f-84b5-92b785d097d3",
+      "request_id": "01a19fbe-e2b4-71ad-9403-350ecfbb3002",
       "cache_control": "no-cache, private",
-      "duration_ms": 3739
+      "duration_ms": 2668
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
+      "status": 204,
+      "request_id": "01a19fbe-e4c8-7158-b05e-46c165754ff8",
+      "cache_control": "no-cache, private",
+      "duration_ms": 3212
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/admin/content/homepage?locale=nl",
       "status": 204,
-      "request_id": "01a19261-0d84-7134-aa67-0740664d7794",
+      "request_id": "01a19fbe-e711-7196-a6a1-80b7de7656a3",
       "cache_control": "no-cache, private",
-      "duration_ms": 3795
+      "duration_ms": 3364
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
       "status": 204,
-      "request_id": "01a19261-0f2f-70f4-a963-b6c563423c78",
+      "request_id": "01a19fbe-e944-7214-b3bb-ce252537b92a",
       "cache_control": "no-cache, private",
-      "duration_ms": 4220
+      "duration_ms": 3493
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 204,
+      "request_id": "01a19fbe-ec17-7028-8aca-d181794c7c5a",
+      "cache_control": "no-cache, private",
+      "duration_ms": 4208
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me",
+      "status": 204,
+      "request_id": "01a19fbe-ee20-7033-be20-a81fe9c61189",
+      "cache_control": "no-cache, private",
+      "duration_ms": 3396
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/wallet",
+      "status": 200,
+      "request_id": "01a19fbe-f051-738e-8c10-ad551afd055c",
+      "cache_control": "no-cache, private",
+      "duration_ms": 4101
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/vouchers",
+      "status": 200,
+      "request_id": "01a19fbe-f312-73fe-b1bd-e611c03da20e",
+      "cache_control": "no-cache, private",
+      "duration_ms": 4433
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
+      "status": 200,
+      "request_id": "01a19fbe-f6c3-72b5-afe4-2398e76b4d21",
+      "cache_control": "no-cache, private",
+      "duration_ms": 4783
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbe-f9a9-7034-af71-91a8b4463b18",
+      "cache_control": "no-store, private",
+      "duration_ms": 4964
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 200,
+      "request_id": "01a19fbe-fd46-71ab-9cf3-91d6a8650e52",
+      "cache_control": "no-store, private",
+      "duration_ms": 5400
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-011d-7388-8d80-66d86da90abc",
+      "cache_control": "no-store, private",
+      "duration_ms": 5559
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 200,
+      "request_id": "01a19fbf-03f6-7038-bbfd-2b414f2a22f9",
+      "cache_control": "no-cache, private",
+      "duration_ms": 5035
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 204,
+      "request_id": "01a19fbf-0670-702d-884d-83363596c9ff",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1865
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 204,
+      "request_id": "01a19fbf-0849-7232-8261-7e3cef8b666c",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2222
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me/wallet",
+      "status": 204,
+      "request_id": "01a19fbf-0a4a-7251-a3a2-57e5e04d78fb",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1435
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/consumer/vouchers",
+      "status": 204,
+      "request_id": "01a19fbf-0c24-724d-8a92-cee6b85a9d69",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1905
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 200,
+      "request_id": "01a19fbf-0dfb-73ff-8829-a78fcd8646df",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1654
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/admin/content/homepage",
+      "status": 204,
+      "request_id": "01a19fbf-10ec-726a-8b64-1e221fdd32ae",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1920
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/wallet",
+      "status": 200,
+      "request_id": "01a19fbf-12ac-721f-bd1e-622140f7bde3",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2292
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/vouchers",
+      "status": 200,
+      "request_id": "01a19fbf-15b1-73c6-bb6f-7f6d1c595c5c",
+      "cache_control": "no-cache, private",
+      "duration_ms": 3346
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/content/homepage",
+      "status": 200,
+      "request_id": "01a19fbf-1bbd-73b9-b805-bbe8b8816b3f",
+      "cache_control": "no-cache, private",
+      "duration_ms": 3126
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 204,
+      "request_id": "01a19fbf-22ad-73aa-a3b3-4ccf4ef88f4c",
+      "cache_control": "no-cache, private",
+      "duration_ms": 675
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 200,
+      "request_id": "01a19fbf-2530-71b1-8cde-f81a361aad95",
+      "cache_control": "no-cache, private",
+      "duration_ms": 806
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/admin/content/homepage/assets",
+      "status": 204,
+      "request_id": "01a19fbf-2d9d-7239-bc9e-6c23d555214c",
+      "cache_control": "no-cache, private",
+      "duration_ms": 652
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/content/homepage/assets",
+      "status": 201,
+      "request_id": "01a19fbf-2fcb-7186-862f-b7580505d063",
+      "cache_control": "no-cache, private",
+      "duration_ms": 921
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/content-assets/01m6fvyc7pdb5gqn7fq3knhk7d",
+      "status": 200,
+      "request_id": "01a19fbf-33d3-7211-8a06-43956b6fe302",
+      "cache_control": "immutable, max-age=31536000, public",
+      "duration_ms": 778
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/content-assets/01m6fvyc7pdb5gqn7fq3knhk7d",
+      "status": 200,
+      "request_id": "01a19fbf-36f5-70a6-8bf9-84b06e00f646",
+      "cache_control": "immutable, max-age=31536000, public",
+      "duration_ms": 1499
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/admin/content/homepage/assets",
+      "status": 204,
+      "request_id": "01a19fbf-3b21-730e-88c1-09fb24290749",
+      "cache_control": "no-cache, private",
+      "duration_ms": 576
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/content/homepage/assets",
+      "status": 201,
+      "request_id": "01a19fbf-3d51-7121-8e05-d995385e8242",
+      "cache_control": "no-cache, private",
+      "duration_ms": 828
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/admin/content/homepage",
+      "status": 204,
+      "request_id": "01a19fbf-40c6-71c3-a0dc-cb6804384ebd",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1425
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/content-assets/01m6fvyfh9qkq456s5kf3bj82d",
+      "status": 200,
+      "request_id": "01a19fbf-4310-715a-a4f5-8a7074292e62",
+      "cache_control": "immutable, max-age=31536000, public",
+      "duration_ms": 1303
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/content-assets/01m6fvyfh9qkq456s5kf3bj82d",
+      "status": 200,
+      "request_id": "01a19fbf-4602-7380-a6e4-c90d30fbefe8",
+      "cache_control": "immutable, max-age=31536000, public",
+      "duration_ms": 1996
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/content/homepage",
+      "status": 200,
+      "request_id": "01a19fbf-48b5-734a-86e7-061f8e1be32f",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2329
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/admin/content/homepage/assets",
+      "status": 204,
+      "request_id": "01a19fbf-4f0a-701f-bcdb-3c6a4e3318c2",
+      "cache_control": "no-cache, private",
+      "duration_ms": 531
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/content/homepage/assets",
+      "status": 201,
+      "request_id": "01a19fbf-5137-7150-9604-2bc150143685",
+      "cache_control": "no-cache, private",
+      "duration_ms": 845
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/content-assets/01m6fvymh6kh692yh4qpbx1m8h",
+      "status": 200,
+      "request_id": "01a19fbf-554f-72f6-a40f-0a53135681fa",
+      "cache_control": "immutable, max-age=31536000, public",
+      "duration_ms": 831
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/admin/content/homepage",
+      "status": 204,
+      "request_id": "01a19fbf-58e9-71fe-a9e4-934cc718bbe3",
+      "cache_control": "no-cache, private",
+      "duration_ms": 683
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/content/homepage",
+      "status": 200,
+      "request_id": "01a19fbf-5c2c-72a3-a19f-22b3a21b31f1",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1171
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/admin/content/homepage/publish",
+      "status": 204,
+      "request_id": "01a19fbf-6012-7077-95e1-45c109a052e7",
+      "cache_control": "no-cache, private",
+      "duration_ms": 639
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/content/homepage/publish",
+      "status": 200,
+      "request_id": "01a19fbf-62a5-71ee-86e8-7543a33f233c",
+      "cache_control": "no-cache, private",
+      "duration_ms": 975,
+      "response": {
+        "data": {
+          "id": "01m6fvyrx960mwjcx0ysz94nma",
+          "locale": "nl",
+          "number": 2,
+          "restored_from": null,
+          "published_by": "Homepage Admin",
+          "published_at": "2026-11-03T04:51:22+00:00"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-670d-7192-9026-15ba56e7f60e",
+      "cache_control": "no-store, private",
+      "duration_ms": 774
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-6a93-711e-8e05-aa2d215f1123",
+      "cache_control": "no-store, private",
+      "duration_ms": 782
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops?per_page=1&slugs=acceptance-beta",
+      "status": 200,
+      "request_id": "01a19fbf-6fb9-7029-93c6-ef55b117cc5d",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2320
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/cookie-policy?locale=nl",
+      "status": 204,
+      "request_id": "01a19fbf-7758-715e-b1f1-4f8a58b49d53",
+      "cache_control": "no-cache, private",
+      "duration_ms": 874
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 204,
+      "request_id": "01a19fbf-798d-7144-ae34-1fb4090dec0d",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1430
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 204,
+      "request_id": "01a19fbf-7baa-7006-87f2-db06f5970657",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1968
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
       "status": 204,
-      "request_id": "01a19261-111a-7141-b5d9-dd03c26417f8",
+      "request_id": "01a19fbf-7e13-7063-a934-8693af4dd6fb",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2589
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/cookie-policy?locale=nl",
+      "status": 204,
+      "request_id": "01a19fbf-80c0-70d5-b6a4-5e0b43bbb53d",
+      "cache_control": "no-cache, private",
+      "duration_ms": 3268
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 204,
+      "request_id": "01a19fbf-8325-72fe-b531-9f448fa7b269",
+      "cache_control": "no-cache, private",
+      "duration_ms": 3887
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-85e9-710d-becb-fb96ceea0253",
+      "cache_control": "no-store, private",
+      "duration_ms": 4565
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me",
+      "status": 204,
+      "request_id": "01a19fbf-89e1-7153-87a0-7e49026129a4",
+      "cache_control": "no-cache, private",
+      "duration_ms": 4743
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/cookie-policy?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-8cf4-726b-b037-7045cdb27f3b",
+      "cache_control": "no-store, private",
+      "duration_ms": 5804
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me",
+      "status": 204,
+      "request_id": "01a19fbf-90f7-73ab-8a91-e8c422b17d30",
+      "cache_control": "no-cache, private",
+      "duration_ms": 5999
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-9457-70ec-a92c-5af427f53671",
+      "cache_control": "no-store, private",
+      "duration_ms": 7110
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 200,
+      "request_id": "01a19fbf-9883-72db-9339-301955e9a422",
+      "cache_control": "no-cache, private",
+      "duration_ms": 7739
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-9d85-72eb-8180-c62c6c252f45",
+      "cache_control": "no-store, private",
+      "duration_ms": 8411
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/cookie-policy?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-a1f0-7149-9175-357b840b88bd",
+      "cache_control": "no-store, private",
+      "duration_ms": 8705
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-a5cb-71c5-b014-28c825e6de65",
+      "cache_control": "no-store, private",
+      "duration_ms": 9098
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-aaff-711c-aa54-c028407b9a44",
+      "cache_control": "no-store, private",
+      "duration_ms": 9396
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 200,
+      "request_id": "01a19fbf-af6c-718a-8c7e-969d452e7c3e",
+      "cache_control": "no-cache, private",
+      "duration_ms": 8701
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 204,
+      "request_id": "01a19fbf-b24d-7316-a469-da47198afe6c",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1439
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 204,
+      "request_id": "01a19fbf-b458-734a-9a1a-15b414751379",
+      "cache_control": "no-cache, private",
+      "duration_ms": 1966
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 204,
+      "request_id": "01a19fbf-b66d-70a8-a8e0-33390bae15b8",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2484
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 200,
+      "request_id": "01a19fbf-b872-7248-92e7-5e9c06b05ea8",
+      "cache_control": "no-cache, private",
+      "duration_ms": 2297
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me/wallet",
+      "status": 204,
+      "request_id": "01a19fbf-bb24-7234-89be-ff93ee1055de",
       "cache_control": "no-cache, private",
       "duration_ms": 2777
     },
     {
       "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
+      "path": "/api/v1/consumer/vouchers",
       "status": 204,
-      "request_id": "01a19261-1306-7291-9a20-f03c3fbc3c13",
+      "request_id": "01a19fbf-bd75-7225-a7ad-97a20919d114",
       "cache_control": "no-cache, private",
-      "duration_ms": 2768
+      "duration_ms": 3370
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
+      "status": 204,
+      "request_id": "01a19fbf-bf99-720f-bda8-d7bf57a4cedf",
+      "cache_control": "no-cache, private",
+      "duration_ms": 3913
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-c1a4-7355-9d59-d0c050923cf0",
+      "cache_control": "no-store, private",
+      "duration_ms": 4351
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/webshops/acceptance-beta",
+      "status": 200,
+      "request_id": "01a19fbf-c5fa-7391-ad7c-4152a44bf264",
+      "cache_control": "no-cache, private",
+      "duration_ms": 5214
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-c99d-737b-ba04-974c6ff337e4",
+      "cache_control": "no-store, private",
+      "duration_ms": 5712
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/content/homepage?locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-cdfc-7033-ba5a-2b4cab0d1073",
+      "cache_control": "no-store, private",
+      "duration_ms": 6278
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me",
+      "status": 204,
+      "request_id": "01a19fbf-d206-7315-bbec-0b60d85d45cc",
+      "cache_control": "no-cache, private",
+      "duration_ms": 6343
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/wallet",
+      "status": 200,
+      "request_id": "01a19fbf-d527-7131-a262-cbf3a49cf203",
+      "cache_control": "no-cache, private",
+      "duration_ms": 6863
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consumer/vouchers",
+      "status": 200,
+      "request_id": "01a19fbf-d940-7037-8214-4f5b4331df0a",
+      "cache_control": "no-cache, private",
+      "duration_ms": 7401
     },
     {
       "method": "GET",
       "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
       "status": 200,
-      "request_id": "01a19261-153d-70a8-93ad-157f8dfb5249",
+      "request_id": "01a19fbf-ddf6-7114-90e2-aacf10e1f33d",
       "cache_control": "no-cache, private",
-      "duration_ms": 3576
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a19261-1872-70c4-8697-b1dbc47c5117",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3673
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me/wallet",
-      "status": 200,
-      "request_id": "01a19261-1a35-73f2-99f1-1e9fa865ea62",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4244
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 200,
-      "request_id": "01a19261-1f5f-71bf-a6d0-b149b143da55",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5531
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19261-25af-7119-9660-eb689c80bc22",
-      "cache_control": "no-store, private",
-      "duration_ms": 6692
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19261-2b8d-7102-9e11-69cf4e7e3905",
-      "cache_control": "no-store, private",
-      "duration_ms": 7208
+      "duration_ms": 8080
     },
     {
       "method": "GET",
       "path": "/api/v1/content/homepage?locale=nl",
       "status": 200,
-      "request_id": "01a19261-320c-72a7-9d44-b073ae0fb4b3",
+      "request_id": "01a19fbf-e213-71dc-a48d-38695732fb5a",
       "cache_control": "no-store, private",
-      "duration_ms": 8354
+      "duration_ms": 7836
     },
     {
       "method": "GET",
       "path": "/api/v1/me",
       "status": 200,
-      "request_id": "01a19261-3887-70df-9095-81ac40278c00",
+      "request_id": "01a19fbf-e635-7024-b36f-57c23951b8e3",
       "cache_control": "no-cache, private",
-      "duration_ms": 8477
+      "duration_ms": 5827
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
+      "status": 200,
+      "request_id": "01a19fbf-ec06-7380-9696-fa58830532bf",
+      "cache_control": "no-store, private",
+      "duration_ms": 2427
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/me/wallet",
       "status": 204,
-      "request_id": "01a19261-3dd5-7316-90bf-11478f0a32d1",
+      "request_id": "01a19fbf-f56a-71b8-94c2-a208a6d9e313",
       "cache_control": "no-cache, private",
-      "duration_ms": 1061
+      "duration_ms": 3187
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/consumer/vouchers",
       "status": 204,
-      "request_id": "01a19261-41b6-7385-9e78-219afbc1e6da",
+      "request_id": "01a19fbf-fa3d-730e-bd34-b5b612f25dc0",
       "cache_control": "no-cache, private",
-      "duration_ms": 2050
+      "duration_ms": 4422
     },
     {
       "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
+      "path": "/api/v1/public/content-assets/01m6fvyfh9qkq456s5kf3bj82d",
       "status": 200,
-      "request_id": "01a19261-456d-722b-8c7a-ab92e4f2df90",
-      "cache_control": "no-store, private",
-      "duration_ms": 2517
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19261-4a38-70cf-8b31-73e86aaa1d30",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3404
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a19261-4d76-7188-8859-fd5f71969c84",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4212
+      "request_id": "01a19fc0-036e-7240-9b53-053a38e696dd",
+      "cache_control": "immutable, max-age=31536000, public",
+      "duration_ms": 5871
     },
     {
       "method": "GET",
       "path": "/api/v1/me/wallet",
       "status": 200,
-      "request_id": "01a19261-5065-70a4-9282-60e8eefccb79",
+      "request_id": "01a19fc0-0a94-719f-a722-1d2eeb1dc12b",
       "cache_control": "no-cache, private",
-      "duration_ms": 4926
+      "duration_ms": 5700
     },
     {
       "method": "GET",
       "path": "/api/v1/consumer/vouchers",
       "status": 200,
-      "request_id": "01a19261-5415-7271-86e2-e75353efe02e",
+      "request_id": "01a19fc0-0fff-711f-b107-cc2a812ac80e",
       "cache_control": "no-cache, private",
-      "duration_ms": 4890
+      "duration_ms": 5888
     },
     {
       "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19261-57a1-701c-ae5c-7831f4079775",
-      "cache_control": "no-store, private",
-      "duration_ms": 4380
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19261-5d82-7364-b49f-0b4bd2411e36",
-      "cache_control": "no-store, private",
-      "duration_ms": 5209
+      "path": "/sanctum/csrf-cookie",
+      "status": 204,
+      "request_id": "01a19fc0-14ed-73b6-a9b6-79f4ce9c4053",
+      "cache_control": "no-cache, private",
+      "duration_ms": 5228
     },
     {
       "method": "GET",
       "path": "/api/v1/content/homepage?locale=nl",
       "status": 200,
-      "request_id": "01a19261-614f-72c1-91dd-798123f3b5c4",
+      "request_id": "01a19fc0-1a9b-7172-84ec-c1cf67218f00",
       "cache_control": "no-store, private",
-      "duration_ms": 5330
+      "duration_ms": 6553
     },
     {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19261-6541-7203-9e69-71e225dd6063",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2402
+      "method": "GET",
+      "path": "/api/v1/public/content-assets/01m6fvyc7pdb5gqn7fq3knhk7d",
+      "status": 200,
+      "request_id": "01a19fc0-1fd9-727a-bf6d-6632f08d8048",
+      "cache_control": "immutable, max-age=31536000, public",
+      "duration_ms": 6925
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/public/cookie-policy?locale=nl",
       "status": 204,
-      "request_id": "01a19261-685d-73ca-ac9a-bdfa4ef11859",
+      "request_id": "01a19fc0-241c-708c-9850-4f0c364b330e",
       "cache_control": "no-cache, private",
-      "duration_ms": 3190
+      "duration_ms": 3773
     },
     {
       "method": "OPTIONS",
       "path": "/api/v1/content/homepage?locale=nl",
       "status": 204,
-      "request_id": "01a19261-6b8c-7181-867a-bdb031e61925",
+      "request_id": "01a19fc0-2c1d-70d7-ad19-65bd0a1a3e1e",
       "cache_control": "no-cache, private",
-      "duration_ms": 4010
+      "duration_ms": 5807
     },
     {
       "method": "OPTIONS",
-      "path": "/api/v1/me",
+      "path": "/api/v1/public/webshops/acceptance-beta",
       "status": 204,
-      "request_id": "01a19261-6ebf-71b2-8bfc-d32a98888d81",
+      "request_id": "01a19fc0-3282-7383-9137-7c62021904db",
       "cache_control": "no-cache, private",
-      "duration_ms": 4821
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a19261-720d-7344-87ef-03468b18b019",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5501
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19261-7561-7085-b657-27a9d83ebc26",
-      "cache_control": "no-store, private",
-      "duration_ms": 6586
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19261-7b6e-7000-866e-20297e0c9c82",
-      "cache_control": "no-store, private",
-      "duration_ms": 6132
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19261-81cf-72c1-abe7-4ab0e97f7046",
-      "cache_control": "no-store, private",
-      "duration_ms": 6105
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a19261-87e4-70d1-ab80-0092a58adf58",
-      "cache_control": "no-cache, private",
-      "duration_ms": 6743
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19261-8d78-706a-a83c-12de1cfd9613",
-      "cache_control": "no-store, private",
-      "duration_ms": 6053
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/webshops?sort=most_offers&per_page=4",
-      "status": 200,
-      "request_id": "01a19261-921c-7358-bec6-0d4db07cf4bf",
-      "cache_control": "no-cache, private",
-      "duration_ms": 7201
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a19261-9602-7299-a973-b4b8e311c203",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3552
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 204,
-      "request_id": "01a19261-99e3-7086-9dcf-63b3e642c054",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4214
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 204,
-      "request_id": "01a19261-9be2-71ca-8718-d9cc7f978e95",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4719
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me/wallet",
-      "status": 204,
-      "request_id": "01a19261-9d88-73bc-b17f-16650d25d75b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5134
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 204,
-      "request_id": "01a19261-9f2e-7030-b83b-cd5a806312f1",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5557
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19261-a0cd-728f-a89e-1bdd6cbf4aa4",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4557
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a19261-a26d-733a-a399-a5e91a78bd34",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4970
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a19261-a43d-728f-95f1-0693441a1728",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2643
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19261-a5ef-72bd-9a55-d1a1f95e6adf",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2570
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 200,
-      "request_id": "01a19261-a7a7-700f-96c8-48a023233c51",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3190
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a19261-aa29-7014-822c-68a795fa1b60",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3234
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me/wallet",
-      "status": 200,
-      "request_id": "01a19261-ac1a-7028-abc2-8eb7e441653a",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3856
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 200,
-      "request_id": "01a19261-ae79-72e7-ae62-5581aa254a3c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4071
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19261-b17c-73d4-8ce7-d84df8e26ca6",
-      "cache_control": "no-store, private",
-      "duration_ms": 4038
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a19261-b503-73b8-8356-37c92945a79d",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4469
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19261-b7ab-70ad-9665-821e6f36fc36",
-      "cache_control": "no-store, private",
-      "duration_ms": 4721
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19261-b9e8-71fa-8456-a7f98fea1551",
-      "cache_control": "no-store, private",
-      "duration_ms": 4165
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me/wallet",
-      "status": 204,
-      "request_id": "01a19261-bc6d-712e-91f6-8ea293cd8d32",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1678
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 204,
-      "request_id": "01a19261-be40-7124-b666-599d14c52709",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2145
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me/wallet",
-      "status": 200,
-      "request_id": "01a19261-c02b-73da-802c-42a53c3b97ba",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1176
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 200,
-      "request_id": "01a19261-c474-70f3-b447-4cc44174ecb4",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1767
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a19266-fced-7214-b678-a241d08a290b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2306
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a19267-0555-7322-b333-61c568be3fd5",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1549
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a19268-8c17-72b5-8449-deb9c63d2544",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1986
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a1926a-0af4-71a0-bbd6-90d4bec6d0a4",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2931
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a1926a-1405-7321-866b-134bc1e5235b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2127
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1926c-0d3d-7134-ab09-1d4a25e9bc85",
-      "cache_control": "no-store, private",
-      "duration_ms": 2695
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a1926c-1a86-73bc-a6be-ad7fdb182ee5",
-      "cache_control": "no-store, private",
-      "duration_ms": 2866
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/webshops?sort=most_offers&per_page=4",
-      "status": 200,
-      "request_id": "01a1926c-2376-7283-9c70-b65ef6527ca3",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4640
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1926c-7d3d-7017-bca9-0dfdc1d46dfd",
-      "cache_control": "no-cache, private",
-      "duration_ms": 8011
-    },
-    {
-      "method": "POST",
-      "path": "/login",
-      "status": 200,
-      "request_id": "01a1926c-8bc9-72e6-a5f5-4d16a2244bb1",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3216
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 403,
-      "request_id": "01a1926c-9576-70db-b1eb-180974fa8874",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1209
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1926c-99db-73d0-84ea-7a8d63ea935a",
-      "cache_control": "no-cache, private",
-      "duration_ms": 980
-    },
-    {
-      "method": "POST",
-      "path": "/user/confirm-password",
-      "status": 201,
-      "request_id": "01a1926c-9d68-7320-ba23-32f4ea1361b3",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1403
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1926c-a24c-71db-8e60-4b8dff7b9f14",
-      "cache_control": "no-cache, private",
-      "duration_ms": 957
-    },
-    {
-      "method": "POST",
-      "path": "/user/two-factor-authentication",
-      "status": 200,
-      "request_id": "01a1926c-a698-7079-a21b-f4a684fbbf14",
-      "cache_control": "no-cache, private",
-      "duration_ms": 869
-    },
-    {
-      "method": "GET",
-      "path": "/user/two-factor-secret-key",
-      "status": 200,
-      "request_id": "01a1926c-a993-7302-bda0-55252c4df2d6",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1033
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1926c-ae58-7054-b321-0626e32a59a5",
-      "cache_control": "no-cache, private",
-      "duration_ms": 704
-    },
-    {
-      "method": "POST",
-      "path": "/user/confirmed-two-factor-authentication",
-      "status": 200,
-      "request_id": "01a1926c-b30a-73bf-a660-192412e9505e",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1236
-    },
-    {
-      "method": "GET",
-      "path": "/user/two-factor-recovery-codes",
-      "status": 200,
-      "request_id": "01a1926c-b760-731f-9043-6bf83724ddf3",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1084
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1926c-bb5c-72ac-b2de-a50644041fe5",
-      "cache_control": "no-cache, private",
-      "duration_ms": 962
-    },
-    {
-      "method": "POST",
-      "path": "/logout",
-      "status": 204,
-      "request_id": "01a1926c-be3e-7006-8b20-826db88bfe4c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 909
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1926c-c198-7074-b242-a0e7f1d028be",
-      "cache_control": "no-cache, private",
-      "duration_ms": 611
-    },
-    {
-      "method": "POST",
-      "path": "/login",
-      "status": 200,
-      "request_id": "01a1926c-c432-7384-9692-351a8de8bd73",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1133
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 401,
-      "request_id": "01a1926c-c86b-7157-a064-c6734c3a9b70",
-      "cache_control": "no-cache, private",
-      "duration_ms": 805
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1926c-cbd0-735d-b1b7-c87ad27cbde7",
-      "cache_control": "no-cache, private",
-      "duration_ms": 634
-    },
-    {
-      "method": "POST",
-      "path": "/two-factor-challenge",
-      "status": 200,
-      "request_id": "01a1926c-ce0c-73ec-8a9a-ed034e66b870",
-      "cache_control": "no-cache, private",
-      "duration_ms": 735
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1926c-d13b-728c-b9a5-6e67c96902d4",
-      "cache_control": "no-cache, private",
-      "duration_ms": 631
-    },
-    {
-      "method": "POST",
-      "path": "/api/v1/admin/content/homepage/publish",
-      "status": 423,
-      "request_id": "01a1926c-d3e5-7088-93d3-2447977c24af",
-      "cache_control": "no-cache, private",
-      "duration_ms": 685
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1926c-d995-736f-a479-e052a88797e4",
-      "cache_control": "no-store, private",
-      "duration_ms": 857
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a1926c-dcc2-71a8-acdf-0a7672321153",
-      "cache_control": "no-store, private",
-      "duration_ms": 665
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a1926c-eb65-71ea-b9c9-8c3f3f6cb4d4",
-      "cache_control": "no-cache, private",
-      "duration_ms": 513
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/cookie-policy?locale=nl",
-      "status": 204,
-      "request_id": "01a1926c-ed51-7207-b503-344d511be71b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1002
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a1926c-ef2e-72f7-83a4-3710ec827361",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1474
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a1926c-f0f9-72c1-bdf0-996ad5c59c77",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1943
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a1926c-f2d1-7154-aa8e-7d6ecff50b38",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2318
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1926c-f4ae-7188-b19e-992f69e0e10a",
-      "cache_control": "no-store, private",
-      "duration_ms": 2809
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a1926c-f6f9-7270-9631-8733be36245d",
-      "cache_control": "no-store, private",
-      "duration_ms": 3138
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/cookie-policy?locale=nl",
-      "status": 200,
-      "request_id": "01a1926c-f9a3-7166-8ece-278baa0b2e03",
-      "cache_control": "max-age=60, public",
-      "duration_ms": 3300
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1926c-fbfe-7026-bef4-1295ce1f28ae",
-      "cache_control": "no-store, private",
-      "duration_ms": 3439
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a1926c-febf-73a2-bddb-bfb1fd0fe1c6",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3642
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a1926d-0210-708a-a2ec-ca192a4a926a",
-      "cache_control": "no-store, private",
-      "duration_ms": 3447
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a1926d-0561-73ad-8a14-f2373eff8b5e",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1714
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 204,
-      "request_id": "01a1926d-07af-7249-9722-83fbe4ea4d96",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2108
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 204,
-      "request_id": "01a1926d-095d-73f7-a809-f85809823a7e",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2532
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me/wallet",
-      "status": 204,
-      "request_id": "01a1926d-0b25-72c1-9f2b-36eeed9e8eb2",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2987
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 204,
-      "request_id": "01a1926d-0cdb-70ad-ae68-294dfe7d834c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3423
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a1926d-0fad-73bd-8234-50644bec5dd2",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3975
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a1926d-123f-7140-b127-f6b1a79c249b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4632
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a1926d-1541-71b9-b36f-ebaa693316fa",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3474
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a1926d-1750-7375-998a-17b2d02b6be6",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3570
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 200,
-      "request_id": "01a1926d-1954-736a-8764-9f5af3c23ffa",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4286
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a1926d-1c14-712d-af6d-c0e7da2ef115",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4331
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me/wallet",
-      "status": 200,
-      "request_id": "01a1926d-1db9-7233-852b-a12383f56190",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4871
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 200,
-      "request_id": "01a1926d-1feb-7369-97c3-57b56751a366",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5020
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1926d-2265-71d9-8ed6-92fd56ac508c",
-      "cache_control": "no-store, private",
-      "duration_ms": 4942
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a1926d-24ce-70f5-9a96-859ed7ed00e8",
-      "cache_control": "no-store, private",
-      "duration_ms": 4151
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1926d-2722-7136-ab17-33baf107ad4f",
-      "cache_control": "no-store, private",
-      "duration_ms": 4190
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a1926d-296e-7154-81df-8402abdee1d6",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3541
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me/wallet",
-      "status": 204,
-      "request_id": "01a1926d-2c64-71a5-9c86-fcad245212b3",
-      "cache_control": "no-cache, private",
-      "duration_ms": 617
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 204,
-      "request_id": "01a1926d-2e51-727b-b674-38eca25fc2d2",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1102
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me/wallet",
-      "status": 200,
-      "request_id": "01a1926d-3013-73ec-95ff-c7214a477355",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1066
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 200,
-      "request_id": "01a1926d-3249-714d-858b-9be0956785d1",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1146
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a19567-0eb0-7200-920d-cfd9e2f8217d",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4542
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/health",
-      "status": 200,
-      "request_id": "01a19567-14d8-70ef-bf74-f809e0beab55",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1375
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19567-1a52-73b1-b6fc-ee44bf8c8113",
-      "cache_control": "no-store, private",
-      "duration_ms": 1311
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19567-241e-7100-8191-f1796aaaa0b3",
-      "cache_control": "no-store, private",
-      "duration_ms": 3447
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/webshops?sort=most_offers&per_page=4",
-      "status": 200,
-      "request_id": "01a19567-3ad0-70df-a128-57cee1ed3e0a",
-      "cache_control": "no-cache, private",
-      "duration_ms": 8796
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19567-468f-7281-960d-c35f56b2537e",
-      "cache_control": "no-store, private",
-      "duration_ms": 10055
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19567-61f3-723d-94fc-a38ea610cdaa",
-      "cache_control": "no-store, private",
-      "duration_ms": 2431
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19567-9f88-7022-b02a-843277d7e129",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2625
-    },
-    {
-      "method": "POST",
-      "path": "/login",
-      "status": 200,
-      "request_id": "01a19567-afe9-7124-a1cc-ce5e305cbf00",
-      "cache_control": "no-cache, private",
-      "duration_ms": 13924
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 403,
-      "request_id": "01a19568-0881-703d-a0df-fe4e4a0d7a2c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 13918
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-2098-71d9-b70c-49f305b1a60c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4517
-    },
-    {
-      "method": "POST",
-      "path": "/user/confirm-password",
-      "status": 201,
-      "request_id": "01a19568-2844-7346-a180-18d30fc1480d",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2800
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-32ac-73c6-8092-5fff1384aad3",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1637
-    },
-    {
-      "method": "POST",
-      "path": "/user/two-factor-authentication",
-      "status": 200,
-      "request_id": "01a19568-3902-736a-8e45-41cdb22080ac",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1599
-    },
-    {
-      "method": "GET",
-      "path": "/user/two-factor-secret-key",
-      "status": 200,
-      "request_id": "01a19568-3e40-717b-8535-a3227a025e9e",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1273
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-44d6-7188-a1d2-5cc09f18c3a9",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1797
-    },
-    {
-      "method": "POST",
-      "path": "/user/confirmed-two-factor-authentication",
-      "status": 200,
-      "request_id": "01a19568-4fa0-7036-8f64-3308b28cb829",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2527
-    },
-    {
-      "method": "GET",
-      "path": "/user/two-factor-recovery-codes",
-      "status": 200,
-      "request_id": "01a19568-554c-7073-9367-2c24047b1ab6",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1567
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-5b70-70ab-ac28-9788a7a6f98b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1279
-    },
-    {
-      "method": "POST",
-      "path": "/logout",
-      "status": 204,
-      "request_id": "01a19568-63d7-72e4-8893-254b1b00d58c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2377
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-6b6f-71c6-9952-407bf1d8b571",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1572
-    },
-    {
-      "method": "POST",
-      "path": "/login",
-      "status": 200,
-      "request_id": "01a19568-7223-7168-9b01-ad2bb40204c3",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4697
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 401,
-      "request_id": "01a19568-8910-7103-a8a1-93c73c5d1636",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3010
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-9289-7020-9662-7b995903e99a",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2070
-    },
-    {
-      "method": "POST",
-      "path": "/two-factor-challenge",
-      "status": 200,
-      "request_id": "01a19568-9796-70cb-8ad7-c0de6d4f3d41",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1421
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-9d58-70a1-beea-57b58b429ac8",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1246
-    },
-    {
-      "method": "POST",
-      "path": "/api/v1/admin/content/homepage/publish",
-      "status": 423,
-      "request_id": "01a19568-a1a9-7356-b8bc-8417d02d16d4",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1118
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-a624-70a4-b595-6a9303c4cdc0",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1045
-    },
-    {
-      "method": "POST",
-      "path": "/user/confirm-password",
-      "status": 201,
-      "request_id": "01a19568-aa31-7209-9588-1e835e754483",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1622
-    },
-    {
-      "method": "POST",
-      "path": "/api/v1/admin/content/homepage/publish",
-      "status": 419,
-      "request_id": "01a19568-b0c4-7204-ad1e-fea4cc813825",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1230
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19568-b5d2-72f9-9273-e43b635e37fd",
-      "cache_control": "no-store, private",
-      "duration_ms": 1630
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=en",
-      "status": 200,
-      "request_id": "01a19568-bd39-71ce-8299-319ece50cfdd",
-      "cache_control": "no-store, private",
-      "duration_ms": 1562
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19568-c322-7120-8eed-d0a2572de256",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1112
-    },
-    {
-      "method": "POST",
-      "path": "/login",
-      "status": 200,
-      "request_id": "01a19568-c7a5-72cf-9988-3162161cc282",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2699
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19568-d7e4-70da-a115-7468d0aa66c0",
-      "cache_control": "no-store, private",
-      "duration_ms": 1429
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=en",
-      "status": 200,
-      "request_id": "01a19568-dd52-73f9-bb50-a74517b11fff",
-      "cache_control": "no-store, private",
-      "duration_ms": 1268
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19568-e5d4-727b-a40d-8d4a6207c151",
-      "cache_control": "no-store, private",
-      "duration_ms": 1345
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19568-ec95-7288-9eff-b7c230a18d94",
-      "cache_control": "no-store, private",
-      "duration_ms": 1601
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/webshops?sort=most_offers&per_page=4",
-      "status": 200,
-      "request_id": "01a19568-f803-7385-b218-55443d6ae03c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4704
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me/wallet",
-      "status": 200,
-      "request_id": "01a19569-006f-73c7-8109-85d57a0e7f67",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4210
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19569-07ab-7326-b8f0-ada0f95f453e",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1277
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/cookie-policy?locale=nl",
-      "status": 204,
-      "request_id": "01a19569-0bc5-7261-85a9-7c2b188ae10f",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2327
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a19569-0ff9-7326-bbc2-6527f1bb2e8a",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3392
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a19569-1413-7353-988a-bb38869034fa",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4435
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a19569-1817-703b-a476-27fc78c67467",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5201
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19569-1c57-7293-a17f-b200bda96ad5",
-      "cache_control": "no-store, private",
-      "duration_ms": 6368
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19569-2198-71c8-807e-393ad6a46902",
-      "cache_control": "no-store, private",
-      "duration_ms": 6973
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/cookie-policy?locale=nl",
-      "status": 200,
-      "request_id": "01a19569-26cf-70d6-8b7d-7e4eb4410ea5",
-      "cache_control": "max-age=60, public",
-      "duration_ms": 7213
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19569-2c24-72dc-85c5-63d395baeefb",
-      "cache_control": "no-store, private",
-      "duration_ms": 7517
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a19569-318e-7357-85f5-64ed2c13be6c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 7827
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19569-36d6-7010-8f12-21797f6b05e3",
-      "cache_control": "no-store, private",
-      "duration_ms": 6702
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a19569-3be4-7027-be3e-3f98f43ad9b6",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2563
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 204,
-      "request_id": "01a19569-407d-739f-bede-3ca0eaf6cca6",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3463
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 204,
-      "request_id": "01a19569-434a-72f3-aa79-8e2ce9ff7226",
-      "cache_control": "no-cache, private",
-      "duration_ms": 4168
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me/wallet",
-      "status": 204,
-      "request_id": "01a19569-46fa-72b1-823d-32147e680609",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5111
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 204,
-      "request_id": "01a19569-4c2e-7134-a2e8-35037c3af456",
-      "cache_control": "no-cache, private",
-      "duration_ms": 6447
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19569-5324-7214-b10b-75bc35375a4c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 6723
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a19569-58a4-734b-b5cb-4584a178fb81",
-      "cache_control": "no-cache, private",
-      "duration_ms": 8147
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a19569-5eed-7052-809d-52eac3949c5e",
-      "cache_control": "no-cache, private",
-      "duration_ms": 7793
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/notifications?filter=all&page=1&per_page=8",
-      "status": 200,
-      "request_id": "01a19569-65b0-708a-83c2-7331eecc5385",
-      "cache_control": "no-cache, private",
-      "duration_ms": 9347
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me/wallet",
-      "status": 200,
-      "request_id": "01a19569-6db2-705d-a340-81592ecefbfc",
-      "cache_control": "no-cache, private",
-      "duration_ms": 10388
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/consumer/vouchers",
-      "status": 200,
-      "request_id": "01a19569-7432-70e9-95ec-4f9e641449b5",
-      "cache_control": "no-cache, private",
-      "duration_ms": 10546
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a19569-79db-71c4-b21b-6f2c85e30769",
-      "cache_control": "no-store, private",
-      "duration_ms": 10396
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a19569-819a-7376-b2dc-b0a3b285886e",
-      "cache_control": "no-store, private",
-      "duration_ms": 11009
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 200,
-      "request_id": "01a19569-8c5d-7078-b12a-ec8271b1a0b5",
-      "cache_control": "no-cache, private",
-      "duration_ms": 12066
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19569-94f1-7013-8802-6655a4be232b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 12957
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a19569-9bd9-736d-b246-f03e3f14a83d",
-      "cache_control": "no-cache, private",
-      "duration_ms": 14707
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a19569-a173-7154-bffc-c849b07620ca",
-      "cache_control": "no-cache, private",
-      "duration_ms": 14836
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a19569-a829-700c-a5a3-4f546551e8e1",
-      "cache_control": "no-cache, private",
-      "duration_ms": 16535
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19569-cb2f-7018-8eb8-9cee3982a8b8",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1077
-    },
-    {
-      "method": "POST",
-      "path": "/login",
-      "status": 200,
-      "request_id": "01a19569-cec5-738b-9a96-e6b3a92cebaa",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2392
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 403,
-      "request_id": "01a19569-d889-72fd-b72f-3ee0ece61833",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1184
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19569-dd3b-734e-8b8b-85615a7d233a",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1021
-    },
-    {
-      "method": "POST",
-      "path": "/user/confirm-password",
-      "status": 201,
-      "request_id": "01a19569-e0bc-714e-b236-c76c37c05b97",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1471
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19569-e6cc-72d2-a1b1-7d31cba7bc2b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 914
-    },
-    {
-      "method": "POST",
-      "path": "/user/two-factor-authentication",
-      "status": 200,
-      "request_id": "01a19569-ea64-71a2-b780-af7793c5a76b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 953
-    },
-    {
-      "method": "GET",
-      "path": "/user/two-factor-secret-key",
-      "status": 200,
-      "request_id": "01a19569-ee2a-7284-8ad7-ff8dfc1e9560",
-      "cache_control": "no-cache, private",
-      "duration_ms": 924
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19569-f28f-7076-9100-e145a2d58908",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1087
-    },
-    {
-      "method": "POST",
-      "path": "/user/confirmed-two-factor-authentication",
-      "status": 200,
-      "request_id": "01a19569-f618-700e-a938-39a5f9fe1590",
-      "cache_control": "no-cache, private",
-      "duration_ms": 968
-    },
-    {
-      "method": "GET",
-      "path": "/user/two-factor-recovery-codes",
-      "status": 200,
-      "request_id": "01a19569-fa89-70de-8eed-204d39e1f19e",
-      "cache_control": "no-cache, private",
-      "duration_ms": 986
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a19569-fee1-72fd-98a8-61559c2851a2",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1120
-    },
-    {
-      "method": "POST",
-      "path": "/logout",
-      "status": 204,
-      "request_id": "01a1956a-0282-7215-8e83-ebd81024164c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 948
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1956a-0715-7298-ae5b-c3caa193ed70",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1095
-    },
-    {
-      "method": "POST",
-      "path": "/login",
-      "status": 200,
-      "request_id": "01a1956a-0b6f-7391-ae09-10d35b85aae7",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1858
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/me",
-      "status": 401,
-      "request_id": "01a1956a-1323-7236-b072-efb87550e017",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1220
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1956a-179d-70a2-948b-806c93ce351c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 963
-    },
-    {
-      "method": "POST",
-      "path": "/two-factor-challenge",
-      "status": 200,
-      "request_id": "01a1956a-1c15-7370-a0b5-041fd491ad0b",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1358
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1956a-20a5-722d-9da3-099ddf0a09d9",
-      "cache_control": "no-cache, private",
-      "duration_ms": 950
-    },
-    {
-      "method": "POST",
-      "path": "/api/v1/admin/content/homepage/publish",
-      "status": 423,
-      "request_id": "01a1956a-2470-735c-a856-6891d878f8b2",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1082
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1956a-28ba-719d-b895-d990a4ea7f5f",
-      "cache_control": "no-cache, private",
-      "duration_ms": 934
-    },
-    {
-      "method": "POST",
-      "path": "/user/confirm-password",
-      "status": 201,
-      "request_id": "01a1956a-2d6a-72b1-8a37-c298293bea25",
-      "cache_control": "no-cache, private",
-      "duration_ms": 1951
-    },
-    {
-      "method": "POST",
-      "path": "/api/v1/admin/content/homepage/publish",
-      "status": 419,
-      "request_id": "01a1956a-3881-7327-ba6e-d8a8f71507a7",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2261
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1956a-4458-7276-8fe8-2b5c3c770a79",
-      "cache_control": "no-store, private",
-      "duration_ms": 3388
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=en",
-      "status": 200,
-      "request_id": "01a1956a-5217-7199-99ed-15f9e9c4fb37",
-      "cache_control": "no-store, private",
-      "duration_ms": 2990
-    },
-    {
-      "method": "GET",
-      "path": "/sanctum/csrf-cookie",
-      "status": 204,
-      "request_id": "01a1956a-5bb3-728b-b67a-093ad63c9881",
-      "cache_control": "no-cache, private",
-      "duration_ms": 2089
-    },
-    {
-      "method": "POST",
-      "path": "/login",
-      "status": 200,
-      "request_id": "01a1956a-6354-738c-a63e-d82f2f167916",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5641
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1956a-9548-73e4-9fc4-8b85a25759f6",
-      "cache_control": "no-store, private",
-      "duration_ms": 3103
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/admin/content/homepage?locale=en",
-      "status": 200,
-      "request_id": "01a1956a-9f23-71c2-abc3-7dc3950aebf4",
-      "cache_control": "no-store, private",
-      "duration_ms": 2480
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1956a-c55f-726b-9053-ee858e2c6345",
-      "cache_control": "no-store, private",
-      "duration_ms": 3734
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a1956a-dc64-7009-8e81-f0f5551e2187",
-      "cache_control": "no-store, private",
-      "duration_ms": 3012
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/webshops?sort=most_offers&per_page=4",
-      "status": 200,
-      "request_id": "01a1956a-ed75-7122-8598-14fce65169c4",
-      "cache_control": "no-cache, private",
-      "duration_ms": 7845
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 204,
-      "request_id": "01a1956b-089a-71e8-a39a-9e50e62b8c4c",
-      "cache_control": "no-cache, private",
-      "duration_ms": 3377
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/public/cookie-policy?locale=nl",
-      "status": 204,
-      "request_id": "01a1956b-0fd6-71f4-b2bf-4a0664c6fa98",
-      "cache_control": "no-cache, private",
-      "duration_ms": 5174
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 204,
-      "request_id": "01a1956b-1763-73bf-bac7-b523ae491ce2",
-      "cache_control": "no-cache, private",
-      "duration_ms": 7098
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a1956b-1ce7-739f-a835-39a1f46916c9",
-      "cache_control": "no-cache, private",
-      "duration_ms": 8490
-    },
-    {
-      "method": "OPTIONS",
-      "path": "/api/v1/me",
-      "status": 204,
-      "request_id": "01a1956b-2273-72ee-88a6-404c46ac8e69",
-      "cache_control": "no-cache, private",
-      "duration_ms": 9623
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/content/homepage?locale=nl",
-      "status": 200,
-      "request_id": "01a1956b-2889-7268-b874-6cfdd029340d",
-      "cache_control": "no-store, private",
-      "duration_ms": 9295
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/discount-codes?limit=2&locale=nl",
-      "status": 200,
-      "request_id": "01a1956b-3152-7388-8d27-1db51a9deed3",
-      "cache_control": "no-store, private",
-      "duration_ms": 10927
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/public/cookie-policy?locale=nl",
-      "status": 200,
-      "request_id": "01a1956b-3874-71c1-90f5-fd891fceb564",
-      "cache_control": "max-age=60, public",
-      "duration_ms": 14556
+      "duration_ms": 7438
     }
   ]
 }

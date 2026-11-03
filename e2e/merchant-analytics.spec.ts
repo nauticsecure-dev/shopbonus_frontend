@@ -1,7 +1,11 @@
 import {expect,test,type Page} from '@playwright/test';
-async function setup(page: Page) {
-  const state = { shop: "woon", fail: false, failChart: false, count: 8, requests: [] as string[] };
-  await page.addInitScript(() => localStorage.setItem("shopbonus-locale", "nl"));
+async function setup(page: Page, locale: "nl" | "en" = "nl") {
+  const state = { shop: "woon", fail: false, failChart: false, failDrill: false, empty: false, count: 8, requests: [] as string[] };
+  await page.addInitScript((locale) => {
+    document.cookie = 'XSRF-TOKEN=analytics-fixture; path=/';
+    localStorage.setItem("shopbonus-locale", locale);
+    localStorage.setItem("shopbonus-locale-explicit", "1");
+  }, locale);
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -16,10 +20,14 @@ async function setup(page: Page) {
     if (path.endsWith('/analytics/overview')) {
  state.requests.push(url.pathname + url.search);
  if (state.fail) return route.fulfill({status:503,json:{error:{message:'Unavailable'}}});
+ if (state.empty) return route.fulfill({json:{data:{from:'2026-10-01',to:'2026-10-31',timezone:'Europe/Amsterdam',generated_at:'2026-10-31T10:00:00Z',orders:{},sales_series:[{date:'2026-10-01',paid_orders:0,orders:{}}],vouchers:{issued:0,redeemed:0},answer24:{claims:0},banner_metrics:{ctr:null},attribution:{},network:{as_referrer:{journeys:0},as_receiver:{journeys:0}}}}});
  const n=Number(url.searchParams.get('days')??30);const id=path.split('/')[4];
  return route.fulfill({json:{data:{from:'2026-10-01T00:00:00Z',to:'2026-10-31T23:59:59Z',timezone:'Europe/Amsterdam',generated_at:'2026-10-31T10:00:00Z',orders:{EUR:{paid_orders:id==='woon'?17:3,net_minor:12345},USD:{paid_orders:2,net_minor:9900}},sales_series:Array.from({length:n},(_,i)=>({date:'2026-10-'+String(i%30+1).padStart(2,'0'),paid_orders:1,orders:{EUR:{paid_orders:1,net_minor:700}}})),vouchers:{issued:9,redeemed:4,reserved:1},answer24:{claims:6},banner_metrics:{status:'available',viewable_impressions:123,cta_clicks:11,ctr:0.0894},attribution:{click:{orders:7,by_currency:{EUR:{net_revenue_minor:5000}}},voucher:{orders:3,by_currency:{}},view:{orders:1,by_currency:{}},unattributed:{orders:8,by_currency:{}}},network:{as_referrer:{journeys:2},as_receiver:{journeys:1}}}}});
  }
- if (path.endsWith('/analytics/attribution/orders')) return route.fulfill({json:{data:[{id:'order-1',reference:'REAL-001',paid_at:'2026-10-31T10:00:00Z',currency:'EUR',net_minor:5000,attribution_type:'click'}],meta:{current_page:1,last_page:1,total:1}}});
+ if (path.endsWith('/analytics/attribution/orders')) {
+   if (state.failDrill) return route.fulfill({status:503,json:{error:{message:'Unavailable'}}});
+   return route.fulfill({json:{data:state.empty ? [] : [{id:'order-1',reference:'REAL-001',paid_at:'2026-10-31T10:00:00Z',currency:'EUR',net_minor:5000,attribution_type:'click'}],meta:{current_page:1,last_page:1,total:1}}});
+ }
  if (path.endsWith("/dashboard")) {
       state.requests.push(url.pathname + url.search);
       if (state.fail) return route.fulfill({ status: 503, json: { message: "Dashboard tijdelijk niet beschikbaar" } });
@@ -44,7 +52,7 @@ async function setup(page: Page) {
     }
     return route.fulfill({ json: { data: [], meta: { unread_count: 0, total: 0, current_page: 1, per_page: 20 } } });
   });
-  await page.route("**/sanctum/csrf-cookie", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/sanctum/csrf-cookie", (route) => route.fulfill({ status: 204, headers: { 'set-cookie': 'XSRF-TOKEN=analytics-fixture; Path=/' } }));
   return state;
 }
 
@@ -70,4 +78,52 @@ test('report failure has retry and never shows sample totals',async({page})=>{
  await expect(page.getByText('12.500',{exact:true})).toHaveCount(0);
  state.fail=false;await page.getByRole('button',{name:'Opnieuw proberen'}).click();
  await expect(page.getByText('€123,45',{exact:true})).toBeVisible();
+});
+
+test('English analytics translates controls, chart, details and locale formatting', async ({ page }) => {
+  await setup(page, 'en');
+  await page.goto('/dashboard/analytics');
+  await expect(page.getByRole('heading', { name: 'How your offers are performing.' })).toBeVisible();
+  await expect(page.getByLabel('Period', { exact: true })).toContainText('30 days');
+  await expect(page.getByText('Net revenue (EUR)', { exact: true })).toBeVisible();
+  await expect(page.getByText('€123.45', { exact: true })).toBeVisible();
+  await expect(page.getByText('Viewable banner impressions', { exact: true })).toBeVisible();
+  await expect(page.getByText('CTR: 8.9%. A click or impression is not a paid order.', { exact: true })).toBeVisible();
+  const chart = page.getByRole('img', { name: 'Trend chart', exact: true });
+  await expect(chart).toBeVisible();
+  await expect(chart.locator('circle title').first()).toHaveText('2026-10-01: 7');
+  await page.getByLabel('Metric', { exact: true }).selectOption('orders');
+  await expect(chart.locator('circle title').first()).toHaveText('2026-10-01: 1');
+  await page.getByLabel('Currency', { exact: true }).selectOption('USD');
+  await expect(page.getByText('US$99.00', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Click', exact: true }).click();
+  await expect(page.getByRole('columnheader', { name: 'Reference', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '31/10/2026', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+  await expect(page.getByRole('link', { name: 'View details' })).toHaveAttribute('href', '/dashboard/vouchers');
+  await expect(page.getByRole('link', { name: 'View banners and experiments' })).toHaveAttribute('href', '/dashboard/banners');
+  await expect(page.getByText('Cross-shop: 2 referred · 1 received orders.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Zo presteren jouw|Verkoopontwikkeling|Voucherprestaties|Attributiedetails/)).toHaveCount(0);
+});
+
+test('English report retry, drill-down failure and empty states are translated', async ({ page }) => {
+  const state = await setup(page, 'en');
+  state.fail = true;
+  await page.goto('/dashboard/analytics');
+  await expect(page.getByRole('alert').filter({ hasText: 'The report could not be loaded. Please try again.' })).toBeVisible();
+  state.fail = false;
+  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await expect(page.getByText('€123.45', { exact: true })).toBeVisible();
+  state.failDrill = true;
+  await page.getByRole('button', { name: 'Click', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Orders could not be loaded.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close details', exact: true }).click();
+  state.failDrill = false;
+  state.empty = true;
+  await page.getByLabel('Period', { exact: true }).selectOption('7');
+  await expect(page.getByText('No paid orders in this period.', { exact: true })).toBeVisible();
+  await expect(page.getByText('CTR: Not yet available. A click or impression is not a paid order.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Click', exact: true }).click();
+  await expect(page.getByText('No orders found.', { exact: true })).toBeVisible();
 });

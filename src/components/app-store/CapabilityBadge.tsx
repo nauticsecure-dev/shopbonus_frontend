@@ -1,6 +1,11 @@
+"use client";
+
 import type { CapabilityBadgeKind } from "@/lib/integrations";
+import { useLocale } from "@/i18n/LocaleContext";
+import { appStoreText } from "@/i18n/appStoreCopy";
 
 const STYLES: Record<CapabilityBadgeKind, string> = {
+  PAUSED: "bg-amber-50 text-amber-900 border-amber-200",
   VERIFIED: "bg-green-50 text-green-800 border-green-200",
   LIMITED: "bg-amber-50 text-amber-900 border-amber-200",
   "SETUP REQUIRED": "bg-blue-50 text-blue-900 border-blue-200",
@@ -23,12 +28,14 @@ export default function CapabilityBadge({
   label?: string;
   className?: string;
 }) {
+  const { locale } = useLocale();
+  const text = (value: string) => appStoreText(locale, value);
   return (
     <span
-      title={title}
+      title={title ? text(title) : undefined}
       className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${STYLES[kind]} ${className}`}
     >
-      {label ? `${label} · ${kind}` : kind}
+      {label ? `${text(label)} · ${text(kind)}` : text(kind)}
     </span>
   );
 }

@@ -9,18 +9,19 @@ import {
   isDiscoveryAbort,
   type DiscoveryOfferDetail,
 } from "@/lib/discovery";
+import { voucherCopy } from "@/i18n/voucherCopy";
 import { formatMinor } from "@/lib/money";
 import { ApiError } from "@/lib/api";
 import { useLocale } from "@/i18n/LocaleContext";
 import { useSession } from "@/store/SessionContext";
 import { useShopBonus } from "@/store/ShopBonusContext";
 
-function discountLabel(offer: DiscoveryOfferDetail): string {
+function discountLabel(offer: DiscoveryOfferDetail, t: (text: string) => string, intlLocale: string): string {
   if (offer.discount_type === "percentage" && offer.discount_value != null) {
-    return `${Math.round(offer.discount_value / 100)}% korting`;
+    return `${Math.round(offer.discount_value / 100)}% ${t("korting")}`;
   }
-  if (offer.discount_value != null) return `${formatMinor(offer.discount_value)} korting`;
-  return offer.title || "Aanbieding";
+  if (offer.discount_value != null) return `${formatMinor(offer.discount_value, "EUR", intlLocale)} ${t("korting")}`;
+  return offer.title || t("Aanbieding");
 }
 
 function canObtain(availability: string): boolean {
@@ -31,7 +32,9 @@ export default function OfferDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
   const router = useRouter();
-  const { locale } = useLocale();
+  const { locale, intlLocale } = useLocale();
+  const t = voucherCopy(locale);
+  const money = (amount: number) => formatMinor(amount, "EUR", intlLocale);
   const { session, ready } = useSession();
   const { refreshVouchers, pushToast } = useShopBonus();
   const [offer, setOffer] = useState<DiscoveryOfferDetail | null>(null);
@@ -42,18 +45,21 @@ export default function OfferDetailPage() {
   useEffect(() => {
     if (!slug) return;
     const ac = new AbortController();
-    setLoading(true);
-    setError(null);
-    void fetchDiscoveryOffer(slug, ac.signal)
-      .then(setOffer)
+    void Promise.resolve().then(() => {
+      if (ac.signal.aborted) return;
+      setLoading(true);
+      setError(null);
+      return fetchDiscoveryOffer(slug, ac.signal);
+    })
+      .then(detail => { if (!ac.signal.aborted && detail) setOffer(detail); })
       .catch((err) => {
         if (isDiscoveryAbort(err)) return;
         setError(discoveryErrorMessage(err));
         setOffer(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
     return () => ac.abort();
-  }, [slug]);
+  }, [slug, locale]);
 
   async function obtain() {
     if (!offer || !canObtain(offer.availability) || !offer.slug) return;
@@ -83,12 +89,12 @@ export default function OfferDetailPage() {
           locale,
         });
         await refreshVouchers("all");
-        pushToast({ title: "Geclaimd", message: "De voucher staat in Mijn voordelen.", kind: "success" });
+        pushToast({ title: t("Geclaimd"), message: t("De voucher staat in Mijn voordelen."), kind: "success" });
         router.push("/mijn-voordelen");
       } catch (err) {
         pushToast({
-          title: "Claim mislukt",
-          message: err instanceof ApiError ? err.message : "Probeer het later opnieuw.",
+          title: t("Claim mislukt"),
+          message: err instanceof ApiError ? err.message : t("Probeer het later opnieuw."),
           kind: "error",
         });
       } finally {
@@ -113,11 +119,9 @@ export default function OfferDetailPage() {
   if (error || !offer) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
-        <h1 className="text-2xl font-black text-navy">Aanbieding niet beschikbaar</h1>
-        <p className="mt-2 text-muted">{error || "Deze aanbieding is niet (meer) gepubliceerd."}</p>
-        <Link href="/webshops" className="mt-6 inline-flex rounded-2xl bg-brand px-6 py-3 font-extrabold text-white">
-          Ontdek webshops
-        </Link>
+        <h1 className="text-2xl font-black text-navy">{t("Aanbieding niet beschikbaar")}</h1>
+        <p className="mt-2 text-muted">{error || t("Deze aanbieding is niet (meer) gepubliceerd.")}</p>
+        <Link href="/webshops" className="mt-6 inline-flex rounded-2xl bg-brand px-6 py-3 font-extrabold text-white"> {t("Ontdek webshops")} </Link>
       </div>
     );
   }
@@ -125,31 +129,31 @@ export default function OfferDetailPage() {
   const obtainable = canObtain(offer.availability);
   const availabilityLabel =
     offer.availability === "available"
-      ? "Beschikbaar"
+      ? t("Beschikbaar")
       : offer.availability === "sold_out"
-        ? "Uitverkocht"
+        ? t("Uitverkocht")
         : offer.availability === "expired"
-          ? "Verlopen"
+          ? t("Verlopen")
           : offer.availability === "upcoming"
-            ? "Binnenkort"
+            ? t("Binnenkort")
             : offer.availability === "paused"
-              ? "Gepauzeerd"
+              ? t("Gepauzeerd")
               : offer.availability;
   const primaryLabel =
     !session?.user
-      ? "Inloggen om te verkrijgen"
+      ? t("Inloggen om te verkrijgen")
       : offer.how_to_obtain === "earn_with_purchase"
-        ? "Bekijk webshop"
+        ? t("Bekijk webshop")
         : offer.how_to_obtain === "claim"
-          ? "Claim aanbieding"
-          : "Naar checkout";
+          ? t("Claim aanbieding")
+          : (offer.price_points ?? 0) > 0 && (offer.price_minor ?? 0) <= 0
+            ? t("Inwisselen met punten")
+            : t("Naar checkout");
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-16 pt-6 sm:px-6">
       <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-muted">
-        <Link href="/webshops" className="hover:text-brand">
-          Webshops
-        </Link>
+        <Link href="/webshops" className="hover:text-brand"> {t("Webshops")} </Link>
         {offer.webshop?.slug && (
           <>
             <span aria-hidden>/</span>
@@ -159,7 +163,7 @@ export default function OfferDetailPage() {
           </>
         )}
         <span aria-hidden>/</span>
-        <span className="text-brand">{discountLabel(offer)}</span>
+        <span className="text-brand">{discountLabel(offer, t, intlLocale)}</span>
       </nav>
 
       <article className="mt-6 rounded-[1.75rem] bg-white p-7 shadow-[0_10px_36px_-16px_rgba(10,27,63,0.22)] sm:p-10">
@@ -171,92 +175,91 @@ export default function OfferDetailPage() {
           {availabilityLabel}
         </span>
         <h1 className="mt-4 text-3xl font-black tracking-tight text-navy sm:text-4xl">
-          {offer.title || discountLabel(offer)}
+          {offer.title || discountLabel(offer, t, intlLocale)}
         </h1>
         {offer.webshop && (
-          <p className="mt-2 text-sm font-bold text-brand">
-            Bij{" "}
+          <p className="mt-2 text-sm font-bold text-brand"> {t("Bij")}{" "}
             <Link href={`/webshops/${offer.webshop.slug}`} className="underline-offset-2 hover:underline">
               {offer.webshop.name}
             </Link>
           </p>
         )}
         <p className="mt-4 leading-relaxed text-muted">
-          {offer.description || offer.summary || "Bekijk de voorwaarden hieronder."}
+          {offer.description || offer.summary || t("Bekijk de voorwaarden hieronder.")}
         </p>
 
         <dl className="mt-8 grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl bg-mist p-4">
-            <dt className="text-xs font-bold uppercase tracking-wide text-muted">Korting</dt>
-            <dd className="mt-1 text-lg font-extrabold text-navy">{discountLabel(offer)}</dd>
+            <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t("Korting")}</dt>
+            <dd className="mt-1 text-lg font-extrabold text-navy">{discountLabel(offer, t, intlLocale)}</dd>
           </div>
           {offer.price_minor != null && offer.price_minor > 0 && (
             <div className="rounded-2xl bg-mist p-4">
-              <dt className="text-xs font-bold uppercase tracking-wide text-muted">Benodigde punten / tegoed</dt>
-              <dd className="mt-1 text-lg font-extrabold text-navy">{formatMinor(offer.price_minor)}</dd>
+              <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t("Benodigd tegoed")}</dt>
+              <dd className="mt-1 text-lg font-extrabold text-navy">{money(offer.price_minor)}</dd>
+            </div>
+          )}
+          {(offer.price_points ?? 0) > 0 && (
+            <div className="rounded-2xl bg-mist p-4">
+              <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t("Benodigde punten")}</dt>
+              <dd className="mt-1 text-lg font-extrabold text-navy">{offer.price_points!.toLocaleString(intlLocale)} {t("punten")}</dd>
             </div>
           )}
           {offer.min_order_minor != null && offer.min_order_minor > 0 && (
             <div className="rounded-2xl bg-mist p-4">
-              <dt className="text-xs font-bold uppercase tracking-wide text-muted">Minimale bestelling</dt>
-              <dd className="mt-1 text-lg font-extrabold text-navy">{formatMinor(offer.min_order_minor)}</dd>
+              <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t("Minimale bestelling")}</dt>
+              <dd className="mt-1 text-lg font-extrabold text-navy">{money(offer.min_order_minor)}</dd>
             </div>
           )}
           {offer.ends_at && (
             <div className="rounded-2xl bg-mist p-4">
-              <dt className="text-xs font-bold uppercase tracking-wide text-muted">Geldig tot</dt>
+              <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t("Geldig tot")}</dt>
               <dd className="mt-1 text-lg font-extrabold text-navy">
-                {new Date(offer.ends_at).toLocaleDateString(locale === "en" ? "en-GB" : "nl-NL")}
+                {new Date(offer.ends_at).toLocaleDateString(intlLocale)}
               </dd>
             </div>
           )}
           {offer.redemption_validity_days != null && (
             <div className="rounded-2xl bg-mist p-4">
-              <dt className="text-xs font-bold uppercase tracking-wide text-muted">Inwisselen</dt>
+              <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t("Inwisselen")}</dt>
               <dd className="mt-1 text-lg font-extrabold text-navy">
-                {offer.redemption_validity_days} dagen na uitgifte
-              </dd>
+                {offer.redemption_validity_days} {t("dagen na uitgifte")} </dd>
             </div>
           )}
           {offer.combinable != null && (
             <div className="rounded-2xl bg-mist p-4">
-              <dt className="text-xs font-bold uppercase tracking-wide text-muted">Combineerbaar</dt>
-              <dd className="mt-1 text-lg font-extrabold text-navy">{offer.combinable ? "Ja" : "Nee"}</dd>
+              <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t("Combineerbaar")}</dt>
+              <dd className="mt-1 text-lg font-extrabold text-navy">{offer.combinable ? t("Ja") : t("Nee")}</dd>
             </div>
           )}
           {offer.max_discount_minor != null && offer.max_discount_minor > 0 && (
             <div className="rounded-2xl bg-mist p-4">
-              <dt className="text-xs font-bold uppercase tracking-wide text-muted">Maximale korting</dt>
-              <dd className="mt-1 text-lg font-extrabold text-navy">{formatMinor(offer.max_discount_minor)}</dd>
+              <dt className="text-xs font-bold uppercase tracking-wide text-muted">{t("Maximale korting")}</dt>
+              <dd className="mt-1 text-lg font-extrabold text-navy">{money(offer.max_discount_minor)}</dd>
             </div>
           )}
         </dl>
 
         <section className="mt-8 rounded-2xl border border-blue-100 bg-mist/60 p-5">
-          <h2 className="text-sm font-extrabold uppercase tracking-wide text-navy">Voucher- en gebruiksvoorwaarden</h2>
+          <h2 className="text-sm font-extrabold uppercase tracking-wide text-navy">{t("Voucher- en gebruiksvoorwaarden")}</h2>
           <ul className="mt-3 space-y-2 text-sm leading-relaxed text-muted">
-            <li>
-              Beschikbaarheid: <strong className="text-navy">{availabilityLabel}</strong>
-              {offer.terms_version != null ? ` · voorwaardenversie ${offer.terms_version}` : ""}.
+            <li> {t("Beschikbaarheid:")} <strong className="text-navy">{availabilityLabel}</strong>
+              {offer.terms_version != null ? ` · ${t("voorwaardenversie")} ${offer.terms_version}` : ""}.
             </li>
             {offer.how_to_obtain && (
-              <li>
-                Verkrijgen via:{" "}
+              <li> {t("Verkrijgen via:")}{" "}
                 <strong className="text-navy">
                   {offer.how_to_obtain === "claim"
-                    ? "claim (na verificatie)"
+                    ? t("claim (na verificatie)")
                     : offer.how_to_obtain === "buy_with_wallet"
-                      ? "inwisselen met beschikbaar tegoed"
-                      : "via aankoop / webshopactiviteit"}
+                      ? t("inwisselen met beschikbaar tegoed")
+                      : t("via aankoop / webshopactiviteit")}
                 </strong>
                 .
               </li>
             )}
-            <li>
-              Gepauzeerde, verlopen, uitverkochte of ongepubliceerde aanbiedingen kunnen niet worden verkregen —
-              ook niet via een bekende URL.
-            </li>
-            <li>Het bekijken van deze pagina kent geen punten toe en geeft geen vouchercode uit.</li>
+            <li> {t("Gepauzeerde, verlopen, uitverkochte of ongepubliceerde aanbiedingen kunnen niet worden verkregen — ook niet via een bekende URL.")} </li>
+            <li>{t("Het bekijken van deze pagina kent geen punten toe en geeft geen vouchercode uit.")}</li>
           </ul>
         </section>
 
@@ -267,15 +270,13 @@ export default function OfferDetailPage() {
             onClick={() => void obtain()}
             className="rounded-2xl bg-brand px-6 py-3.5 text-sm font-extrabold text-white shadow-[0_14px_30px_-10px_rgba(11,116,255,0.7)] transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-blue-200 disabled:shadow-none"
           >
-            {busy ? "Bezig…" : obtainable ? primaryLabel : "Niet beschikbaar"}
+            {busy ? t("Bezig…") : obtainable ? primaryLabel : t("Niet beschikbaar")}
           </button>
           {offer.webshop?.slug && (
             <Link
               href={`/webshops/${offer.webshop.slug}`}
               className="rounded-2xl border border-blue-100 px-6 py-3.5 text-sm font-extrabold text-navy hover:bg-mist"
-            >
-              Naar webshopprofiel
-            </Link>
+            > {t("Naar webshopprofiel")} </Link>
           )}
         </div>
       </article>

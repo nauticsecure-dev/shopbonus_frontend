@@ -1,3 +1,6 @@
+import type { Locale } from "@/types/locale";
+import { emptyLocalizedContent } from "./emptyLocalizedContent";
+
 export type Cta = { label: string; href: string };
 
 export type ValueIcon = "tag" | "shop" | "users";
@@ -391,10 +394,10 @@ function mergeDeep<T extends Record<string, unknown>>(base: T, partial: unknown)
 
 export function mergeAboutUsContent(
   partial: Partial<AboutUsContent> | null | undefined,
-  locale: "nl" | "en" = "nl",
+  locale: Locale = "nl",
   published = false
 ): AboutUsContent {
-  const defaults = locale === "en" ? defaultsEn() : defaultsNl();
+  const defaults = locale === "de" ? emptyLocalizedContent(defaultsNl()) : locale === "en" ? defaultsEn() : defaultsNl();
   // Public omissions must not manufacture unapproved marketing copy.
   const blank = (value: unknown): unknown => Array.isArray(value) ? [] : value && typeof value === "object"
     ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, blank(item)]))

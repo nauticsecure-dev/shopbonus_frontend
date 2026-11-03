@@ -45,7 +45,11 @@
     ".next-homepage-live-webpack/types/**/*.ts",
     ".next-homepage-live-webpack/dev/types/**/*.ts",
     ".next-affiliate-review/types/**/*.ts",
-    ".next-affiliate-review/dev/types/**/*.ts"
+    ".next-affiliate-review/dev/types/**/*.ts",
+    ".next-merchant-cms/types/**/*.ts",
+    ".next-merchant-cms/dev/types/**/*.ts",
+    ".next-consumer-acceptance/types/**/*.ts",
+    ".next-consumer-acceptance/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -1,3 +1,21 @@
+## Review follow-up — 2026-11-03
+
+Revision comparison is implemented. The history tab requests include_content=1 and displays changed fields side by side against the current draft, including added/removed values, array order, media IDs, visibility and schedules. Connector availability is derived rather than historical and is excluded. Restore stays disabled when selected revision content is unavailable; selecting a publication does not change the draft or public page.
+
+The inline CMS now localizes toolbar actions, structured field/section labels, collection templates, media controls/crop instructions, scheduling, history/comparison, AI approval actions and status/error messages for NL/EN/DE. Backend validation/conflict/session failures are mapped to localized UI messages instead of displaying English API text.
+
+Executed checks: focused Laravel suite **14 passed / 81 assertions** ([output](../../shopbonus_backend/docs/merchant-cms-focused-tests.json)); comparison/localization unit tests **2 passed**; full frontend TypeScript check passed; targeted ESLint passed. Targeted Pint passed. No production build or deployment. Changes are uncommitted; frontend HassanDev bd76ff4, backend HassanDev b92f46a. Existing unrelated changes were preserved.
+
+**Real-service HTTP journey passed: 1 test, 2.8 minutes.** Real Laravel server, isolated SQLite, filesystem storage, genuine cookie login/CSRF/TOTP MFA and recent-password confirmation, no intercepted API responses. Verified draft/public isolation, real PNG upload (201) and retrieval (200), publish, immutable history content, exact-version restore, revision-pinned schedule creation (201), unchanged public content before due time, and publication after the actual due time using shopbonus:publish-scheduled-content. Security probes returned 403 for missing MFA, 401 before challenge completion, 423 before password confirmation and 419 without CSRF. [HTTP evidence](merchant-landing/real-http-results.json), [captured version response](../../shopbonus_backend/docs/api/MERCHANT_HISTORY_HTTP_CAPTURE.json). An oversized test image was replaced after an expected 422. A separate interrupted run returned 500 on a later save without a recorded application error; the final full rerun passed unchanged application code.
+
+**Acceptance remains PARTIAL.** The updated controlled browser suite and new real-service browser suite could not complete: Windows exhausted memory/paging space while starting Next, including a sequential retry with a 768 MB Node heap cap. These are not browser passes. Complete authenticated conversion/onboarding, provider connections, and the edit/save/publish/restore/upload/schedule browser journey still need staging or a machine with sufficient memory. The HTTP result proves the backend journey only.
+
+**Reference fidelity remains unverified.** Repository images include prior implementation screenshots and references for other pages; none is established as the original merchant-landing design image. The original file path/link has been requested. No pixel-fidelity claim is made.
+
+Reproduce locally: from backend, php scripts/merchant-review.php serve for a new isolated database, or resume for its existing database. From frontend, npx playwright test --config playwright.merchant-http.config.ts. The browser suite uses playwright.merchant-live.config.ts and expects the initial synthetic publication; start with a fresh isolated database for that suite. Provider, mail, AI and production-service verification are excluded.
+
+---
+
 # Merchant landing and inline CMS acceptance
 
 Local changes remain uncommitted. Existing work in both repositories was preserved.

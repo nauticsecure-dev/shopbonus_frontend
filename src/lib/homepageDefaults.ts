@@ -1,8 +1,12 @@
+import type { Locale } from "@/types/locale";
+import { emptyLocalizedContent } from "./emptyLocalizedContent";
+
 /** Default NL homepage CMS payload matching the approved screenshot copy. */
 
 export type HomepageCta = { label: string; href: string };
 
 export type HomepageContent = {
+  translation_unavailable?: boolean;
   title: string;
   seo_title: string;
   seo_description: string;
@@ -309,10 +313,10 @@ export const DEFAULT_HOMEPAGE_EN: HomepageContent = {
 
 export function mergeHomepageContent(
   partial: Partial<HomepageContent> | null | undefined,
-  locale: "nl" | "en" = "nl"
+  locale: Locale = "nl"
 ): HomepageContent {
-  const base = locale === "en" ? DEFAULT_HOMEPAGE_EN : DEFAULT_HOMEPAGE_NL;
-  if (!partial) return base;
+  const base = locale === "de" ? emptyLocalizedContent(DEFAULT_HOMEPAGE_NL) : locale === "en" ? DEFAULT_HOMEPAGE_EN : DEFAULT_HOMEPAGE_NL;
+  if (!partial) return locale === "de" ? { ...base, translation_unavailable: true } : base;
   return {
     ...base,
     ...partial,
