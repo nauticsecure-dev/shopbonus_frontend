@@ -2,6 +2,7 @@
 
 import { useLocale } from "@/i18n/LocaleContext";
 import Link from "next/link";
+import ShopImage from "@/components/ShopImage";
 import { useEffect, useState } from "react";
 import { fetchDiscountCodes, type PublicDiscountCode } from "@/lib/homepage";
 import { useShopBonus } from "@/store/ShopBonusContext";
@@ -12,7 +13,9 @@ type Props = {
   initialCodes?: PublicDiscountCode[];
 };
 
-export default function DiscountCodesPanel({ content, initialCodes = [] }: Props) {
+const EMPTY_CODES: PublicDiscountCode[] = [];
+
+export default function DiscountCodesPanel({ content, initialCodes = EMPTY_CODES }: Props) {
   const { locale, intlLocale } = useLocale();
   const { copyCode, justCopied } = useShopBonus();
   const [codes, setCodes] = useState(initialCodes);
@@ -28,12 +31,19 @@ export default function DiscountCodesPanel({ content, initialCodes = [] }: Props
 
   useEffect(() => {
     const ac = new AbortController();
+    let disposed = false;
     queueMicrotask(() => {
       if (ac.signal.aborted) return;
       if (initialCodes.length > 0) setCodes(initialCodes.slice(0, content.limit));
       setLoading(initialCodes.length === 0);
     });
-    const timeout = window.setTimeout(() => ac.abort(), 8000);
+    const timeout = window.setTimeout(() => {
+      ac.abort();
+      if (!disposed) {
+        setError(true);
+        setLoading(false);
+      }
+    }, 8000);
     void fetchDiscountCodes({ limit: content.limit, locale, signal: ac.signal })
       .then((rows) => {
         if (ac.signal.aborted) return;
@@ -47,9 +57,10 @@ export default function DiscountCodesPanel({ content, initialCodes = [] }: Props
       })
       .finally(() => {
         window.clearTimeout(timeout);
-        if (!ac.signal.aborted) setLoading(false);
+        if (!disposed) setLoading(false);
       });
     return () => {
+      disposed = true;
       window.clearTimeout(timeout);
       ac.abort();
     };
@@ -110,29 +121,17 @@ export default function DiscountCodesPanel({ content, initialCodes = [] }: Props
                 className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:flex-row sm:items-center"
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  {image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={image}
-                      alt=""
-                      className="h-14 w-14 shrink-0 rounded-xl object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-brand-light text-sm font-black text-brand">
-                      {c.webshop.name.slice(0, 2).toUpperCase()}
-                    </span>
-                  )}
+                  <ShopImage src={image} name={c.webshop.name} className="h-14 w-14 shrink-0 rounded-xl object-cover text-sm" />
                   <div className="min-w-0">
                     <p className="truncate font-extrabold text-navy">{c.title}</p>
                     <p className="truncate text-xs text-muted">{metaParts || c.webshop.name}</p>
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-center">
                   <button
                     type="button"
                     onClick={() => copyCode(c.code)}
-                    className="flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3.5 py-2.5 font-black tracking-wider text-navy transition hover:border-brand"
+                    className="flex min-w-0 items-center justify-center gap-2 rounded-xl border border-blue-100 bg-white px-3.5 py-2.5 font-black tracking-wider text-navy [overflow-wrap:anywhere] transition hover:border-brand"
                     aria-label={`${locale === "en" ? "Copy code" : "Kopieer code"} ${c.code}`}
                   >
                     {copied ? (locale === "en" ? "Copied!" : "Gekopieerd!") : c.code}
@@ -147,7 +146,7 @@ export default function DiscountCodesPanel({ content, initialCodes = [] }: Props
                   </button>
                   <Link
                     href={c.href || `/webshops/${c.webshop.slug}`}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-brand-dark"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-brand-dark"
                   >
                     {locale === "en" ? "View webshop details" : "Bekijk webshopdetails"}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>

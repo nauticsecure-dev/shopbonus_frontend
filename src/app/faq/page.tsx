@@ -58,6 +58,7 @@ export default function FaqPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t.faqSearchPlaceholder}
+          aria-label={t.faqSearchPlaceholder}
           className="w-full rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm outline-none ring-brand/30 focus:ring-2"
           data-testid="faq-search"
         />

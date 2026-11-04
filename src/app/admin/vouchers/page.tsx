@@ -2,12 +2,17 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import AdminPagination, { adminPage } from "@/components/AdminPagination";
+import type { PageMeta } from "@/lib/adminApi";
 import AdminListPage from "@/components/AdminListPage";
 import { ApiError } from "@/lib/api";
 import { fetchAdminVouchers } from "@/lib/adminCockpit";
 
 function VouchersList() {
   const params = useSearchParams();
+  const page = adminPage(params.get("page"));
+  const [meta, setMeta] = useState<PageMeta | null>(null);
+  const webshop = params.get("webshop") || params.get("webshop_id") || undefined;
   const status = params.get("status") || undefined;
   const issuedOn = params.get("issued_on") || undefined;
   const id = params.get("id") || undefined;
@@ -23,23 +28,24 @@ function VouchersList() {
   useEffect(() => {
     const ac = new AbortController();
     const timer = window.setTimeout(() => {
-    setLoading(true);
-    setError(null);
-    void fetchAdminVouchers({ status, issued_on: issuedOn, id, usable, from, to, acquisition_network: acquisitionNetwork, signal: ac.signal })
-      .then((res) => {
-        if (ac.signal.aborted) return;
-        setRows(res.data);
-        setTotal(res.meta.total);
-      })
-      .catch((err) => {
-        if (!ac.signal.aborted) setError(err instanceof ApiError ? err.message : "Vouchers laden mislukt.");
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setLoading(false);
-      });
+      setLoading(true);
+      setError(null);
+      void fetchAdminVouchers({ page, webshop_id: webshop, status, issued_on: issuedOn, id, usable, from, to, acquisition_network: acquisitionNetwork, signal: ac.signal })
+        .then((res) => {
+          if (ac.signal.aborted) return;
+          setRows(res.data);
+          setMeta(res.meta ?? null);
+          setTotal(res.meta.total);
+        })
+        .catch((err) => {
+          if (!ac.signal.aborted) setError(err instanceof ApiError ? err.message : "Vouchers laden mislukt.");
+        })
+        .finally(() => {
+          if (!ac.signal.aborted) setLoading(false);
+        });
     }, 0);
     return () => { window.clearTimeout(timer); ac.abort(); };
-  }, [status, issuedOn, id, usable, from, to, acquisitionNetwork]);
+  }, [page, webshop, status, issuedOn, id, usable, from, to, acquisitionNetwork]);
 
   return (
     <AdminListPage
@@ -47,6 +53,7 @@ function VouchersList() {
       accent={issuedOn || status || "overzicht"}
       subtitle="Gefilterd op status of issuedatum vanuit de Cockpit."
     >
+      {webshop && <p className="mb-3 text-sm text-muted">Webshopfilter: {webshop}</p>}
       {loading && <p className="text-sm text-muted">Laden…</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!loading && !error && (
@@ -69,6 +76,7 @@ function VouchersList() {
           </ul>
         </>
       )}
+      {!loading && !error && <AdminPagination meta={meta} />}
     </AdminListPage>
   );
 }

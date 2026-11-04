@@ -179,6 +179,7 @@ export type AdminUser = {
 };
 
 export async function fetchAdminUsers(filters: {
+  page?: number;
   search?: string;
   role?: string;
   status?: string;

@@ -13,3 +13,5 @@ TypeScript, targeted ESLint and production webpack build (65 pages) passed after
 The small local timing sample is not representative staging performance. Full provider/mobile/worker/concurrency acceptance remains distinct from these checks. Full brief mapping: [backend follow-up](../../shopbonus_backend/docs/merchant-voucher-acceptance-followup.md).
 
 2026-11-03 offers/code findings: [implementation, acceptance correction and current evidence](../../shopbonus_backend/docs/offers-code-review-2026-11-03.md).
+
+2026-11-04 dependency follow-up: migrated to ESLint 10 with pinned, reproducible plugin compatibility patches and minimatch 11.0.4 throughout. Full and production-only audits now both report zero vulnerabilities. Type checking and tooling regression tests pass; application lint diagnostics are documented separately. See [migration and verification](development-dependency-remediation-2026-11-04.md).

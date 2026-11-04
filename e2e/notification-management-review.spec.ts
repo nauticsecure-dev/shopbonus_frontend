@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function setup(page: Page, stepup = false) {
+  await page.context().addCookies([{ name: "XSRF-TOKEN", value: "notification-management-fixture", url: test.info().project.use.baseURL! }]);
   const writes: { path: string; body: Record<string, unknown> }[] = [];
   const pages = { templates: [] as number[], deliveries: [] as number[] };
   let confirmed = false;

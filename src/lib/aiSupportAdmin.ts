@@ -67,7 +67,7 @@ export type OperationsMetrics = {
   outcome_percentages?: Record<string, number>;
   provider_cost?: number | null;
   costed_requests?: number;
-  connectivity?: Record<string, string | null>;
+  connectivity?: Record<string, string | number | null>;
   checked_at: string;
   sample_size: number;
   statuses: Record<string, number>;

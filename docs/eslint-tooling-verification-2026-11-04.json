@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-04",
+  "baselineCommand": "eslint src e2e scripts eslint.config.mjs next.config.ts",
+  "baseline": {
+    "files": 253,
+    "errors": 32,
+    "warnings": 10
+  },
+  "migratedCommand": "npm run lint -- --format json --output-file <temporary report>",
+  "migrated": {
+    "files": 271,
+    "errors": 38,
+    "warnings": 10
+  },
+  "baselineFilesMissing": 0,
+  "baselineFilesWithChangedDiagnostics": 0,
+  "additionalDiagnostics": [
+    {
+      "file": "tests/auth-csrf.test.cjs",
+      "messages": [
+        {
+          "ruleId": "@next/next/no-assign-module-variable",
+          "severity": 2,
+          "line": 12,
+          "column": 5,
+          "message": "Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable"
+        },
+        {
+          "ruleId": "@next/next/no-assign-module-variable",
+          "severity": 2,
+          "line": 130,
+          "column": 3,
+          "message": "Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable"
+        }
+      ]
+    },
+    {
+      "file": "tests/cms-review.test.cjs",
+      "messages": [
+        {
+          "ruleId": "@next/next/no-assign-module-variable",
+          "severity": 2,
+          "line": 6,
+          "column": 2,
+          "message": "Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable"
+        }
+      ]
+    },
+    {
+      "file": "tests/german-locale.test.cjs",
+      "messages": [
+        {
+          "ruleId": "@next/next/no-assign-module-variable",
+          "severity": 2,
+          "line": 12,
+          "column": 3,
+          "message": "Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable"
+        }
+      ]
+    },
+    {
+      "file": "tests/merchant-cms-review.test.cjs",
+      "messages": [
+        {
+          "ruleId": "@next/next/no-assign-module-variable",
+          "severity": 2,
+          "line": 7,
+          "column": 3,
+          "message": "Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable"
+        }
+      ]
+    },
+    {
+      "file": "tests/notifications-realtime.test.cjs",
+      "messages": [
+        {
+          "ruleId": "@next/next/no-assign-module-variable",
+          "severity": 2,
+          "line": 25,
+          "column": 3,
+          "message": "Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable"
+        }
+      ]
+    }
+  ],
+  "typecheck": "passed",
+  "toolingRegressionTests": {
+    "passed": 8,
+    "failed": 0
+  },
+  "targetedLint": "passed",
+  "cleanInstall": {
+    "location": "separate temporary directory",
+    "command": "npm ci --ignore-scripts --no-audit --no-fund",
+    "install": "passed",
+    "explicitPostinstall": "passed",
+    "pluginAndConfigTestsPassed": 7,
+    "thirdPartyLifecycleScripts": "skipped"
+  },
+  "fullAuditVulnerabilities": 0,
+  "productionAuditVulnerabilities": 0
+}

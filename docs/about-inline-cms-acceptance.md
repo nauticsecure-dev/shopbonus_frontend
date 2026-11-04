@@ -17,3 +17,11 @@ Verification uses `playwright.about-cms.config.ts` with isolated fixture/API por
 Executed verification: TypeScript and targeted ESLint passed. Playwright completed with 11 passed (webpack; Windows test-server teardown required stopping the isolated server process). Backend AboutUsCmsTest + OpenApiCoverageTest passed: 17 tests, 5207 assertions. Targeted Pint passed. An earlier Turbopack run exhausted machine memory and is superseded by the webpack run.
 
 Release evidence still needed: authentic approved company/team photography and verified profile/company records, visual acceptance against the approved design, and deployment scheduler execution against real services. No approved photography was supplied; no founders, staff, registrations or company facts were invented.
+
+## Metadata test fixture repair — 2026-11-04
+
+Run both About Us browser suites with `npm run test:e2e:about`. The dedicated configuration starts the API fixture on port 8313 and Next.js on port 3313; browser-only API mocks cannot supply `generateMetadata` server fetches. The fixture now loads the defaults' local TypeScript dependencies and returns an unauthenticated response for guest sessions. Its published SEO titles match the browser fixtures. Server metadata tests check the Dutch title and the English title, Open Graph title, and description after switching languages. Refreshed metadata assertions account for Next.js streaming the latest tags after the initial head tags.
+
+The current configuration uses Turbopack. Navigation waits for DOM readiness followed by explicit UI assertions. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` when using an installed compatible browser instead of Playwright's bundled browser.
+
+Verification: all 19 test cases passed (14 inline CMS checks and five public-page checks), including the metadata regression. Targeted ESLint, TypeScript, and diff whitespace checks passed. The Windows Playwright runner stalled during server teardown and was interrupted after all test cases completed.
