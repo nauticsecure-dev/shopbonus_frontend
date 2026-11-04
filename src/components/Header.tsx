@@ -120,9 +120,7 @@ function HeaderInner() {
       router.replace("/account?mode=login");
     } catch {
       setLoggingOut(false);
-      window.alert(locale === "en"
-        ? "Sign-out failed. Try again — you are still signed in."
-        : "Uitloggen mislukt. Probeer het opnieuw — je bent nog aangemeld.");
+      window.alert(t.headerLogoutError);
     }
   }
 
@@ -247,7 +245,7 @@ function HeaderInner() {
               </div>
               <div className="relative">
                 <button
-                  aria-label="Accountmenu"
+                  aria-label={t.headerAccountMenu}
                   aria-expanded={profileOpen}
                   onClick={() => setProfileOpen(!profileOpen)}
                   className="flex items-center gap-2"
@@ -260,7 +258,7 @@ function HeaderInner() {
                   <>
                     <button
                       className="fixed inset-0 cursor-default"
-                      aria-label="Accountmenu sluiten"
+                      aria-label={t.headerCloseAccountMenu}
                       onClick={() => setProfileOpen(false)}
                     />
                     <div className="absolute right-0 z-10 mt-3 w-56 rounded-2xl border border-blue-100 bg-white p-2 text-navy shadow-xl">
@@ -271,7 +269,7 @@ function HeaderInner() {
                           onClick={() => setProfileOpen(false)}
                           className="block rounded-lg px-3 py-2 text-sm font-bold text-brand hover:bg-blue-50"
                         >
-                          Webshop dashboard
+                          {t.headerMerchantDashboard}
                         </Link>
                       )}
                       <Link
@@ -307,7 +305,7 @@ function HeaderInner() {
                         onClick={() => setProfileOpen(false)}
                         className="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
                       >
-                        Support
+                        {t.headerSupport}
                       </Link>
                       <button
                         type="button"
@@ -386,7 +384,7 @@ function HeaderInner() {
             }}
             className="block w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-navy hover:bg-blue-50"
           >
-            Zoeken
+            {t.search}
           </button>
           {canOpenDashboard && (
             <Link
@@ -394,7 +392,7 @@ function HeaderInner() {
               onClick={() => setOpen(false)}
               className="block rounded-xl px-3 py-3 font-bold text-brand hover:bg-blue-50"
             >
-              Webshop dashboard
+              {t.headerMerchantDashboard}
             </Link>
           )}
           {authed ? (

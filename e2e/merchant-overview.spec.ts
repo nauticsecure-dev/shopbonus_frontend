@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 // Browser contract regressions; API responses are controlled. Backend persistence
 // and authorization are integration tests, not claimed as real-service E2E here.
 async function setup(page: Page) {
+  await page.context().addCookies([{ name: "XSRF-TOKEN", value: "merchant-overview-fixture", url: test.info().project.use.baseURL! }]);
   const state = { shop: "woon", fail: false, failChart: false, count: 8, requests: [] as string[] };
   await page.addInitScript(() => localStorage.setItem("shopbonus-locale", "nl"));
   await page.route("**/api/v1/**", async (route) => {
@@ -23,7 +24,7 @@ async function setup(page: Page) {
       const p = Number(url.searchParams.get("page") ?? 1);
       return route.fulfill({ json: { data: {
         webshop: { id, name: id === "woon" ? "Woon & Co" : "Fietsen Utrecht", status: "approved" }, greeting: "good_morning",
-        kpis: { active_offers: id === "woon" ? state.count : 3, available_codes: 24, issued_vouchers: 12, claimed_vouchers: 5, redeemed_vouchers: 2, scheduled_offers: 1, paused_offers: 1, open_disputes: 0 },
+        kpis: { active_offers: id === "woon" ? state.count : 3, available_codes: 24, reserved_codes: 1, expired_vouchers: 2, expired_offers: 1, issued_vouchers: 12, claimed_vouchers: 5, redeemed_vouchers: 2, scheduled_offers: 1, paused_offers: 1, open_disputes: 0 },
         connection_health: { status: "healthy", total: 1, connected: 1, attention: 0, last_error_at: null }, recent_activity: [], quick_actions: [], empty: false, definitions: {},
         offers: [{ id: `offer-${p}`, name: `${id} actie ${p}`, summary: "10% korting", type: "percentage", acquisition: "merchant_reward", min_order_minor: 10000, available_codes: 24, issued: 12, status: "active", lifecycle_status: url.searchParams.get("status") ?? "active", attention: [] }],
         offers_meta: { current_page: p, last_page: 2, per_page: 10, total: 11 }, notifications: { unread: 0, latest: [] }, funding: { available_minor: 10000, reserved_minor: 0 }, generated_at: new Date().toISOString(),

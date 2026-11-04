@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import AdminPagination, { adminPage } from "@/components/AdminPagination";
+import type { PageMeta } from "@/lib/adminApi";
 import AdminListPage from "@/components/AdminListPage";
 import { fetchAdminWebshops, type AdminWebshop } from "@/lib/adminApi";
 import { formatApiError } from "@/lib/auth";
@@ -11,6 +13,8 @@ const STATUSES = ["", "pending_review", "approved", "suspended", "rejected", "dr
 
 function WebshopsList() {
   const params = useSearchParams();
+  const page = adminPage(params.get("page"));
+  const [meta, setMeta] = useState<PageMeta | null>(null);
   const router = useRouter();
   const status = params.get("status") || "";
   const searchQ = params.get("search") || "";
@@ -21,27 +25,31 @@ function WebshopsList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setSearch(searchQ);
+    const timer = window.setTimeout(() => setSearch(searchQ), 0);
+    return () => window.clearTimeout(timer);
   }, [searchQ]);
 
   useEffect(() => {
     const ac = new AbortController();
-    setLoading(true);
-    void fetchAdminWebshops({ status: status || undefined, search: searchQ || undefined })
-      .then((res) => {
-        if (ac.signal.aborted) return;
-        setRows(res.data);
-        setTotal(res.meta?.total ?? res.data.length);
-        setError(null);
-      })
-      .catch((err) => {
-        if (!ac.signal.aborted) setError(formatApiError(err, "Webshops laden mislukt."));
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setLoading(false);
-      });
-    return () => ac.abort();
-  }, [status, searchQ]);
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      void fetchAdminWebshops({ page, status: status || undefined, search: searchQ || undefined })
+        .then((res) => {
+          if (ac.signal.aborted) return;
+          setRows(res.data);
+          setMeta(res.meta ?? null);
+          setTotal(res.meta?.total ?? res.data.length);
+          setError(null);
+        })
+        .catch((err) => {
+          if (!ac.signal.aborted) setError(formatApiError(err, "Webshops laden mislukt."));
+        })
+        .finally(() => {
+          if (!ac.signal.aborted) setLoading(false);
+        });
+    }, 0);
+    return () => { window.clearTimeout(timer); ac.abort(); };
+  }, [status, searchQ, page]);
 
   const applyFilters = (next: { status?: string; search?: string }) => {
     const qs = new URLSearchParams();
@@ -136,6 +144,7 @@ function WebshopsList() {
           {rows.length === 0 && <p className="py-6 text-sm text-muted">Geen webshops gevonden.</p>}
         </>
       )}
+      {!loading && !error && <AdminPagination meta={meta} />}
     </AdminListPage>
   );
 }

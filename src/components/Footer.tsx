@@ -108,11 +108,11 @@ export default function Footer() {
               {t.register}
             </Link>
             <p className="text-xs text-blue-100/60">
-              {locale === "en" ? "Manage optional marketing communications in your " : "Optionele marketingcommunicatie stel je in via je "}
+              {t.footerMarketingPreferencesPrefix}
               <Link href="/profiel" className="underline hover:text-white">
                 {t.navProfile}
               </Link>
-              {locale === "en" ? ". Transactional messages remain active." : ". Transactionele berichten blijven altijd actief."}
+              {t.footerMarketingPreferencesSuffix}
             </p>
           </div>
         </div>

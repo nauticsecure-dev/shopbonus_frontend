@@ -2,12 +2,12 @@
 
 import { useLocale } from "@/i18n/LocaleContext";
 import Link from "next/link";
+import ShopImage from "@/components/ShopImage";
 import { useEffect, useState } from "react";
 import {
   categoryLabelNl,
   fetchDiscoveryWebshops,
   fetchDiscoveryWebshop,
-  initialsFromName,
   isDiscoveryAbort,
   resolveCoverUrl,
   shopBadgeLabel,
@@ -24,8 +24,10 @@ type Props = {
   ctaHref?: string;
 };
 
+const EMPTY_SHOPS: DiscoveryWebshopCard[] = [];
+
 export default function PopularWebshops({
-  initialShops = [],
+  initialShops = EMPTY_SHOPS,
   limit = 4,
   featuredSlugs,
   heading = "Populaire webshops",
@@ -121,19 +123,7 @@ export default function PopularWebshops({
                 className="group lift overflow-hidden rounded-3xl bg-white shadow-[0_10px_30px_-14px_rgba(10,27,63,0.2)]"
               >
                 <div className="relative h-44 overflow-hidden bg-gradient-to-br from-brand-light to-mist">
-                  {cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={cover}
-                      alt=""
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="grid h-full place-items-center text-3xl font-black text-brand/35">
-                      {initialsFromName(shop.name)}
-                    </div>
-                  )}
+                  <ShopImage src={cover} name={shop.name} className="h-full w-full object-cover text-3xl transition-transform duration-500 group-hover:scale-105" />
                   {badge && (
                     <span className="absolute left-3 top-3 rounded-full bg-white px-3.5 py-1.5 text-xs font-extrabold text-brand shadow">
                       {badge}

@@ -8,6 +8,11 @@ export const dictionaries = {
   de: { ...de, ...benefitsEn },
   nl: {
     ...benefitsNl,
+    headerAccountMenu: "Accountmenu",
+    headerCloseAccountMenu: "Accountmenu sluiten",
+    headerMerchantDashboard: "Webshop dashboard",
+    headerSupport: "Support",
+    headerLogoutError: "Uitloggen mislukt. Probeer het opnieuw — je bent nog aangemeld.",
     headerWallet: "Mijn ShopBonus-tegoed",
     headerWalletAvailable: "{balance} beschikbaar",
     headerWalletLoading: "Tegoed laden…",
@@ -108,6 +113,8 @@ export const dictionaries = {
     footerPartnerLogin: "Partner login",
     footerStayInformed: "Blijf op de hoogte",
     footerNewsletter: "Ontvang nieuwe vouchers en exclusieve deals.",
+    footerMarketingPreferencesPrefix: "Optionele marketingcommunicatie stel je in via je ",
+    footerMarketingPreferencesSuffix: ". Transactionele berichten blijven altijd actief.",
     footerEmailPlaceholder: "E-mailadres",
     footerSubscribe: "Aanmelden",
     footerTagline:
@@ -166,6 +173,11 @@ export const dictionaries = {
   },
   en: {
     ...benefitsEn,
+    headerAccountMenu: "Account menu",
+    headerCloseAccountMenu: "Close account menu",
+    headerMerchantDashboard: "Shop dashboard",
+    headerSupport: "Support",
+    headerLogoutError: "Sign-out failed. Try again — you are still signed in.",
     headerWallet: "My ShopBonus credit",
     headerWalletAvailable: "{balance} available",
     headerWalletLoading: "Loading wallet…",
@@ -266,6 +278,8 @@ export const dictionaries = {
     footerPartnerLogin: "Partner login",
     footerStayInformed: "Stay informed",
     footerNewsletter: "Get new vouchers and exclusive deals.",
+    footerMarketingPreferencesPrefix: "Manage optional marketing communications in your ",
+    footerMarketingPreferencesSuffix: ". Transactional messages remain active.",
     footerEmailPlaceholder: "Email address",
     footerSubscribe: "Subscribe",
     footerTagline:

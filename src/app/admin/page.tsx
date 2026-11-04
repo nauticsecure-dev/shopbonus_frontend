@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
+import AdminBusinessOverview from "@/components/AdminBusinessOverview";
 import AdminOperationsOverview from "@/components/AdminOperationsOverview";
 import DashboardIcon, { type DashboardIconName } from "@/components/DashboardIcon";
 import {
@@ -266,6 +267,8 @@ function AdminDashboardPage() {
               />
             ))}
       </div>
+
+      {summary && <AdminBusinessOverview summary={summary} />}
 
       {period === "custom" && (
         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">

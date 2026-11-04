@@ -1,6 +1,9 @@
 {
   "name": "shopbonus-frontend",
   "private": true,
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
   "scripts": {
     "acceptance:setup": "node scripts/consumer-acceptance.cjs setup",
     "acceptance:start": "node scripts/consumer-acceptance.cjs start",
@@ -15,8 +18,11 @@
     "typecheck": "tsc --noEmit",
     "test:e2e:support": "playwright test e2e/support-chat.spec.ts",
     "test:e2e:cms": "playwright test e2e/cms-i18n-consent.spec.ts",
+    "test:e2e:about": "playwright test --config playwright.about-cms.config.ts",
     "test:e2e:profile": "playwright test e2e/consumer-profile.spec.ts",
-    "install:clean": "npm ci"
+    "install:clean": "npm ci",
+    "postinstall": "node scripts/apply-eslint-patches.cjs",
+    "test:lint-tooling": "node --test scripts/test-lint-tooling.cjs"
   },
   "dependencies": {
     "dotenv": "17.3.1",
@@ -28,6 +34,16 @@
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
+    },
+    "minimatch": "11.0.4",
+    "eslint": "$eslint",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-import": "2.32.0",
+    "eslint-plugin-jsx-a11y": "6.10.2"
+  },
   "devDependencies": {
     "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "4.1.17",
@@ -36,8 +52,9 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "drizzle-kit": "0.31.10",
-    "eslint": "9.39.4",
+    "eslint": "10.14.0",
     "eslint-config-next": "16.4.4",
+    "patch-package": "8.0.1",
     "postcss": "8.5.32",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3"

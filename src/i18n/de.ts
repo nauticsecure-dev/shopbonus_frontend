@@ -1,5 +1,10 @@
 /** German application chrome. Marketing content is reviewed and published in the CMS. */
 export const de = {
+  headerAccountMenu: "Kontomenü",
+  headerCloseAccountMenu: "Kontomenü schließen",
+  headerMerchantDashboard: "Onlineshop-Dashboard",
+  headerSupport: "Hilfe",
+  headerLogoutError: "Abmelden fehlgeschlagen. Versuche es erneut — du bist weiterhin angemeldet.",
   headerWallet: "Mein ShopBonus-Guthaben",
   headerWalletAvailable: "{balance} verfügbar",
   headerWalletLoading: "Guthaben wird geladen…",
@@ -100,6 +105,8 @@ export const de = {
   footerPartnerLogin: "Partner-Anmeldung",
   footerStayInformed: "Auf dem Laufenden bleiben",
   footerNewsletter: "Erhalte neue Gutscheine und exklusive Angebote.",
+  footerMarketingPreferencesPrefix: "Optionale Marketingmitteilungen verwaltest du in deinem ",
+  footerMarketingPreferencesSuffix: ". Transaktionsmitteilungen bleiben immer aktiv.",
   footerEmailPlaceholder: "E-Mail-Adresse",
   footerSubscribe: "Abonnieren",
   footerTagline: "Gemeinsam machen wir Online-Einkäufe günstiger. Cashback, Rabattgutscheine und faire Angebote bei Hunderten Onlineshops.",

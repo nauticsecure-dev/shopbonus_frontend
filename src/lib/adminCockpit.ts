@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api";
+import type { PageMeta } from "@/lib/adminApi";
 import { formatMinor } from "@/lib/money";
 
 export type CockpitPeriod = "today" | "7d" | "30d" | "90d" | "custom";
@@ -42,6 +43,18 @@ export type OpenActionItem = {
   detail: string;
 };
 
+export type CockpitWalletMetrics = {
+  issued_in_period: number; spent_in_period: number; expired_in_period: number;
+  outstanding: number; available: number; reserved: number; pending: number;
+};
+export type CockpitKpis = {
+  orders?: { received_in_period: number; confirmed_paid_in_period: number };
+  answer24?: { requests_in_period: number; by_status: Record<string, number> };
+  vouchers?: { issued_in_period: number; redeemed_in_period: number; available_codes: number; outstanding: number };
+  wallets?: Partial<Record<"points" | "eur_credit", CockpitWalletMetrics>>;
+  disputes?: { open: number };
+};
+
 export type CockpitSummary = {
   generated_at: string;
   cache_seconds: number;
@@ -49,7 +62,7 @@ export type CockpitSummary = {
   period_name: string;
   timezone: string;
   cards: CockpitCard[];
-  kpis: Record<string, unknown>;
+  kpis: CockpitKpis;
   trends: { timezone: string; days: CockpitTrendDay[]; degraded?: boolean };
   affiliate_channels: {
     metric: string;
@@ -119,11 +132,16 @@ export async function fetchCockpit(
 }
 
 export async function fetchCockpitActivity(
-  opts?: { perPage?: number; signal?: AbortSignal }
-): Promise<{ data: ActivityItem[]; meta: { total: number; current_page: number; last_page: number } }> {
+  opts?: { perPage?: number; page?: number; webshop_id?: string; category?: string; outcome?: string; action?: string; signal?: AbortSignal }
+): Promise<{ data: ActivityItem[]; meta: PageMeta }> {
   const perPage = opts?.perPage ?? 25;
+  const params = new URLSearchParams({ per_page: String(perPage) });
+  for (const key of ["page", "webshop_id", "category", "outcome", "action"] as const) {
+    const value = opts?.[key];
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
   return apiRequest({
-    path: `/api/v1/admin/activity?per_page=${perPage}`,
+    path: `/api/v1/admin/activity?${params}`,
     signal: opts?.signal,
   });
 }
@@ -140,6 +158,9 @@ export async function searchCockpit(
 }
 
 export async function fetchAdminVouchers(params: {
+  page?: number;
+  per_page?: number;
+  webshop_id?: string;
   status?: string;
   usable?: string;
   acquisition_network?: string;
@@ -148,7 +169,7 @@ export async function fetchAdminVouchers(params: {
   from?: string;
   to?: string;
   signal?: AbortSignal;
-}): Promise<{ data: Array<Record<string, unknown>>; meta: { total: number } }> {
+}): Promise<{ data: Array<Record<string, unknown>>; meta: PageMeta }> {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
     if (k !== "signal" && v) qs.set(k, String(v));
@@ -188,6 +209,7 @@ export function formatWalletMinor(minor: number): string {
 }
 
 export const PERIOD_OPTIONS: { value: CockpitPeriod; label: string }[] = [
+  { value: "today", label: "Vandaag" },
   { value: "7d", label: "7 dagen" },
   { value: "30d", label: "30 dagen" },
   { value: "90d", label: "90 dagen" },

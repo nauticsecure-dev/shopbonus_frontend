@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const conversation = "01j00000000000000000000001";
 const messageId = "01j00000000000000000000002";
 async function setup(page: Page, locale = "en") {
+  await page.context().addCookies([{ name: "XSRF-TOKEN", value: "support-repair-fixture", url: test.info().project.use.baseURL! }]);
   const state = { admin: false, merchant: false, wallet: "ready", available: 1000, reserved: 500, status: "PENDING", reply: false, display: true, detailReads: 0 };
   await page.addInitScript((value) => localStorage.setItem("shopbonus-locale", value), locale);
   const message = () => ({ id: messageId, conversation_id: conversation, question: "Where is my reward FS-20482?", status: state.status, result: state.status === "VERIFIED" ? { answer: "Available ShopBonus credit: EUR 10.00; reserved: EUR 5.00.", action: { label: "View my credit", route: "/app/wallet" } } : null, display: { show_progress_updates: state.display, show_verified_badge: state.display }, created_at: "2026-10-31T08:00:00Z" });

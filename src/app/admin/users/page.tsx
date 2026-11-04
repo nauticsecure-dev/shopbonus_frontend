@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import AdminPagination, { adminPage } from "@/components/AdminPagination";
+import type { PageMeta } from "@/lib/adminApi";
 import AdminListPage from "@/components/AdminListPage";
 import { fetchAdminUsers, type AdminUser } from "@/lib/adminApi";
 import { formatApiError } from "@/lib/auth";
@@ -12,6 +14,8 @@ const STATUSES = ["", "active", "suspended", "pending"] as const;
 
 function UsersList() {
   const params = useSearchParams();
+  const page = adminPage(params.get("page"));
+  const [meta, setMeta] = useState<PageMeta | null>(null);
   const router = useRouter();
   const role = params.get("role") || "";
   const status = params.get("status") || "";
@@ -23,34 +27,39 @@ function UsersList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setSearch(searchQ);
+    const timer = window.setTimeout(() => setSearch(searchQ), 0);
+    return () => window.clearTimeout(timer);
   }, [searchQ]);
 
   useEffect(() => {
     const ac = new AbortController();
-    setLoading(true);
-    void fetchAdminUsers({
-      role: role || undefined,
-      status: status || undefined,
-      search: searchQ || undefined,
-      registered_from: params.get("registered_from") || undefined,
-      registered_to: params.get("registered_to") || undefined,
-      webshop_id: params.get("webshop") || undefined,
-    })
-      .then((res) => {
-        if (ac.signal.aborted) return;
-        setRows(res.data);
-        setTotal(res.meta?.total ?? res.data.length);
-        setError(null);
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      void fetchAdminUsers({
+        page,
+        role: role || undefined,
+        status: status || undefined,
+        search: searchQ || undefined,
+        registered_from: params.get("registered_from") || undefined,
+        registered_to: params.get("registered_to") || undefined,
+        webshop_id: params.get("webshop") || undefined,
       })
-      .catch((err) => {
-        if (!ac.signal.aborted) setError(formatApiError(err, "Gebruikers laden mislukt."));
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setLoading(false);
-      });
-    return () => ac.abort();
-  }, [role, status, searchQ, params]);
+        .then((res) => {
+          if (ac.signal.aborted) return;
+          setRows(res.data);
+          setMeta(res.meta ?? null);
+          setTotal(res.meta?.total ?? res.data.length);
+          setError(null);
+        })
+        .catch((err) => {
+          if (!ac.signal.aborted) setError(formatApiError(err, "Gebruikers laden mislukt."));
+        })
+        .finally(() => {
+          if (!ac.signal.aborted) setLoading(false);
+        });
+    }, 0);
+    return () => { window.clearTimeout(timer); ac.abort(); };
+  }, [page, role, status, searchQ, params]);
 
   const apply = (patch: Record<string, string>) => {
     const qs = new URLSearchParams(params.toString());
@@ -58,6 +67,7 @@ function UsersList() {
       if (v) qs.set(k, v);
       else qs.delete(k);
     }
+    qs.delete("page");
     router.push(`/admin/users?${qs}`);
   };
 
@@ -135,6 +145,7 @@ function UsersList() {
           </ul>
         </>
       )}
+      {!loading && !error && <AdminPagination meta={meta} />}
     </AdminListPage>
   );
 }
