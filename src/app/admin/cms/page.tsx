@@ -9,6 +9,15 @@ import { useLocale } from "@/i18n/LocaleContext";
 
 const hubs = [
   {
+    href: "/admin/cms/media",
+    titleNl: "Media",
+    titleEn: "Media",
+    titleDe: "Medien",
+    bodyNl: "Bekijk gebruik en versies, vervang afbeeldingen in concepten en beheer het archief.",
+    bodyEn: "Inspect usage and versions, replace images in drafts, and manage the archive.",
+    bodyDe: "Verwendungen und Versionen prüfen, Bilder in Entwürfen ersetzen und das Archiv verwalten.",
+  },
+  {
     href: "/admin/cms/pages",
     titleNl: "Pagina's",
     titleEn: "Pages",

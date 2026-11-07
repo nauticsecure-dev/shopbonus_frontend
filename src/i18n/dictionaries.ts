@@ -1,11 +1,10 @@
 import type { Locale } from "@/types/locale";
 import { de } from "./de";
-import { benefitsNl, benefitsEn } from "./benefitsCopy";
+import { benefitsDe, benefitsEn, benefitsNl } from "./benefitsCopy";
 
 /** Shared UI / chrome strings. Editable marketing copy lives in CMS records. */
 export const dictionaries = {
-  // Benefits currently supports NL/EN; use English for German until reviewed.
-  de: { ...de, ...benefitsEn },
+  de: { ...de, ...benefitsDe },
   nl: {
     ...benefitsNl,
     headerAccountMenu: "Accountmenu",

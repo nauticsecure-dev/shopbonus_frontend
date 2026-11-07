@@ -90,6 +90,8 @@ export type FaqItemAdmin = {
 export type FaqCategoryAdmin = {
   id: string;
   key: string;
+  parent_id: string | null;
+  revision: number;
   names: Partial<Record<Locale, string>>;
   position: number;
   items: FaqItemAdmin[];
@@ -284,10 +286,11 @@ export async function listTranslationStatuses(locale?: Locale): Promise<Translat
   return res.data;
 }
 
-export async function listAdminFaq(locale?: Locale): Promise<FaqCategoryAdmin[]> {
+export async function listAdminFaq(locale?: Locale, signal?: AbortSignal): Promise<FaqCategoryAdmin[]> {
   const res = await apiRequest<Data<FaqCategoryAdmin[]>>({
     path: "/api/v1/admin/cms/faq",
     locale,
+    signal,
   });
   return res.data;
 }
@@ -295,6 +298,7 @@ export async function listAdminFaq(locale?: Locale): Promise<FaqCategoryAdmin[]>
 export async function createFaqCategory(body: {
   key: string;
   names: Partial<Record<Locale, string>>;
+  parent_id?: string;
   locale?: Locale;
 }): Promise<{ id: string; key: string; names: Record<Locale, string>; position: number }> {
   const { locale, ...payload } = body;
@@ -307,6 +311,15 @@ export async function createFaqCategory(body: {
     locale,
   });
   return res.data;
+}
+
+export async function updateFaqCategoryParent(id: string, revision: number, parentId: string | null, locale: Locale): Promise<void> {
+  await apiRequest({
+    path: "/api/v1/admin/cms/faq/categories/" + encodeURIComponent(id),
+    method: "PATCH",
+    body: { revision, parent_id: parentId },
+    locale,
+  });
 }
 
 export async function createFaqItem(body: {
