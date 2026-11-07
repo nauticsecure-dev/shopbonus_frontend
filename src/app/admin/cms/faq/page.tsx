@@ -9,15 +9,18 @@ import {
   createFaqItem,
   listAdminFaq,
   reorderFaq,
+  updateFaqCategoryParent,
   updateFaqItem,
   type FaqAudience,
   type FaqCategoryAdmin,
 } from "@/lib/cms";
 import { emptyDoc } from "@/lib/richText";
 import { useLocale } from "@/i18n/LocaleContext";
+import { confirmPassword } from "@/lib/profile";
 
 export default function AdminFaqPage() {
   const { locale, dictionary: t } = useLocale();
+  const copy = (nl: string, en: string, de: string) => ({ nl, en, de })[locale];
   const [categories, setCategories] = useState<FaqCategoryAdmin[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -26,6 +29,8 @@ export default function AdminFaqPage() {
   const [catNl, setCatNl] = useState("");
   const [catEn, setCatEn] = useState("");
   const [catDe, setCatDe] = useState("");
+  const [parentId, setParentId] = useState("");
+  const [passwordRequired, setPasswordRequired] = useState(false);
   const [itemCat, setItemCat] = useState("");
   const [qNl, setQNl] = useState("");
   const [qEn, setQEn] = useState("");
@@ -34,6 +39,15 @@ export default function AdminFaqPage() {
   const [aEn, setAEn] = useState(emptyDoc());
   const [aDe, setADe] = useState(emptyDoc());
   const [audience, setAudience] = useState<FaqAudience>("public");
+  const roots = categories.filter((category) => !category.parent_id);
+  const rootLabel = copy("Hoofdcategorie", "Top-level category", "Hauptkategorie");
+  const parentLabel = copy("Bovenliggende categorie", "Parent category", "Übergeordnete Kategorie");
+  const categoryName = (category: FaqCategoryAdmin) => category.names[locale] ?? category.key;
+
+  function categoryError(err: unknown) {
+    if (err instanceof ApiError && err.code === "password_confirmation_required") setPasswordRequired(true);
+    setError(err instanceof ApiError ? err.message : t.errorGeneric);
+  }
 
   const load = async () => {
     setError(null);
@@ -45,9 +59,16 @@ export default function AdminFaqPage() {
   };
 
   useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locale]);
+    const controller = new AbortController();
+    void listAdminFaq(locale, controller.signal).then((data) => {
+      if (controller.signal.aborted) return;
+      setCategories(data);
+      setError(null);
+    }).catch((err: unknown) => {
+      if (!controller.signal.aborted) setError(err instanceof ApiError ? err.message : t.errorGeneric);
+    });
+    return () => controller.abort();
+  }, [locale, t.errorGeneric]);
 
   async function addCategory() {
     if (!catKey.trim() || busy) return;
@@ -57,16 +78,32 @@ export default function AdminFaqPage() {
       await createFaqCategory({
         key: catKey.trim().toLowerCase(),
         names: { nl: catNl || catKey, en: catEn || catKey, ...(catDe.trim() ? { de: catDe.trim() } : {}) },
+        parent_id: parentId || undefined,
         locale,
       });
       setCatKey("");
       setCatNl("");
       setCatEn("");
       setCatDe("");
+      setParentId("");
       setMessage(locale === "en" ? "Category created" : "Categorie aangemaakt");
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t.errorGeneric);
+      categoryError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeParent(category: FaqCategoryAdmin, parent: string | null) {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await updateFaqCategoryParent(category.id, category.revision, parent, locale);
+      await load();
+    } catch (err) {
+      categoryError(err);
     } finally {
       setBusy(false);
     }
@@ -147,6 +184,32 @@ export default function AdminFaqPage() {
     >
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
       {message && <p className="mb-3 text-sm text-green-700">{message}</p>}
+      {passwordRequired && (
+        <form className="mb-4 flex flex-wrap items-end gap-2" onSubmit={async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const password = String(new FormData(form).get("password") ?? "");
+          form.reset();
+          setBusy(true);
+          setError(null);
+          try {
+            await confirmPassword(password, locale);
+            setPasswordRequired(false);
+            setMessage(copy("Wachtwoord bevestigd. Herhaal je actie.", "Password confirmed. Retry your action.", "Passwort bestätigt. Wiederhole die Aktion."));
+          } catch (err) {
+            categoryError(err);
+          } finally {
+            setBusy(false);
+          }
+        }}>
+          <label className="grid gap-1">{copy("Huidig wachtwoord", "Current password", "Aktuelles Passwort")}
+            <input className="rounded-xl border border-blue-100 px-3 py-2" name="password" type="password" autoComplete="current-password" required />
+          </label>
+          <button disabled={busy} className="rounded-xl bg-brand px-4 py-2 font-bold text-white">
+            {copy("Bevestigen", "Confirm", "Bestätigen")}
+          </button>
+        </form>
+      )}
 
       <div className="mb-6 grid gap-3 rounded-2xl border border-blue-100 bg-mist/40 p-4 md:grid-cols-4">
         <input
@@ -176,6 +239,13 @@ export default function AdminFaqPage() {
           {locale === "en" ? "Add category" : "Categorie toevoegen"}
         </button>
         <input value={catDe} onChange={e => setCatDe(e.target.value)} placeholder="Name DE" aria-label="Name DE" className="rounded-xl border border-blue-100 px-3 py-2 text-sm" />
+        <label className="grid gap-1 text-sm">
+          {parentLabel}
+          <select value={parentId} onChange={(event) => setParentId(event.target.value)} className="rounded-xl border border-blue-100 px-3 py-2">
+            <option value="">{rootLabel}</option>
+            {roots.map((root) => <option key={root.id} value={root.id}>{categoryName(root)}</option>)}
+          </select>
+        </label>
       </div>
 
       <div className="mb-8 space-y-3 rounded-2xl border border-blue-100 p-4">
@@ -190,7 +260,7 @@ export default function AdminFaqPage() {
           <option value="">{locale === "en" ? "Select category" : "Kies categorie"}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.names[locale] ?? c.key}
+              {[roots.find((root) => root.id === c.parent_id), c].map((category) => category && categoryName(category)).filter(Boolean).join(" / ")}
             </option>
           ))}
         </select>
@@ -234,11 +304,20 @@ export default function AdminFaqPage() {
           <section key={cat.id} className="rounded-2xl border border-blue-100 bg-white">
             <header className="flex items-center justify-between border-b border-blue-50 px-4 py-3">
               <h3 className="font-extrabold text-navy">
-                {cat.names[locale] ?? cat.key}{" "}
+                {categoryName(cat)}{" "}
                 <span className="text-xs font-bold text-muted">({cat.key})</span>
               </h3>
               <span className="text-xs text-muted">{cat.items.length} items</span>
             </header>
+            <label className="flex flex-wrap items-center gap-2 px-4 py-2 text-sm">
+              {parentLabel}
+              <select value={cat.parent_id ?? ""} disabled={busy || categories.some((category) => category.parent_id === cat.id)}
+                onChange={(event) => void changeParent(cat, event.target.value || null)}
+                className="rounded-xl border border-blue-100 px-3 py-2">
+                <option value="">{rootLabel}</option>
+                {roots.filter((root) => root.id !== cat.id).map((root) => <option key={root.id} value={root.id}>{categoryName(root)}</option>)}
+              </select>
+            </label>
             <ul className="divide-y divide-blue-50">
               {cat.items.map((item, idx) => (
                 <li key={item.id} className="flex flex-wrap items-start gap-3 px-4 py-3">

@@ -180,6 +180,7 @@ function AdminDashboardPage() {
         accent="Cockpit"
         subtitle="Live overzicht van ShopBonus. Beheer platformprestaties en acties."
       />
+      <Link className="mb-4 inline-block font-semibold underline" href="/quality-center">Quality Center</Link>
       <AdminOperationsOverview />
 
       {(error || warnings.length > 0) && (
