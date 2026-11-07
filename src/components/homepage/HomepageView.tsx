@@ -1,4 +1,5 @@
 "use client";
+import { cmsImageUrl } from "@/lib/cmsMedia";
 
 import Link from "next/link";
 import { useLocale } from "@/i18n/LocaleContext";
@@ -182,16 +183,18 @@ function HomepageBody({
     return <><section role="status" className="mx-auto max-w-7xl px-4 py-20" data-testid="homepage-unavailable"><h1>Inhalt auf Deutsch noch nicht verfügbar</h1><p>Bitte versuche es später erneut oder wähle eine andere Sprache.</p></section><CmsToolbar /></>;
   }
 
-  const bgUrl = (content.hero as { background_url?: string | null }).background_url;
+  const bgUrl = cmsImageUrl(content, "hero.background_asset_id", "desktop", content.hero.background_url);
+  const mobileBg = cmsImageUrl(content, content.hero.background_mobile_asset_id ? "hero.background_mobile_asset_id" : "hero.background_asset_id", "mobile", content.hero.background_mobile_url);
+  const tabletBg = cmsImageUrl(content, "hero.background_asset_id", "tablet", bgUrl);
 
   const sections: Record<string, ReactNode> = {
 hero: <>
       {vis.hero !== false && (
         <section className="relative isolate min-h-[560px] sm:min-h-[640px]" data-testid="homepage-hero">
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-            {bgUrl || content.hero.background_mobile_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <picture>{content.hero.background_mobile_url && <source media="(max-width: 767px)" srcSet={content.hero.background_mobile_url} />}<img src={bgUrl || content.hero.background_mobile_url || ""} alt={content.hero.background_alt ?? ""} className="h-full w-full object-cover opacity-40" /></picture>
+            {bgUrl || mobileBg ? (
+
+              <picture>{mobileBg && <source media="(max-width: 767px)" srcSet={mobileBg} />}{tabletBg && <source media="(max-width: 1023px)" srcSet={tabletBg} />}<img src={bgUrl || mobileBg || ""} alt={content.hero.background_alt ?? ""} className="h-full w-full object-cover opacity-40" /></picture>
             ) : null}
             <div
               className="absolute inset-0"

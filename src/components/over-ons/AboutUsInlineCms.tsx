@@ -1,4 +1,5 @@
 "use client";
+import ResponsivePreview from "@/components/cms/ResponsivePreview";
 
 import {
   createContext,
@@ -313,7 +314,7 @@ function CmsSession({ initialContent, children }: { initialContent: AboutUsConte
     ]
   );
 
-  return <InlineCmsContext.Provider value={value}>{children}</InlineCmsContext.Provider>;
+  return <InlineCmsContext.Provider value={value}>{mode === "preview" ? <ResponsivePreview onExit={() => setMode("edit")}>{children}</ResponsivePreview> : children}</InlineCmsContext.Provider>;
 }
 
 export function useInlineCms() {

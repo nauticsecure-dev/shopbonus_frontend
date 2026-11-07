@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import RecipeMediaEditor from "@/components/cms/RecipeMediaEditor";
+import { useState } from "react";
 import { useInlineCms } from "./InlineCms";
 import { useLocale } from "@/i18n/LocaleContext";
-import { ApiError, apiRequest } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 
 const inputClass = "w-full rounded-lg border border-blue-200 bg-white p-2 text-sm text-navy";
 function Field({ path, value }: { path: string; value: unknown }) {
@@ -19,50 +20,25 @@ function Field({ path, value }: { path: string; value: unknown }) {
 function MediaEditor() {
   const cms = useInlineCms();
   const { locale } = useLocale();
-  const text = (nl: string, en: string) => locale === "en" ? en : nl;
-  const [file, setFile] = useState<File | null>(null);
-  const [source, setSource] = useState("");
-  const [slot, setSlot] = useState("desktop");
-  const [ratio, setRatio] = useState("1.7777777778");
-  const [x, setX] = useState(50);
-  const [y, setY] = useState(50);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  useEffect(() => { if (!file) return; const url = URL.createObjectURL(file); queueMicrotask(() => setSource(url)); return () => URL.revokeObjectURL(url); }, [file]);
-  const upload = async () => {
-    if (!file) return;
-    setBusy(true); setError("");
-    try {
-      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024) throw new Error(text("Kies PNG, JPEG of WebP tot 4 MB.", "Choose PNG, JPEG or WebP up to 4 MB."));
-      const bitmap = await createImageBitmap(file);
-      try {
-        const aspect = Number(ratio);
-        const width = Math.min(bitmap.width, bitmap.height * aspect), height = width / aspect;
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.min(slot === "mobile" ? 768 : 1920, Math.round(width));
-        canvas.height = Math.round(canvas.width / aspect);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Canvas unavailable");
-        ctx.drawImage(bitmap, (bitmap.width - width) * x / 100, (bitmap.height - height) * y / 100, width, height, 0, 0, canvas.width, canvas.height);
-        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(v => v ? resolve(v) : reject(new Error("Crop failed")), "image/webp", .9));
-        const form = new FormData(); form.append("image", blob, "homepage.webp");
-        const res = await apiRequest<{data: {id: string; url: string}}>({path: "/api/v1/admin/content/homepage/assets", method: "POST", body: form, locale});
-        if (slot === "seo") { cms.updateField("seo_image_asset_id", res.data.id); cms.updateField("seo_image_url", res.data.url); }
-        else { cms.updateField("hero." + (slot === "mobile" ? "background_mobile_asset_id" : "background_asset_id"), res.data.id); cms.updateField("hero." + (slot === "mobile" ? "background_mobile_url" : "background_url"), res.data.url); }
-        setFile(null); setSource("");
-      } finally { bitmap.close(); }
-    } catch (err) { if (err instanceof ApiError && err.code === "password_confirmation_required") cms.requestPasswordConfirmation(); setError(err instanceof Error ? err.message : String(err)); }
-    finally { setBusy(false); }
-  };
-  return <fieldset disabled={busy || cms.saving} className="space-y-3"><label>{text("Afbeelding", "Image")}<select aria-label="Image variant" value={slot} onChange={e => setSlot(e.target.value)}><option value="desktop">Desktop hero</option><option value="mobile">Mobile hero</option><option value="seo">SEO</option></select></label><Field path="hero.background_alt" value={cms.content.hero.background_alt ?? ""} /><label>{text("Alternatieve tekst", "Alternative text")}<input className={inputClass} value={cms.content.hero.background_alt ?? ""} onChange={e => cms.updateField("hero.background_alt", e.target.value)} /></label>
-    <input aria-label="Upload image" type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setFile(e.target.files?.[0] ?? null)} />
-    {file && source && <div><label>{text("Bijsnijden", "Crop")}<select aria-label="Crop ratio" value={ratio} onChange={e => setRatio(e.target.value)}><option value="1.7777777778">16:9</option><option value="1">1:1</option><option value="0.8">4:5</option></select></label>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={source} alt={text("Uitsnedevoorbeeld", "Crop preview")} className="max-h-56 w-full object-cover" style={{ aspectRatio: ratio, objectPosition: x + "% " + y + "%" }} />
-      <label>{text("Horizontale focus", "Horizontal focus")}<input aria-label="Horizontal crop focus" type="range" value={x} onChange={e => setX(Number(e.target.value))} /></label><label>{text("Verticale focus", "Vertical focus")}<input aria-label="Vertical crop focus" type="range" value={y} onChange={e => setY(Number(e.target.value))} /></label><button type="button" onClick={() => void upload()}>{busy ? text("Uploaden…", "Uploading…") : text("Uitsnede uploaden", "Upload cropped image")}</button></div>}
-    <button type="button" onClick={() => { if (slot === "seo") {cms.updateField("seo_image_asset_id", null); cms.updateField("seo_image_url", null);} else {cms.updateField("hero." + (slot === "mobile" ? "background_mobile_asset_id" : "background_asset_id"), null);cms.updateField("hero." + (slot === "mobile" ? "background_mobile_url" : "background_url"), null);} }}>{text("Afbeelding verwijderen", "Remove image")}</button>{error && <p role="alert">{error}</p>}
+  const t = (nl: string, en: string, de: string) => ({ nl, en, de })[locale];
+  const [slot, setSlot] = useState("hero");
+  const [variant, setVariant] = useState<"desktop" | "mobile">("desktop");
+  const path = slot === "seo" ? "seo_image_asset_id" : "hero." + (variant === "mobile" ? "background_mobile_asset_id" : "background_asset_id");
+  const urlPath = slot === "seo" ? "seo_image_url" : "hero." + (variant === "mobile" ? "background_mobile_url" : "background_url");
+  const assetId = slot === "seo" ? cms.content.seo_image_asset_id : variant === "mobile" ? cms.content.hero.background_mobile_asset_id : cms.content.hero.background_asset_id;
+  const pins = cms.content.media_recipes ?? {};
+  return <fieldset disabled={cms.saving || !cms.draftReady} className="space-y-3">
+    <label>{t("Afbeelding", "Image", "Bild")}<select aria-label="Image slot" value={slot} onChange={event => setSlot(event.target.value)}><option value="hero">Hero</option><option value="seo">SEO</option></select></label>
+    <label>{t("Variant", "Variant", "Variante")}<select aria-label="Image variant" value={variant} onChange={event => setVariant(event.target.value as "desktop" | "mobile")}><option value="desktop">Desktop</option><option value="mobile">Mobile</option></select></label>
+    <label>{t("Alternatieve tekst", "Alternative text", "Alternativtext")}<input className={inputClass} value={cms.content.hero.background_alt ?? ""} onChange={event => cms.updateField("hero.background_alt", event.target.value)} /></label>
+    <RecipeMediaEditor key={path} breakpoint={variant} assetId={assetId} onError={error => { if (error instanceof ApiError && error.code === "password_confirmation_required") cms.requestPasswordConfirmation(); }} onApply={selection => {
+      cms.updateField(path, selection.id); cms.updateField(urlPath, selection.url);
+      cms.updateField("media_recipes", { ...pins, [path]: selection.recipe });
+    }} />
+    <button type="button" onClick={() => { cms.updateField(path, null); cms.updateField(urlPath, null); const next = { ...pins }; delete next[path]; cms.updateField("media_recipes", next); }}>{t("Afbeelding verwijderen", "Remove image", "Bild entfernen")}</button>
   </fieldset>;
 }
+
 export default function HomepageCmsControls() {
   const cms = useInlineCms();
   const { locale } = useLocale();

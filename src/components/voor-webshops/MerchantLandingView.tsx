@@ -1,4 +1,5 @@
 "use client";
+import { cmsImageUrl } from "@/lib/cmsMedia";
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -9,7 +10,6 @@ import {
   InlineCmsProvider,
   useInlineCms,
 } from "./MerchantInlineCms";
-import { apiUrl } from "@/config/env";
 import { useLocale } from "@/i18n/LocaleContext";
 import type { MerchantLandingContent, PlatformStatus } from "@/lib/merchantLandingDefaults";
 import PlatformIcon, { platformIconTone } from "@/components/PlatformIcon";
@@ -122,12 +122,13 @@ function CmsVisual({ slot, fallback, legacyUrl }: { slot: "hero_background" | "h
   const { content } = useInlineCms();
   const { locale } = useLocale();
   const media = content.media?.[slot];
-  const resolve = (id?: string | null, url?: string | null) => id ? apiUrl("/api/v1/public/content-assets/" + id) : url;
-  const desktop = resolve(media?.desktop_asset_id, media?.desktop_url) || legacyUrl;
-  const mobile = resolve(media?.mobile_asset_id, media?.mobile_url);
+  const desktop = cmsImageUrl(content, `media.${slot}.desktop_asset_id`, "desktop", media?.desktop_url || legacyUrl);
+  const mobilePath = media?.mobile_asset_id ? `media.${slot}.mobile_asset_id` : `media.${slot}.desktop_asset_id`;
+  const mobile = cmsImageUrl(content, mobilePath, "mobile", media?.mobile_url);
+  const tablet = cmsImageUrl(content, `media.${slot}.desktop_asset_id`, "tablet", desktop);
   return <figure className="w-full">
     {desktop || mobile ? <picture>
-      {mobile && <source media="(max-width: 767px)" srcSet={mobile} />}
+      {mobile && <source media="(max-width: 767px)" srcSet={mobile} />}{tablet && <source media="(max-width: 1023px)" srcSet={tablet} />}
       <img src={desktop || mobile!} alt={media?.alt ?? ""} className="max-h-[650px] w-full rounded-3xl object-cover" loading={slot === "hero" ? "eager" : "lazy"} />
     </picture> : fallback}
     {(slot === "offers" || slot === "benefits" || slot === "hero") && <figcaption className="mt-3 text-center text-xs text-muted">{slot === "hero" && content.hero.artwork_note ? content.hero.artwork_note : locale === "en" ? "Illustrative example — no live offers or results" : "Illustratief voorbeeld — geen live aanbiedingen of resultaten"}</figcaption>}

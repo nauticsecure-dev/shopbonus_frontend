@@ -1,4 +1,5 @@
 "use client";
+import ResponsivePreview from "@/components/cms/ResponsivePreview";
 
 import { useState, type ReactNode } from "react";
 import { useLocale } from "@/i18n/LocaleContext";
@@ -43,7 +44,6 @@ export default function PageInlineCms({
   const [revision, setRevision] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
 
   async function enterEdit() {
     setMessage(null);
@@ -169,24 +169,7 @@ export default function PageInlineCms({
               >
                 {t.cmsCancel}
               </button>
-              {mode === "preview" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setViewport("desktop")}
-                    className={`rounded-lg px-2 py-1 text-xs font-bold ${viewport === "desktop" ? "bg-navy text-white" : "bg-mist"}`}
-                  >
-                    Desktop
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewport("mobile")}
-                    className={`rounded-lg px-2 py-1 text-xs font-bold ${viewport === "mobile" ? "bg-navy text-white" : "bg-mist"}`}
-                  >
-                    Mobile
-                  </button>
-                </>
-              )}
+
             </>
           )}
           {message && <span className="text-xs font-bold text-navy">{message}</span>}
@@ -208,9 +191,7 @@ export default function PageInlineCms({
           <RichTextEditor value={content.body} onChange={(body) => setContent((c) => ({ ...c, body }))} />
         </div>
       ) : (
-        <div className={mode === "preview" && viewport === "mobile" ? "mx-auto max-w-sm" : undefined}>
-          {children({ content, mode })}
-        </div>
+        mode === "preview" ? <ResponsivePreview onExit={() => setMode("edit")}>{children({ content, mode })}</ResponsivePreview> : children({ content, mode })
       )}
     </div>
   );
@@ -221,7 +202,7 @@ export function PageBody({ content }: { content: CmsPageContent }) {
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <h1 className="text-3xl font-black tracking-tight text-navy sm:text-4xl">{content.title}</h1>
       <div className="mt-6">
-        <RichTextView doc={content.body} />
+        <RichTextView doc={content.body} recipes={content.media_recipes} />
       </div>
     </article>
   );

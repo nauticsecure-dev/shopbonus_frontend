@@ -21,6 +21,7 @@ export type TeamProfile = {
 };
 
 export type AboutUsContent = {
+  media_recipes?: Record<string, string>;
   media?: Partial<Record<"hero" | "story" | "team", { desktop_asset_id?: string | null; mobile_asset_id?: string | null; desktop_url?: string | null; mobile_url?: string | null; alt: string }>>;
   title: string;
   seo_title: string;

@@ -22,6 +22,8 @@ export type RichDoc = {
 };
 
 export type CmsPageContent = {
+  media_recipes?: Record<string, string>;
+  shared_blocks?: Record<string, { version_id: string; overrides?: Record<string, string> }>;
   title: string;
   seo_title?: string;
   seo_description?: string;

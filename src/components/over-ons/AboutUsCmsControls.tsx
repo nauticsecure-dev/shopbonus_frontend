@@ -1,4 +1,5 @@
 "use client";
+import RecipeMediaEditor from "@/components/cms/RecipeMediaEditor";
 
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/api";
@@ -55,82 +56,27 @@ function localizeTemplate(value: unknown, t: (text: string) => string): unknown 
   return value;
 }
 
-type Asset = { id: string; url: string };
 function MediaEditor() {
   const cms = useInlineCms();
   const { locale } = useLocale();
-  const t = (text: string, params?: Record<string, string | number>) => aboutUsCmsText(locale, text, params);
+  const t = (nl: string, en: string, de: string) => ({ nl, en, de })[locale];
   const [slot, setSlot] = useState("hero");
-  const [variant, setVariant] = useState("desktop");
-  const [file, setFile] = useState<File | null>(null);
-  const [source, setSource] = useState("");
-  const [ratio, setRatio] = useState("original");
-  const [x, setX] = useState(50);
-  const [y, setY] = useState(50);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [uploaded, setUploaded] = useState<Asset | null>(null);
-  useEffect(() => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    let cancelled = false;
-    queueMicrotask(() => { if (!cancelled) setSource(url); });
-    return () => { cancelled = true; URL.revokeObjectURL(url); };
-  }, [file]);
+  const [variant, setVariant] = useState<"desktop" | "mobile">("desktop");
   const media = cms.content.media?.[slot as "hero" | "story" | "team"] ?? { alt: "" };
+  const isMedia = ["hero", "story", "team"].includes(slot);
+  const path = slot === "seo" ? "seo_image_asset_id" : slot.startsWith("profile.") ? `team.profiles.${slot.split(".")[1]}.photo_asset_id` : `media.${slot}.${variant}_asset_id`;
   const urlPath = slot === "seo" ? "seo_image_url" : slot.startsWith("profile.") ? `team.profiles.${slot.split(".")[1]}.photo_url` : `media.${slot}.${variant}_url`;
-  const idPath = slot === "seo" ? "seo_image_asset_id" : slot.startsWith("profile.") ? `team.profiles.${slot.split(".")[1]}.photo_asset_id` : `media.${slot}.${variant}_asset_id`;
-  const upload = async () => {
-    if (!file) return;
-    setBusy(true); setError(""); setUploaded(null);
-    try {
-      const bitmap = await createImageBitmap(file);
-      try {
-        const aspect = ratio === "original" ? bitmap.width / bitmap.height : Number(ratio);
-        const width = Math.min(bitmap.width, bitmap.height * aspect), height = width / aspect;
-        const canvas = document.createElement("canvas");
-        const scale = Math.min(1, (variant === "mobile" ? 768 : 1920) / width, 4000 / height);
-        canvas.width = Math.max(16, Math.round(width * scale)); canvas.height = Math.max(16, Math.round(height * scale));
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error(t("Image cropping is unavailable"));
-        context.drawImage(bitmap, (bitmap.width - width) * x / 100, (bitmap.height - height) * y / 100, width, height, 0, 0, canvas.width, canvas.height);
-        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error(t("Crop failed"))), "image/webp", 0.9));
-        const form = new FormData(); form.append("image", blob, "about-image.webp");
-        const res = await apiRequest<{ data: Asset }>({ path: "/api/v1/admin/content/over-ons/assets", method: "POST", body: form });
-        setUploaded(res.data);
-      } finally { bitmap.close(); }
-    } catch (err) { setError(merchantCmsError(locale, err, "Upload failed")); }
-    finally { setBusy(false); }
-  };
-  return <fieldset disabled={busy} className="space-y-3">
-    <p>{t("Use approved company photography. Upload creates an asset; Apply image adds it to this draft.")}</p>
-    <label className="block">{t("Image slot")}<select aria-label={t("Image slot")} value={slot} onChange={(e) => { setSlot(e.target.value); setUploaded(null); }}>
-      {["hero", "story", "team", "seo"].map((key) => <option key={key} value={key}>{t(key)}</option>)}
-      {cms.content.team.profiles.map((profile, i) => <option key={i} value={`profile.${i}`}>{t("Profile {number}: {name}", { number: i + 1, name: profile.name })}</option>)}
-    </select></label>
-    {!slot.startsWith("profile.") && slot !== "seo" && <><label>{t("Variant")}<select aria-label={t("Image variant")} value={variant} onChange={(e) => { setVariant(e.target.value); setUploaded(null); }}><option value="desktop">{t("desktop")}</option><option value="mobile">{t("mobile")}</option></select></label>
-      <label className="block">{t("Alternative text")}<input aria-label={t("Image alternative text")} className={inputClass} value={media.alt} onChange={(e) => cms.updateField(`media.${slot}`, { ...media, alt: e.target.value })} /></label></>}
-    <input aria-label={t("Replace image")} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setUploaded(null); }} />
-    {file && source && <><label className="block">{t("Crop")}<select aria-label={t("Crop ratio")} value={ratio} onChange={(e) => { setRatio(e.target.value); setUploaded(null); }}><option value="original">{t("Original")}</option><option value="1">{t("Square")}</option><option value="1.7777778">16:9</option><option value="0.8">4:5</option></select></label>
-      <img src={source} alt={t("Crop preview")} className="max-h-56 w-64 object-cover" style={{ aspectRatio: ratio === "original" ? undefined : ratio, objectPosition: `${x}% ${y}%` }} />
-      <label>{t("Horizontal focus")}<input aria-label={t("Horizontal crop focus")} type="range" min="0" max="100" value={x} onChange={(e) => { setX(Number(e.target.value)); setUploaded(null); }} /></label>
-      <label>{t("Vertical focus")}<input aria-label={t("Vertical crop focus")} type="range" min="0" max="100" value={y} onChange={(e) => { setY(Number(e.target.value)); setUploaded(null); }} /></label>
-      <button type="button" onClick={() => void upload()}>{t("Upload cropped image")}</button></>}
-    {uploaded && <button type="button" onClick={() => {
-      if (["hero", "story", "team"].includes(slot)) cms.updateField(`media.${slot}`, { ...media, [`${variant}_asset_id`]: uploaded.id, [`${variant}_url`]: uploaded.url });
-      else { cms.updateField(idPath, uploaded.id); cms.updateField(urlPath, uploaded.url); }
-      setUploaded(null); setFile(null);
-    }}>{t("Apply image")}</button>}
-    <button type="button" onClick={() => {
-      if (["hero", "story", "team"].includes(slot)) {
-        const other = variant === "mobile" ? "desktop" : "mobile";
-        if (!media[`${other}_asset_id` as "desktop_asset_id" | "mobile_asset_id"]) {
-          const next = { ...cms.content.media }; delete next[slot as "hero" | "story" | "team"]; cms.updateField("media", next);
-        } else cms.updateField(`media.${slot}`, { ...media, [`${variant}_asset_id`]: null, [`${variant}_url`]: null });
-        cms.updateField(`${slot}.image_asset_id`, null); cms.updateField(`${slot}.image_url`, null);
-      } else { cms.updateField(idPath, null); cms.updateField(urlPath, null); }
-    }}>{t("Clear image")}</button>
-    {error && <p role="alert">{error}</p>}
+  const assetId = slot === "seo" ? cms.content.seo_image_asset_id : slot.startsWith("profile.") ? cms.content.team.profiles[Number(slot.split(".")[1])]?.photo_asset_id : media[`${variant}_asset_id`];
+  const pins = cms.content.media_recipes ?? {};
+  return <fieldset disabled={cms.saving || cms.loading} className="space-y-3">
+    <label>{t("Afbeelding", "Image", "Bild")}<select aria-label="Image slot" value={slot} onChange={event => setSlot(event.target.value)}>{["hero", "story", "team", "seo"].map(name => <option key={name} value={name}>{name}</option>)}{cms.content.team.profiles.map((profile, i) => <option key={i} value={`profile.${i}`}>{profile.name}</option>)}</select></label>
+    <label>{t("Variant", "Variant", "Variante")}<select aria-label="Image variant" value={variant} onChange={event => setVariant(event.target.value as "desktop" | "mobile")}><option value="desktop">Desktop</option><option value="mobile">Mobile</option></select></label>
+    {isMedia && <label>{t("Alternatieve tekst", "Alternative text", "Alternativtext")}<input className={inputClass} value={media.alt} onChange={event => cms.updateField(`media.${slot}`, { ...media, alt: event.target.value })} /></label>}
+    <RecipeMediaEditor key={path} breakpoint={variant} assetId={assetId} onApply={selection => {
+      if (isMedia) cms.updateField(`media.${slot}`, { ...media, [`${variant}_asset_id`]: selection.id, [`${variant}_url`]: selection.url }); else { cms.updateField(path, selection.id); cms.updateField(urlPath, selection.url); }
+      cms.updateField("media_recipes", { ...pins, [path]: selection.recipe });
+    }} />
+    <button type="button" onClick={() => { if (isMedia) cms.updateField(`media.${slot}`, { ...media, [`${variant}_asset_id`]: null, [`${variant}_url`]: null }); else { cms.updateField(path, null); cms.updateField(urlPath, null); } const next = { ...pins }; delete next[path]; cms.updateField("media_recipes", next); }}>{t("Afbeelding verwijderen", "Remove image", "Bild entfernen")}</button>
   </fieldset>;
 }
 

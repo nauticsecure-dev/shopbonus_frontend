@@ -30,13 +30,15 @@ async function setup(page: Page) {
     if (path.endsWith('/publish')) { state.publishes++; state.published = structuredClone(state.draft); return route.fulfill({ json: { data: {} } }); }
     if (path.endsWith('/versions')) return route.fulfill({ json: { data: [{ id: 'v3', number: 3, locale: 'nl', published_at: '2026-10-30T12:00:00Z', content: state.published }, { id: 'v1', number: 1, locale: 'nl', published_at: '2026-10-28T12:00:00Z', content: { ...state.published, hero: { ...state.published.hero, heading: 'Earlier approved heading' } } }] } });
     if (path.endsWith('/restore')) { state.restored = request.postDataJSON().revision_id; return route.fulfill({ json: { data: {} } }); }
-    if (path.endsWith('/assets') && request.method() === 'POST') { state.uploads++; return route.fulfill({ json: { data: { id: 'cropped-image', url: '/favicon.ico', width: 768, height: 768 } } }); }
+    const media = (id: string) => ({ id, width: 600, height: 400, revision: 1, original_available: true, active_recipe: 'recipe1', recipes: [{ id: 'recipe1', version: 1, derivatives: ['desktop', 'tablet', 'mobile'].map(breakpoint => ({ breakpoint, status: 'ready', url: '/favicon.ico?' + breakpoint })) }] });
+    if (path.endsWith('/assets') && request.method() === 'POST') { state.uploads++; return route.fulfill({ json: { data: { media: media('preserved-image') } } }); }
+    if (path.endsWith('/assets/asset1')) return route.fulfill({ json: { data: media('asset1') } });
     if (path.endsWith('/assets')) return route.fulfill({ json: { data: [{ id: 'asset1', url: '/favicon.ico', width: 600, height: 400 }], meta: { current_page: 1, last_page: 1 } } });
     return route.fulfill({ json: { data: [], meta: { unread_count: 0 } } });
   });
   await page.goto('/voor-webshops');
   await page.getByTestId('cms-edit-voor-webshops').click();
-  await expect(page.getByRole('Koptekst', { name: 'Saved unpublished draft' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Saved unpublished draft' })).toBeVisible();
   return state;
 }
 async function changeHeading(page: Page, text: string) {
@@ -55,16 +57,17 @@ for (const status of [422, 409]) test('save failure ' + status + ' prevents publ
 test('cancel shows approved snapshot and reentry retains saved draft', async ({ page }) => {
   await setup(page);
   await page.getByRole('button', { name: 'Annuleren', exact: true }).click();
-  await expect(page.getByRole('Koptekst', { name: 'Goedgekeurde publicatie' })).toBeVisible();
-  await expect(page.getByRole('Koptekst', { name: 'Saved unpublished draft' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Goedgekeurde publicatie' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Saved unpublished draft' })).toHaveCount(0);
   await page.getByTestId('cms-edit-voor-webshops').click();
-  await expect(page.getByRole('Koptekst', { name: 'Saved unpublished draft' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Saved unpublished draft' })).toBeVisible();
 });
 test('preview keeps edits and autosave persists before successful publication', async ({ page }) => {
   const state = await setup(page);
   await changeHeading(page, 'New draft for preview');
   await page.getByRole('button', { name: 'Voorbeeld', exact: true }).click();
-  await expect(page.getByRole('Koptekst', { name: 'New draft for preview' })).toBeVisible();
+  await expect(page.frameLocator('iframe[title="CMS responsive preview"]').getByRole('heading', { name: 'New draft for preview' })).toBeVisible();
+  await page.getByRole('button', { name: 'Voorbeeld sluiten' }).click();
   expect(state.adminLoads).toBe(1);
   await expect.poll(() => state.saves).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Publiceren', exact: true }).click();
@@ -90,9 +93,11 @@ test('section order, visibility and reusable mobile imagery are editable', async
   await page.getByLabel('Voordelen', { exact: true }).uncheck();
   await expect(page.getByTestId('merchant-benefits')).toHaveCount(0);
   await page.getByRole('button', { name: 'Media', exact: true }).click();
-  await page.getByLabel('Afbeeldingsvariant').selectOption('mobile');
+  await page.getByLabel('Image variant').selectOption('mobile');
   await page.getByLabel('Alternatieve tekst').fill('Approved merchant screenshot');
-  await page.getByRole('button', { name: 'asset1' }).click();
+  await page.getByRole('button', { name: 'Mediabibliotheek laden' }).click();
+  await page.getByRole('button', { name: 'asset1 · 600 × 400' }).click();
+  await page.getByRole('button', { name: 'Deze versie in concept gebruiken' }).click();
   await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
   await expect.poll(() => state.draft.media?.hero?.mobile_asset_id).toBe('asset1');
   expect(state.draft.section_order[0]).toBe('platforms');
@@ -101,23 +106,22 @@ test('section order, visibility and reusable mobile imagery are editable', async
 test('public switching to English refreshes content and metadata', async ({ page }) => {
   await setup(page); await page.getByRole('button', { name: 'Annuleren', exact: true }).click();
   await page.getByRole('group', { name: /Taal|Language/i }).getByRole('button', { name: /^en$/i }).click();
-  await expect(page.getByRole('Koptekst', { name: 'Approved English publication' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Approved English publication' })).toBeVisible();
   await expect(page).toHaveTitle('Approved English SEO');
 });
 
-test('image crop upload assigns a reusable responsive variant', async ({ page }) => {
+test('original upload assigns an exact reusable responsive recipe', async ({ page }) => {
   const state = await setup(page);
   const image = await page.screenshot();
   await page.getByRole('button', { name: /Pagina-instellingen/ }).click();
   await page.getByRole('button', { name: 'Media', exact: true }).click();
-  await page.getByLabel('Afbeeldingsvariant').selectOption('mobile');
+  await page.getByLabel('Image variant').selectOption('mobile');
   await page.getByLabel('Alternatieve tekst').fill('Mobile merchant dashboard');
-  await page.getByLabel('Afbeelding vervangen').setInputFiles({ name: 'merchant.png', mimeType: 'image/png', buffer: image });
-  await page.getByLabel('Beeldverhouding').selectOption('1');
-  await page.getByLabel('Horizontaal focuspunt van uitsnede').press('ArrowRight');
-  await page.getByRole('button', { name: 'Bijgesneden afbeelding uploaden' }).click();
+  await page.getByLabel('Origineel uploaden').setInputFiles({ name: 'merchant.png', mimeType: 'image/png', buffer: image });
+  await page.getByRole('button', { name: 'Deze versie in concept gebruiken' }).click();
   await expect.poll(() => state.uploads).toBe(1);
-  await expect.poll(() => state.draft.media?.hero?.mobile_asset_id).toBe('cropped-image');
+  await expect.poll(() => state.draft.media?.hero?.mobile_asset_id).toBe('preserved-image');
+  expect(state.draft.media_recipes?.['media.hero.mobile_asset_id']).toBe('recipe1');
 });
 test('FAQ collections, footer links and benefit icons can be authored', async ({ page }) => {
   const state = await setup(page);
@@ -168,7 +172,7 @@ test('queued publication pins the saved revision and keeps the existing page liv
   await page.getByRole('button', { name: 'Publicatie inplannen', exact: true }).click();
   await expect.poll(() => state.scheduled?.revision === state.revision).toBe(true);
   expect(state.publishes).toBe(0);
-  await expect(page.getByRole('Koptekst', { name: 'Goedgekeurde publicatie' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Goedgekeurde publicatie' })).toBeVisible();
 });
 
 test('integration selection survives the onboarding URL and later navigation', async ({ page }) => {
@@ -210,6 +214,6 @@ test('English selection localizes the editing interface', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Save draft', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Page settings/ }).click();
   await page.getByRole('button', { name: 'media', exact: true }).click();
-  await expect(page.getByLabel('Replace image')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Clear variant' })).toBeVisible();
+  await expect(page.getByLabel('Upload original')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove image' })).toBeVisible();
 });

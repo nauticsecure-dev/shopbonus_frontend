@@ -1,4 +1,5 @@
 "use client";
+import { cmsImageUrl } from "@/lib/cmsMedia";
 
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -500,9 +501,11 @@ function AboutUsSections() {
 function AboutImage({ slot, className }: { slot: "hero" | "story" | "team"; className: string }) {
   const { content } = useInlineCms();
   const media = content.media?.[slot];
-  const src = media?.desktop_url || content[slot].image_url || media?.mobile_url;
+  const src = cmsImageUrl(content, `media.${slot}.desktop_asset_id`, "desktop", media?.desktop_url || content[slot].image_url || media?.mobile_url);
+  const mobile = cmsImageUrl(content, `media.${slot}.${media?.mobile_asset_id ? "mobile" : "desktop"}_asset_id`, "mobile", media?.mobile_url);
+  const tablet = cmsImageUrl(content, `media.${slot}.desktop_asset_id`, "tablet", src);
   if (!src) return <div className={`${className} bg-slate-100`} aria-hidden="true" />;
-  return <picture>{media?.mobile_url && <source media="(max-width: 767px)" srcSet={media.mobile_url} />}
+  return <picture>{mobile && <source media="(max-width: 767px)" srcSet={mobile} />}{tablet && <source media="(max-width: 1023px)" srcSet={tablet} />}
     <img src={src} alt={media?.alt ?? ""} className={className} loading={slot === "hero" ? "eager" : "lazy"} />
   </picture>;
 }

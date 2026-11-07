@@ -6,6 +6,7 @@ import { emptyLocalizedContent } from "./emptyLocalizedContent";
 export type HomepageCta = { label: string; href: string };
 
 export type HomepageContent = {
+  media_recipes?: Record<string, string>;
   translation_unavailable?: boolean;
   title: string;
   seo_title: string;

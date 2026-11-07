@@ -8,6 +8,17 @@ import { listTranslationStatuses, type TranslationStatusRow } from "@/lib/cms";
 import { useLocale } from "@/i18n/LocaleContext";
 
 const hubs = [
+  { href: "/admin/cms/ai", titleNl: "AI-taalreview", titleEn: "AI language review", titleDe: "KI-Sprachprüfung",
+    bodyNl: "Vergelijk voorstellen, bekijk kosten en beoordeel taal en betekenis.",
+    bodyEn: "Compare proposals, inspect costs and review language and meaning.",
+    bodyDe: "Vorschläge vergleichen, Kosten prüfen und Sprache und Bedeutung bewerten." },
+  {
+    href: "/admin/cms/blocks",
+    titleNl: "Gedeelde blokken", titleEn: "Shared blocks", titleDe: "Gemeinsame Blöcke",
+    bodyNl: "Beheer versies, gebruik en lokale tekst in concepten.",
+    bodyEn: "Manage versions, usage and local text in drafts.",
+    bodyDe: "Versionen, Verwendung und lokale Texte in Entwürfen verwalten.",
+  },
   {
     href: "/admin/cms/media",
     titleNl: "Media",

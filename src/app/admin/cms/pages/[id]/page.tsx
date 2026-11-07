@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import AdminListPage from "@/components/AdminListPage";
 import RichTextEditor from "@/components/cms/RichTextEditor";
+import ResponsivePreview from "@/components/cms/ResponsivePreview";
 import RichTextView from "@/components/cms/RichTextView";
 import { ApiError } from "@/lib/api";
 import {
@@ -35,7 +36,6 @@ export default function AdminCmsPageEditor() {
   const [revision, setRevision] = useState(1);
   const [revisions, setRevisions] = useState<CmsRevision[]>([]);
   const [preview, setPreview] = useState(false);
-  const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
   const [legalVersion, setLegalVersion] = useState("");
   const [effectiveDate, setEffectiveDate] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -223,24 +223,6 @@ export default function AdminCmsPageEditor() {
         >
           {t.cmsPublish}
         </button>
-        {preview && (
-          <>
-            <button
-              type="button"
-              onClick={() => setViewport("desktop")}
-              className={`rounded-xl px-3 py-2 text-xs font-bold ${viewport === "desktop" ? "bg-navy text-white" : "bg-mist"}`}
-            >
-              Desktop
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewport("mobile")}
-              className={`rounded-xl px-3 py-2 text-xs font-bold ${viewport === "mobile" ? "bg-navy text-white" : "bg-mist"}`}
-            >
-              Mobile
-            </button>
-          </>
-        )}
         {slug && (
           <Link href={`/pagina/${slug}`} className="rounded-xl px-3 py-2 text-sm font-bold text-brand hover:underline">
             /pagina/{slug}
@@ -272,18 +254,17 @@ export default function AdminCmsPageEditor() {
       )}
 
       {preview ? (
-        <div
-          className={`mx-auto rounded-2xl border border-blue-100 bg-white p-6 ${
-            viewport === "mobile" ? "max-w-sm" : "max-w-3xl"
-          }`}
+        <ResponsivePreview><div
+          className="mx-auto max-w-3xl rounded-2xl border border-blue-100 bg-white p-6"
           data-testid="cms-preview-pane"
         >
           <p className="mb-2 text-xs font-extrabold uppercase text-amber-700">Preview · noindex · no-store</p>
           <h1 className="text-3xl font-black text-navy">{content.title}</h1>
           <div className="mt-6">
-            <RichTextView doc={content.body} />
+            <RichTextView doc={content.body} recipes={content.media_recipes} />
           </div>
         </div>
+        </ResponsivePreview>
       ) : (
         <div className="grid gap-4">
           <label className="block text-sm">

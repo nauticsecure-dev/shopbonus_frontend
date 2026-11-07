@@ -33,6 +33,7 @@ export type FaqItem = { question: string; answer: string };
 export type MediaSlot = { desktop_asset_id?: string | null; mobile_asset_id?: string | null; desktop_url?: string | null; mobile_url?: string | null; alt: string };
 
 export type MerchantLandingContent = {
+  media_recipes?: Record<string, string>;
   media?: Partial<Record<"hero_background" | "hero" | "benefits" | "offers", MediaSlot>>;
   title: string;
   seo_title: string;

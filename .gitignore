@@ -38,3 +38,5 @@ next-env.d.ts
 
 # Isolated Next.js previews are build output, never Tailwind source.
 /.next*/
+
+/test-results-cms-integrations/

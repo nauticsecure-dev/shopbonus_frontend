@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "@/config/env";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -41,9 +42,9 @@ function renderMarks(text: string, marks: RichMark[] | undefined, key: string): 
   return node;
 }
 
-function NodeView({ node, path }: { node: RichTextNode; path: string }) {
+function NodeView({ node, path, recipes }: { node: RichTextNode; path: string; recipes?: Record<string, string> }) {
   const children = (node.content ?? []).map((child, i) => (
-    <NodeView key={`${path}.${i}`} node={child} path={`${path}.${i}`} />
+    <NodeView key={`${path}.${i}`} node={child} path={`${path}.content.${i}`} recipes={recipes} />
   ));
 
   switch (node.type) {
@@ -65,12 +66,15 @@ function NodeView({ node, path }: { node: RichTextNode; path: string }) {
     case "listItem":
       return <li>{children}</li>;
     case "image": {
-      const src = typeof node.attrs?.src === "string" ? node.attrs.src : null;
+      const pin = recipes?.[path + ".attrs.asset_id"];
+      const id = node.attrs?.asset_id;
+      const src = !pin && typeof node.attrs?.src === "string" ? node.attrs.src : typeof id === "string" && id ? apiUrl("/api/v1/public/content-assets/" + encodeURIComponent(id) + (pin ? "/recipes/" + encodeURIComponent(pin) + "/desktop" : "")) : typeof node.attrs?.src === "string" ? node.attrs.src : null;
+      const responsive = src?.includes("/recipes/") && src.endsWith("/desktop");
       const alt = typeof node.attrs?.alt === "string" ? node.attrs.alt : "";
       if (!src) return null;
       return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={alt} className="my-6 w-full rounded-2xl object-cover" loading="lazy" />
+
+        <picture>{responsive && <><source media="(max-width: 767px)" srcSet={src.replace(/desktop$/, "mobile")} /><source media="(max-width: 1023px)" srcSet={src.replace(/desktop$/, "tablet")} /></>}<img src={src} alt={alt} className="my-6 w-full rounded-2xl object-cover" loading="lazy" /></picture>
       );
     }
     case "button": {
@@ -102,12 +106,12 @@ function NodeView({ node, path }: { node: RichTextNode; path: string }) {
 }
 
 /** Safely render CMS rich-text JSON (never HTML). Unknown nodes are skipped. */
-export default function RichTextView({ doc }: { doc: RichDoc | null | undefined }) {
+export default function RichTextView({ doc, recipes }: { doc: RichDoc | null | undefined; recipes?: Record<string, string> }) {
   if (!doc || doc.type !== "doc" || !Array.isArray(doc.content)) return null;
   return (
     <div className="cms-richtext max-w-none">
       {doc.content.map((node, i) => (
-        <NodeView key={`root.${i}`} node={node} path={`root.${i}`} />
+        <NodeView key={`root.${i}`} node={node} path={`body.content.${i}`} recipes={recipes} />
       ))}
     </div>
   );

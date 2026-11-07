@@ -1,4 +1,5 @@
 "use client";
+import ResponsivePreview from "@/components/cms/ResponsivePreview";
 
 import { createPortal } from "react-dom";
 import {
@@ -418,7 +419,7 @@ export function InlineCmsProvider({
     ]
   );
 
-  return <InlineCmsContext.Provider value={value}>{children}</InlineCmsContext.Provider>;
+  return <InlineCmsContext.Provider value={value}>{mode === "preview" ? <ResponsivePreview onExit={() => setMode("edit")}>{children}</ResponsivePreview> : children}</InlineCmsContext.Provider>;
 }
 
 export function useInlineCms() {

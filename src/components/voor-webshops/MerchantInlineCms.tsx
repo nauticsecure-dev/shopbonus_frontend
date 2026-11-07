@@ -1,4 +1,5 @@
 "use client";
+import ResponsivePreview from "@/components/cms/ResponsivePreview";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -227,7 +228,7 @@ export function InlineCmsProvider({ initialContent, children }: { initialContent
     } catch (err) { setMessage(merchantCmsError(locale, err, "AI suggestion failed")); return null; }
   }, [content, locale]);
   const value = useMemo(() => ({ canEdit, mode, content: mode === "live" ? liveContent : content, setMode, draftRevision, dirty, saving, loading: editing && loadedLocale !== locale, message, updateField, saveDraft, publish, cancel, enterPreview, restoreVersion, schedulePublication, improveWithAi }), [canEdit, mode, liveContent, content, draftRevision, dirty, saving, editing, loadedLocale, locale, message, updateField, saveDraft, publish, cancel, enterPreview, restoreVersion, schedulePublication, improveWithAi]);
-  return <InlineCmsContext.Provider value={value}>{children}</InlineCmsContext.Provider>;
+  return <InlineCmsContext.Provider value={value}>{mode === "preview" ? <ResponsivePreview onExit={() => setMode("edit")}>{children}</ResponsivePreview> : children}</InlineCmsContext.Provider>;
 }
 export function useInlineCms() {
   const ctx = useContext(InlineCmsContext);

@@ -1,4 +1,5 @@
 "use client";
+import RecipeMediaEditor from "@/components/cms/RecipeMediaEditor";
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/api";
 import { fetchMerchantLandingVersions } from "@/lib/merchantLanding";
@@ -9,7 +10,6 @@ import { compareMerchantContent } from "@/lib/merchantRevisionComparison";
 import { SECTION_KEYS } from "@/lib/merchantLandingDefaults";
 import { useInlineCms } from "./MerchantInlineCms";
 
-type Asset = { id: string; url: string; width: number; height: number };
 const inputClass = "w-full rounded border border-blue-200 bg-white p-2 text-sm text-navy";
 const choices: Record<string, string[]> = {
   "benefits.items.icon": ["people", "tag", "cog", "chart", "shield", "spark"],
@@ -53,79 +53,25 @@ function Field({ path, value }: { path: string; value: unknown }) {
 function MediaEditor() {
   const cms = useInlineCms();
   const { locale } = useLocale();
-  const t = (text: string) => merchantCmsText(locale, text);
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [page, setPage] = useState(1);
-  const [lastPage, setLastPage] = useState(1);
-  const [slot, setSlot] = useState<"hero_background" | "hero" | "benefits" | "offers">("hero");
+  const t = (nl: string, en: string, de: string) => ({ nl, en, de })[locale];
+  const [slot, setSlot] = useState("hero");
   const [variant, setVariant] = useState<"desktop" | "mobile">("desktop");
-  const [file, setFile] = useState<File | null>(null);
-  const [source, setSource] = useState("");
-  const [ratio, setRatio] = useState("original");
-  const [focusX, setFocusX] = useState(50);
-  const [focusY, setFocusY] = useState(50);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [reload, setReload] = useState(0);
-  const [uploaded, setUploaded] = useState<{ slot: typeof slot; variant: typeof variant; asset: Asset } | null>(null);
-  const { saving, loading, content, updateField } = cms;
-  useEffect(() => {
-    if (!uploaded || saving || loading) return;
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      const current = content.media?.[uploaded.slot] ?? { alt: "" };
-      updateField("media." + uploaded.slot, { ...current, [uploaded.variant + "_asset_id"]: uploaded.asset.id, [uploaded.variant + "_url"]: uploaded.asset.url });
-      setUploaded(null);
-    });
-    return () => { cancelled = true; };
-  }, [uploaded, saving, loading, content.media, updateField]);
-  useEffect(() => {
-    let cancelled = false;
-    void apiRequest<{ data: Asset[]; meta: { last_page: number } }>({ path: "/api/v1/admin/content/voor-webshops/assets?page=" + page, cache: "no-store", locale }).then((res) => { if (!cancelled) { setAssets(res.data); setLastPage(res.meta.last_page); } }).catch((err) => { if (!cancelled) setError(merchantCmsError(locale, err, "Media could not be loaded")); });
-    return () => { cancelled = true; };
-  }, [page, reload, locale]);
-  useEffect(() => { if (!file) { queueMicrotask(() => setSource("")); return; } const url = URL.createObjectURL(file); queueMicrotask(() => setSource(url)); return () => URL.revokeObjectURL(url); }, [file]);
-  const media = cms.content.media?.[slot] ?? { alt: "" };
-  const assign = (asset: Asset) => cms.updateField("media." + slot, { ...media, [variant + "_asset_id"]: asset.id, [variant + "_url"]: asset.url });
-  const upload = async () => {
-    if (!file) return;
-    setBusy(true); setError("");
-    try {
-      const bitmap = await createImageBitmap(file);
-      try {
-        const aspect = ratio === "original" ? bitmap.width / bitmap.height : Number(ratio);
-        const width = Math.min(bitmap.width, bitmap.height * aspect);
-        const height = width / aspect;
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.min(variant === "mobile" ? 768 : 1920, Math.round(width));
-        canvas.height = Math.round(canvas.width / aspect);
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error(t("Image cropping is unavailable"));
-        context.drawImage(bitmap, (bitmap.width - width) * focusX / 100, (bitmap.height - height) * focusY / 100, width, height, 0, 0, canvas.width, canvas.height);
-        const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error(t("Crop failed"))), "image/webp", 0.9));
-        const form = new FormData(); form.append("image", blob, "merchant-image.webp");
-        const res = await apiRequest<{ data: Asset }>({ path: "/api/v1/admin/content/voor-webshops/assets", method: "POST", body: form, locale });
-        setUploaded({ slot, variant, asset: res.data }); setReload((value) => value + 1); setFile(null);
-      } finally { bitmap.close(); }
-    } catch (err) { setError(merchantCmsError(locale, err, "Upload failed")); }
-    finally { setBusy(false); }
-  };
-  return <fieldset disabled={busy} className="space-y-3">
-    <div className="flex gap-3"><label>{t("Image slot")}<select aria-label={t("Image slot")} value={slot} onChange={(e) => setSlot(e.target.value as typeof slot)}>{["hero_background", "hero", "benefits", "offers"].map((key) => <option key={key} value={key}>{t(key)}</option>)}</select></label><label>{t("Variant")}<select aria-label={t("Image variant")} value={variant} onChange={(e) => setVariant(e.target.value as typeof variant)}><option value="desktop">{t("desktop")}</option><option value="mobile">{t("mobile")}</option></select></label></div>
-    <label className="block">{t("Alternative text")}<input className={inputClass} value={media.alt} onChange={(e) => cms.updateField("media." + slot, { ...media, alt: e.target.value })} /></label>
-    <input aria-label={t("Replace image")} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-    {source && <div className="space-y-2"><label>{t("Crop")}<select aria-label={t("Crop ratio")} value={ratio} onChange={(e) => setRatio(e.target.value)}><option value="original">{t("Original")}</option><option value="1">{t("Square")}</option><option value="1.7777778">16:9</option><option value="0.8">4:5</option></select></label>
-      <img src={source} alt={t("Crop preview")} className="max-h-56 w-full object-cover" style={{ aspectRatio: ratio === "original" ? undefined : ratio, objectPosition: focusX + "% " + focusY + "%" }} />
-      <label>{t("Horizontal focus")}<input aria-label={t("Horizontal crop focus")} type="range" value={focusX} onChange={(e) => setFocusX(Number(e.target.value))} /></label><label>{t("Vertical focus")}<input aria-label={t("Vertical crop focus")} type="range" value={focusY} onChange={(e) => setFocusY(Number(e.target.value))} /></label><button disabled={busy} onClick={() => void upload()}>{busy ? t("Uploading…") : t("Upload cropped image")}</button></div>}
-    <p>{t("Choose an existing library image for this slot and variant. Changes become public only after publication.")}</p>
-    <div className="grid grid-cols-4 gap-2">{assets.map((asset) => <button key={asset.id} type="button" onClick={() => assign(asset)} title={asset.id}>
-      <img src={asset.url} alt={asset.id} className="aspect-square w-full object-cover" /><span className="text-xs">{asset.width} × {asset.height}</span>
-    </button>)}</div><button disabled={page === 1} onClick={() => setPage(page - 1)}>{t("Previous media")}</button> <button disabled={page === lastPage} onClick={() => setPage(page + 1)}>{t("Next media")}</button>
-    <button onClick={() => cms.updateField("media." + slot, { ...media, [variant + "_asset_id"]: null, [variant + "_url"]: null })}>{t("Clear variant")}</button>
-    {error && <p role="alert">{error}</p>}
+  const media = cms.content.media?.[slot as "hero_background" | "hero" | "benefits" | "offers"] ?? { alt: "" };
+  const path = `media.${slot}.${variant}_asset_id`;
+  const assetId = media[`${variant}_asset_id`];
+  const pins = cms.content.media_recipes ?? {};
+  return <fieldset disabled={cms.saving || cms.loading} className="space-y-3">
+    <label>{t("Afbeelding", "Image", "Bild")}<select aria-label="Image slot" value={slot} onChange={event => setSlot(event.target.value)}>{["hero_background", "hero", "benefits", "offers"].map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+    <label>{t("Variant", "Variant", "Variante")}<select aria-label="Image variant" value={variant} onChange={event => setVariant(event.target.value as "desktop" | "mobile")}><option value="desktop">Desktop</option><option value="mobile">Mobile</option></select></label>
+    <label>{t("Alternatieve tekst", "Alternative text", "Alternativtext")}<input className={inputClass} value={media.alt} onChange={event => cms.updateField(`media.${slot}`, { ...media, alt: event.target.value })} /></label>
+    <RecipeMediaEditor key={path} breakpoint={variant} assetId={assetId} onApply={selection => {
+      cms.updateField(`media.${slot}`, { ...media, [`${variant}_asset_id`]: selection.id, [`${variant}_url`]: selection.url });
+      cms.updateField("media_recipes", { ...pins, [path]: selection.recipe });
+    }} />
+    <button type="button" onClick={() => { cms.updateField(`media.${slot}`, { ...media, [`${variant}_asset_id`]: null, [`${variant}_url`]: null }); const next = { ...pins }; delete next[path]; cms.updateField("media_recipes", next); }}>{t("Afbeelding verwijderen", "Remove image", "Bild entfernen")}</button>
   </fieldset>;
 }
+
 export function MerchantCmsControls() {
   const cms = useInlineCms();
   const { locale } = useLocale();
