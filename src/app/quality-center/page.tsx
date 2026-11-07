@@ -10,7 +10,7 @@ import { useSession } from "@/store/SessionContext";
 const root = "/api/v1/admin/qa";
 const sections = [
   ["summary", "Overview"], ["endpoints", "Endpoints"], ["components", "Components"],
-  ["runs?environment=staging", "Staging runs"], ["findings", "Findings"],
+  ["executions", "Execute staging"], ["runs?environment=staging", "Staging runs"], ["findings", "Findings"],
   ["schedules", "Schedules"], ["openapi.json", "API reference"],
 ] as const;
 const methods = new Set(["get", "head", "post", "put", "patch", "delete", "options", "trace"]);
@@ -23,6 +23,9 @@ type RecordRow = {
   title?: string;
   suite?: string;
   git_sha?: string;
+  deployment_sha?: string;
+  failure_code?: string | null;
+  evidence_complete?: boolean;
   kind?: string;
   severity?: string;
   status?: string;
@@ -42,6 +45,7 @@ export default function QualityCenter() {
   const [operationFilter, setOperationFilter] = useState("");
   const [expandedOperation, setExpandedOperation] = useState<string | null>(null);
   const [response, setResponse] = useState<{ key: string; value?: Data | ApiSpec; error?: string }>();
+  const [executionIntent, setExecutionIntent] = useState<{ deployment_sha: string; trigger: string; request_key: string } | null>(null);
   const [report, setReport] = useState<FormData | null>(null);
   const user = ready ? session?.user : null;
   const fullAccess = Boolean(user && (user.role === "super_admin" || user.roles.some((role) => ["super_admin", "qa_tester"].includes(role))));
@@ -97,9 +101,23 @@ export default function QualityCenter() {
               <button key={id} className={button} aria-pressed={section === id} onClick={() => select(id)}>{label}</button>
             ))}
           </nav>
+          <button className={button} onClick={() => setRevision(value => value + 1)}>Refresh</button>
           {selected && <button className={button} onClick={() => select(section)}>Back to list</button>}
           {canRead && !current && <p role="status">Loading…</p>}
           {current?.error && <p role="alert">{current.error}</p>}
+          {resource === "executions" && fullAccess && <section className="space-y-3 rounded border p-4" aria-label="Request staging execution">
+            <h2 className="text-xl font-semibold">Request staging execution</h2>
+            <p>Run the reviewed nightly, weekly or deployment suite on the exact enabled staging build. Both acceptance gates must pass. Release approval remains separate.</p>
+            <form className="flex flex-wrap items-end gap-3" onSubmit={event => {
+              event.preventDefault(); const values = new FormData(event.currentTarget);
+              setExecutionIntent({ deployment_sha: String(values.get("deployment_sha")), trigger: String(values.get("trigger")), request_key: crypto.randomUUID() });
+            }}>
+              <label>Staging deployment SHA<input className="block rounded border p-2" name="deployment_sha" pattern="[0-9a-f]{40}|[0-9a-f]{64}" required /></label>
+              <label>Execution suite<select className="block rounded border p-2" name="trigger"><option value="nightly">Nightly full suite</option><option value="weekly">Weekly suite</option><option value="after_deploy">Impacted deployment suite</option></select></label>
+              <button className={button}>Review execution request</button>
+            </form>
+            <p>Requests run once on the qa-staging queue. Refresh to inspect status; a blocked or failed request never promotes a release.</p>
+          </section>}
           {resource === "runs" && !selected && Array.isArray(data) && (
             <details className="rounded border p-3">
               <summary className="cursor-pointer">Import a staging execution report</summary>
@@ -124,7 +142,7 @@ export default function QualityCenter() {
               {data.length === 0 && <li className="p-3">No records.</li>}
               {data.map((row) => {
                 const label = row.path ? `${row.method} ${row.path}` : row.title ?? row.name ?? row.suite ?? row.id;
-                const detail = [row.severity, row.status, row.kind, row.git_sha, row.trigger].filter(Boolean).join(" · ");
+                const detail = [row.severity, row.status, row.kind, row.git_sha ?? row.deployment_sha, row.trigger, row.failure_code, row.evidence_complete === undefined ? null : row.evidence_complete ? "Evidence complete" : "Evidence incomplete"].filter(Boolean).join(" · ");
                 return (
                   <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
                     {["endpoints", "runs", "findings"].includes(resource)
@@ -179,6 +197,14 @@ export default function QualityCenter() {
               <button className={button} disabled={page >= lastPage} onClick={() => setPage(page + 1)}>Next</button>
             </div>
           )}
+          {fullAccess && executionIntent && <AdminStepUpModal
+            open title="Confirm staging execution" requireOtp={false}
+            onClose={() => setExecutionIntent(null)}
+            onReady={async () => {
+              await apiRequest({ path: `${root}/executions`, method: "POST", body: executionIntent });
+              setExecutionIntent(null); select("executions"); setRevision(value => value + 1);
+            }}
+          />}
           {fullAccess && report && <AdminStepUpModal
             open
             title="Confirm staging report import"

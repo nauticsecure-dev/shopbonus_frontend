@@ -22,7 +22,10 @@
     "test:e2e:profile": "playwright test e2e/consumer-profile.spec.ts",
     "install:clean": "npm ci",
     "postinstall": "node scripts/apply-eslint-patches.cjs",
-    "test:lint-tooling": "node --test scripts/test-lint-tooling.cjs"
+    "test:lint-tooling": "node --test scripts/test-lint-tooling.cjs",
+    "qa:discover": "node scripts/qa-discover.cjs",
+    "qa:discover:verify": "node scripts/qa-discover.cjs --verify",
+    "test:qa-discovery": "node --test tests/qa-discovery.test.cjs"
   },
   "dependencies": {
     "dotenv": "17.3.1",

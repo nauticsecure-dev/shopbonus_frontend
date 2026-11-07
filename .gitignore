@@ -40,3 +40,5 @@ next-env.d.ts
 /.next*/
 
 /test-results-cms-integrations/
+
+/test-results-quality-center/
