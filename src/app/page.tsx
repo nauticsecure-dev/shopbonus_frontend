@@ -2,11 +2,7 @@ import { requestLocale } from "@/i18n/requestLocale";
 
 import type { Metadata } from "next";
 import HomepageView from "@/components/homepage/HomepageView";
-import { fetchPublicWebshopsServer } from "@/lib/discoveryServer";
-import {
-  fetchDiscountCodesServer,
-  fetchHomepageContentServer,
-} from "@/lib/homepage";
+import { fetchHomepageContentServer } from "@/lib/homepage";
 
 
 
@@ -37,33 +33,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
   const locale = await requestLocale();
   const content = await fetchHomepageContentServer(locale);
-  const limit = content.popular_webshops.limit || 4;
-  const featured =
-    content.popular_webshops.mode === "featured" &&
-    (content.popular_webshops.featured_slugs?.length ?? 0) > 0;
-
-  const [{ data: featuredShops, meta: shopsMeta }, discountCodes] = await Promise.all([
-    featured
-      ? fetchPublicWebshopsServer({
-          slugs: content.popular_webshops.featured_slugs.slice(0, limit),
-          per_page: limit,
-        })
-      : fetchPublicWebshopsServer({ sort: "most_offers", per_page: limit }),
-    fetchDiscountCodesServer(content.discount_codes.limit || 2, locale),
-  ]);
-
-  // Soft fallback: if featured slugs yield nothing, show auto popular shops.
-  const shops =
-    featured && featuredShops.length === 0
-      ? (await fetchPublicWebshopsServer({ sort: "most_offers", per_page: limit })).data
-      : featuredShops;
-
-  return (
-    <HomepageView
-      initialContent={content}
-      featuredShops={shops}
-      discountCodes={discountCodes}
-      shopCount={shopsMeta?.total ?? shops.length}
-    />
-  );
+  // Discovery reads are started client-side only after a session is established.
+  return <HomepageView initialContent={content} featuredShops={[]} discountCodes={[]} shopCount={0} />;
 }

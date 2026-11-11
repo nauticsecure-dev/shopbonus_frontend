@@ -120,7 +120,7 @@ export const DEFAULT_HOMEPAGE_NL: HomepageContent = {
       { label: "Hoe werkt het?", href: "/hoe-werkt-het" },
       { label: "Over ons", href: "/over-ons" },
       { label: "FAQ", href: "/faq" },
-      { label: "Contact", href: "/over-ons#contact" },
+      { label: "Contact", href: "/contact" },
       { label: "Voor webshops", href: "/voor-webshops" },
     ],
   },
@@ -227,7 +227,7 @@ export const DEFAULT_HOMEPAGE_EN: HomepageContent = {
   nav: { logo_alt: "ShopBonus", links: [
     { label: "Webshops", href: "/webshops" }, { label: "Discount codes", href: "/kortingscodes" },
     { label: "How it works", href: "/hoe-werkt-het" }, { label: "About us", href: "/over-ons" },
-    { label: "FAQ", href: "/faq" }, { label: "Contact", href: "/over-ons#contact" }, { label: "For webshops", href: "/voor-webshops" },
+    { label: "FAQ", href: "/faq" }, { label: "Contact", href: "/contact" }, { label: "For webshops", href: "/voor-webshops" },
   ] },
   footer: { blurb: "Cashback, discount vouchers and fair deals at participating webshops." },
   hero: {

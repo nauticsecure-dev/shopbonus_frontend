@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/config/env";
 
-/** Proxies to Laravel public discovery — keeps legacy /api/webshops callers working. */
+/** Legacy discovery alias. Laravel authenticates the forwarded caller on every request. */
 export async function GET(request: NextRequest) {
   const upstream = new URL("/api/v1/public/webshops", env.apiBaseUrl);
   request.nextUrl.searchParams.forEach((value, key) => {
@@ -12,13 +12,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const res = await fetch(upstream.toString(), {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 30 },
+      headers: { Accept: "application/json", Cookie: request.headers.get("cookie") ?? "", Authorization: request.headers.get("authorization") ?? "", Origin: request.nextUrl.origin },
+      cache: "no-store",
     });
     const body = await res.text();
     return new NextResponse(body, {
       status: res.status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store", Vary: "Cookie, Authorization" },
     });
   } catch {
     return NextResponse.json(

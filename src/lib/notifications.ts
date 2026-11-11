@@ -51,6 +51,10 @@ function qs(params: Record<string, string | number | undefined | null>): string 
 
 /** Map server-owned action routes onto Next.js pages. */
 export function resolveNotificationHref(route: string | undefined | null, type?: string): string {
+  if (type === "email_verified") return "/profiel";
+  if (type === "account_welcome") return "/mijn-voordelen";
+  // Never turn protocol-relative or backslash-normalized input into an external link.
+  if (route && (!route.startsWith("/") || route.startsWith("//") || /[\\\x00-\x20]/.test(route))) route = null;
   if (!route) {
     if (type?.startsWith("workspace_") || type === "offer_published" || type === "offer_expiring" || type === "commission_changed" || type === "integration_attention" || type === "merchant_attention") {
       return "/dashboard";
@@ -58,10 +62,18 @@ export function resolveNotificationHref(route: string | undefined | null, type?:
     if (type?.includes("admin") || type === "workspace_review_required" || type === "ai_support_escalated" || type === "affiliate_import_failed" || type?.includes("notification_")) {
       return "/app/platform/notifications";
     }
+    if (type?.startsWith("voucher_")) return "/vouchers";
+    if (type?.startsWith("cashback_")) return "/transacties";
     return "/mijn-voordelen";
   }
 
-  if (route.startsWith("/app/benefits")) return route.replace("/app/benefits", "/mijn-voordelen");
+  if (/^\/(?:app\/benefits|mijn-voordelen)(?:\?|$)/.test(route)) {
+    const url = new URL(route, "https://shopbonus.local");
+    const tab = url.searchParams.get("tab");
+    const destination = url.searchParams.has("voucher") || tab === "vouchers" ? "/vouchers" : tab === "transacties" ? "/transacties" : tab === "aankopen" ? "/aankopen" : "/mijn-voordelen";
+    url.searchParams.delete("tab");
+    return destination + url.search + url.hash;
+  }
   if (route.startsWith("/app/platform")) return "/app/platform/notifications";
   if (route.startsWith("/app/workspaces")) {
     const url = new URL(route, "https://shopbonus.local");
@@ -112,13 +124,13 @@ export function formatRelativeTime(iso: string, locale: Locale | string = "nl"):
   if (Number.isNaN(date.getTime())) return "";
   const now = Date.now();
   const diffSec = Math.round((date.getTime() - now) / 1000);
-  const rtf = new Intl.RelativeTimeFormat(locale === "en" ? "en" : "nl", { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat(locale === "de" ? "de" : locale === "en" ? "en" : "nl", { numeric: "auto" });
   const abs = Math.abs(diffSec);
   if (abs < 60) return rtf.format(diffSec, "second");
   if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
   if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), "hour");
   if (abs < 604800) return rtf.format(Math.round(diffSec / 86400), "day");
-  return date.toLocaleDateString(locale === "en" ? "en-GB" : "nl-NL", {
+  return date.toLocaleDateString(locale === "de" ? "de-DE" : locale === "en" ? "en-GB" : "nl-NL", {
     day: "numeric",
     month: "short",
     hour: "2-digit",

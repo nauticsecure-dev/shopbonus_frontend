@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Eyebrow } from "@/components/Cards";
 import SupportChatPanel from "@/components/SupportChatPanel";
-import ConsumerPointsOverview from "@/components/ConsumerPointsOverview";
 import { ApiError } from "@/lib/api";
 import {
   createDispute,
@@ -17,7 +15,6 @@ import {
   type ConsumerVoucher,
   type DisputeReason,
   type LedgerEntry,
-  type LedgerFilter,
 } from "@/lib/benefits";
 import { fetchConsumerDashboard, type ConsumerDashboard } from "@/lib/dashboard";
 import { formatMinor, formatNlDate } from "@/lib/money";
@@ -28,7 +25,7 @@ import { useSession } from "@/store/SessionContext";
 import { useShopBonus } from "@/store/ShopBonusContext";
 
 type VoucherFilter = "alle" | "actief" | "used" | "verlopen" | "geannuleerd";
-type TxFilter = "all" | "earned" | "spent" | "adjustments" | "holds";
+type TxFilter = "all" | "earned" | "spent" | "adjustments";
 type BenefitsTab = "vouchers" | "transacties" | "aankopen";
 
 function signedMinorLabel(amountMinor: number, sign?: "credit" | "debit", intlLocale = "nl-NL"): string {
@@ -89,6 +86,7 @@ export default function MijnVoordelenPage() {
 }
 
 function MijnVoordelenInner() {
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { locale, dictionary: c, intlLocale } = useLocale();
@@ -102,16 +100,14 @@ function MijnVoordelenInner() {
   const { session, ready: sessionReady } = useSession();
   const {
     availableMinor,
-    reservedMinor,
-    pendingMinor,
     totalEarnedMinor,
     totalSpentMinor,
-    savingsGoal,
     walletReady,
     walletError,
     financialRevision,
     apiMode,
     apiVouchers,
+    voucherStatus,
     vouchers: demoVouchers,
     transactions: demoTransactions,
     refreshWallet,
@@ -121,12 +117,9 @@ function MijnVoordelenInner() {
     pushToast,
   } = useShopBonus();
 
+  const focusedVoucher = searchParams.get("voucher");
   const tabParam = searchParams.get("tab");
-  const initialTab: BenefitsTab =
-    tabParam === "transacties" || tabParam === "aankopen" || tabParam === "vouchers"
-      ? tabParam
-      : "vouchers";
-  const [tab, setTab] = useState<BenefitsTab>(initialTab);
+  const tab: BenefitsTab = pathname === "/transacties" ? "transacties" : pathname === "/aankopen" ? "aankopen" : "vouchers";
   const [filter, setFilter] = useState<VoucherFilter>("alle");
   const [txFilter, setTxFilter] = useState<TxFilter>("all");
   const [txQuery, setTxQuery] = useState("");
@@ -134,6 +127,7 @@ function MijnVoordelenInner() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [ledgerMeta, setLedgerMeta] = useState({ current_page: 1, last_page: 1, per_page: 25, total: 0 });
   const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerLoaded, setLedgerLoaded] = useState(false);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
   const [ledgerMayBeStale, setLedgerMayBeStale] = useState(false);
   const ledgerReqId = useRef(0);
@@ -141,14 +135,12 @@ function MijnVoordelenInner() {
   const [affiliateRows, setAffiliateRows] = useState<AffiliateActivityItem[]>([]);
   const [affiliateNotice, setAffiliateNotice] = useState<string | null>(null);
   const [affiliateLoading, setAffiliateLoading] = useState(false);
-  const [affiliateEpoch, setAffiliateEpoch] = useState(0);
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportVoucher, setSupportVoucher] = useState<ConsumerVoucher | null>(null);
   const [conditionsId, setConditionsId] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
-  const [dashboardEpoch, setDashboardEpoch] = useState(0);
   const dashboardScope = `${session?.user.id ?? ""}:${locale}`;
-  const dashboardKey = `${dashboardScope}:${financialRevision}:${dashboardEpoch}`;
+  const dashboardKey = `${dashboardScope}:${financialRevision}`;
   const [dashboardResult, setDashboardResult] = useState<{
     scope: string;
     key: string;
@@ -156,8 +148,6 @@ function MijnVoordelenInner() {
     status: "success" | "error";
   } | null>(null);
   const dashboard = apiMode && dashboardResult?.scope === dashboardScope ? dashboardResult.data : null;
-  const dashboardLoading = apiMode && dashboardResult?.key !== dashboardKey;
-  const dashboardError = apiMode && dashboardResult?.key === dashboardKey && dashboardResult.status === "error";
   const [detail, setDetail] = useState<ConsumerVoucher | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [disputeVoucher, setDisputeVoucher] = useState<ConsumerVoucher | null>(null);
@@ -169,17 +159,17 @@ function MijnVoordelenInner() {
   useEffect(() => {
     if (!sessionReady) return;
     if (!session) {
-      router.replace(`/account?mode=login&next=${encodeURIComponent("/mijn-voordelen")}`);
+      router.replace(`/inloggen?next=${encodeURIComponent(pathname + (searchParams.size ? "?" + searchParams.toString() : ""))}`);
     }
-  }, [sessionReady, session, router]);
+  }, [sessionReady, session, router, searchParams, pathname]);
 
   useEffect(() => {
-    const next =
-      tabParam === "transacties" || tabParam === "aankopen" || tabParam === "vouchers"
-        ? tabParam
-        : null;
-    if (next && next !== tab) setTab(next);
-  }, [tabParam, tab]);
+    if (pathname !== "/mijn-voordelen" || !tabParam) return;
+    const target = focusedVoucher ? "vouchers" : tabParam === "transacties" || tabParam === "aankopen" ? tabParam : "vouchers";
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("tab");
+    router.replace(`/${target}${params.size ? `?${params}` : ""}`, { scroll: false });
+  }, [pathname, tabParam, focusedVoucher, searchParams, router]);
 
   useEffect(() => {
     if (!session?.user || !apiMode) return;
@@ -209,7 +199,8 @@ function MijnVoordelenInner() {
     try {
       const res = await fetchTransactions(
         {
-          filter: txFilter as LedgerFilter,
+          filter: txFilter === "all" ? "posted" : txFilter,
+          unit: "eur_credit",
           q: txQuery.trim() || undefined,
           page: txPage,
           per_page: 25,
@@ -219,6 +210,7 @@ function MijnVoordelenInner() {
       if (reqId !== ledgerReqId.current) return;
       setLedger(res.data);
       setLedgerMeta(res.meta);
+      setLedgerLoaded(true);
       setLedgerMayBeStale(false);
     } catch (err) {
       if (reqId !== ledgerReqId.current) return;
@@ -236,18 +228,20 @@ function MijnVoordelenInner() {
   }, [apiMode, txFilter, txQuery, txPage, locale, pushToast, c]);
 
   useEffect(() => {
-    if (tab === "transacties" && apiMode) void loadLedger();
+    if (tab !== "transacties" || !apiMode) return;
+    const timer = window.setTimeout(() => void loadLedger(), 0);
+    return () => {
+      window.clearTimeout(timer);
+      ledgerReqId.current += 1;
+    };
   }, [tab, apiMode, loadLedger, financialRevision]);
-
-  useEffect(() => {
-    if (financialRevision > 0) setAffiliateEpoch((n) => n + 1);
-  }, [financialRevision]);
 
   useEffect(() => {
     if (tab !== "aankopen" || !apiMode) return;
     let cancelled = false;
-    setAffiliateLoading(true);
-    void fetchAffiliateActivity(locale)
+    const timer = window.setTimeout(() => {
+      setAffiliateLoading(true);
+      void fetchAffiliateActivity(locale)
       .then((res) => {
         if (cancelled) return;
         setAffiliateRows(res.data);
@@ -265,10 +259,12 @@ function MijnVoordelenInner() {
       .finally(() => {
         if (!cancelled) setAffiliateLoading(false);
       });
+    }, 0);
     return () => {
+      window.clearTimeout(timer);
       cancelled = true;
     };
-  }, [tab, apiMode, locale, pushToast, c, affiliateEpoch]);
+  }, [tab, apiMode, locale, pushToast, c, financialRevision]);
 
   useEffect(() => {
     if (!apiMode) return;
@@ -306,12 +302,22 @@ function MijnVoordelenInner() {
   );
 
   useEffect(() => {
-    const focus = searchParams.get("voucher");
-    if (focus && apiMode && session?.user) {
-      setTab("vouchers");
-      void openDetail(focus);
-    }
-  }, [searchParams, apiMode, session?.user, openDetail]);
+    if (!focusedVoucher || !apiMode || !session?.user) return;
+    const timer = window.setTimeout(() => void openDetail(focusedVoucher), 0);
+    return () => window.clearTimeout(timer);
+  }, [focusedVoucher, apiMode, session?.user, openDetail]);
+
+  const focusedTransaction = searchParams.get("transaction");
+  useEffect(() => {
+    if (!focusedTransaction || tab !== "transacties" || !apiMode || !session?.user) return;
+    let cancelled = false;
+    void fetchTransaction(focusedTransaction, locale).then((entry) => {
+      if (!cancelled) setSelectedTx(entry);
+    }).catch((error) => {
+      if (!cancelled) pushToast({ title: c.benefitsDetailError, message: error instanceof ApiError ? error.message : c.benefitsRetryHint, kind: "error" });
+    });
+    return () => { cancelled = true; };
+  }, [focusedTransaction, tab, apiMode, session?.user, locale, pushToast, c]);
 
   const shownApi = useMemo(() => {
     if (filter === "alle") return apiVouchers;
@@ -327,11 +333,10 @@ function MijnVoordelenInner() {
     return demoVouchers.filter((v) => v.status !== "active");
   }, [demoVouchers, filter]);
 
-  const goalTarget = savingsGoal && typeof savingsGoal === "object" && "target_minor" in savingsGoal
-    ? Number((savingsGoal as { target_minor: number }).target_minor)
-    : null;
-  const progress =
-    goalTarget && goalTarget > 0 ? Math.min(100, Math.round((availableMinor / goalTarget) * 100)) : null;
+  const activeVoucherCount = apiMode
+    ? (voucherStatus === "ready" ? apiVouchers.filter((v) => v.status === "ACTIVE").length : dashboard?.vouchers.issued)
+    : demoVouchers.filter((v) => v.status === "active").length;
+  const showDiscover = activeVoucherCount === 0;
 
   const openSupport = (v?: ConsumerVoucher) => {
     setSupportVoucher(v ?? null);
@@ -394,7 +399,7 @@ function MijnVoordelenInner() {
     }
   };
 
-  if (!sessionReady || (session && !walletReady && !walletError && apiMode)) {
+  if (!sessionReady) {
     return (
       <div className="grid min-h-[50vh] place-items-center text-muted" role="status">{c.benefitsLoading}</div>
     );
@@ -412,58 +417,29 @@ function MijnVoordelenInner() {
       <div className="page-blob right-[-160px] top-[120px] h-[30rem] w-[30rem] bg-sky-100" />
 
       <section className="relative mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
-        <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div className="grid items-center gap-5 lg:grid-cols-2">
           <div>
-            <Eyebrow>{c.benefitsEyebrow}</Eyebrow>
-            <h1 className="mt-2 text-[clamp(2.6rem,6vw,4.2rem)] font-black leading-none tracking-tight">
+            <h1 className="text-[clamp(2.4rem,6vw,4rem)] font-black leading-none tracking-tight">
               <span className="text-navy">{c.benefitsTitlePrefix}</span> <span className="text-brand">{c.benefitsTitleAccent}</span>
             </h1>
-            <p className="mt-4 max-w-md text-lg text-muted">
-              {dashboard?.first_name
-                ? c.benefitsWelcome.replace("{name}", dashboard.first_name)
-                : ""}{c.benefitsIntroduction}</p>
-            {dashboard && (
+            <p className="mt-3 max-w-md text-muted">{c.benefitsIntroduction}</p>
+            {activeVoucherCount !== undefined && (
               <p className="mt-2 text-sm font-semibold text-muted">
-                {dashboard.vouchers.issued}{" "}{c.benefitsActiveVouchers}{dashboard.vouchers.expiring_within_30_days > 0
-                  ? c.benefitsExpiringCount.replace("{count}", String(dashboard.vouchers.expiring_within_30_days))
-                  : ""}
+                {activeVoucherCount.toLocaleString(intlLocale)}{" "}
+                {activeVoucherCount === 1 ? c.benefitsActiveVoucher : c.benefitsActiveVouchers}
               </p>
             )}
-            <nav
-              aria-label={c.benefitsNavigation}
-              className="mt-4 flex flex-wrap gap-2 text-sm font-extrabold"
-            >
-              {(
-                [
-                  ["vouchers", c.benefitsVouchers],
-                  ["transacties", c.benefitsPoints],
-                  ["aankopen", c.benefitsPurchases],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setTab(key);
-                    router.replace(`/mijn-voordelen?tab=${key}`, { scroll: false });
-                  }}
-                  className={`rounded-full px-4 py-2 ${
-                    tab === key ? "bg-brand text-white" : "bg-white text-navy shadow-sm hover:bg-brand-light"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-              <Link href="/webshops" className="rounded-full bg-white px-4 py-2 text-navy shadow-sm hover:bg-brand-light">{c.benefitsDiscover}</Link>
-              <Link href="/profiel" className="rounded-full bg-white px-4 py-2 text-navy shadow-sm hover:bg-brand-light">{c.benefitsProfile}</Link>
-            </nav>
+            {showDiscover && (
+              <Link href="/webshops" className="mt-4 inline-flex rounded-full bg-brand px-5 py-2.5 text-sm font-extrabold text-white hover:bg-brand/90">
+                {c.benefitsDiscover}
+              </Link>
+            )}
           </div>
 
-          <div className="rounded-[1.75rem] border border-blue-100 bg-white/80 p-6 shadow-[0_18px_50px_-20px_rgba(11,116,255,0.4)] backdrop-blur sm:p-7">
-            <ConsumerPointsOverview key={`${session.user.id}:${locale}`} />
+          <section aria-labelledby="benefits-wallet-title" aria-busy={apiMode && !walletReady && !walletError} className="rounded-[1.75rem] border border-blue-100 bg-white/80 p-5 shadow-[0_18px_50px_-20px_rgba(11,116,255,0.4)] backdrop-blur sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-4">
-                <span className="grid h-[72px] w-[72px] place-items-center rounded-3xl bg-gradient-to-br from-[#2b94ff] to-[#0b63ee] text-white shadow-lg">
+                <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center sm:size-14 rounded-3xl bg-gradient-to-br from-[#2b94ff] to-[#0b63ee] text-white shadow-lg">
                   <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
                     <path d="M4 9.5A2.5 2.5 0 0 1 6.5 7h9L18 4.5A1.5 1.5 0 0 1 20.4 6l-1.2 4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
                     <rect x="3" y="9" width="18" height="11" rx="3" fill="white" opacity="0.25" />
@@ -472,58 +448,19 @@ function MijnVoordelenInner() {
                   </svg>
                 </span>
                 <div>
-                  <p className="font-bold text-navy">{c.benefitsCredit}</p>
-                  <p className="text-[44px] font-black leading-none tracking-tight text-navy">
-                    {formatMoney(availableMinor)}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-navy">
-                    {formatMoney(availableMinor)}{" "}{c.benefitsAvailableSuffix}</p>
-                  <p className="mt-1 text-sm text-muted">{c.benefitsWalletExplanation}</p>
+                  <h2 id="benefits-wallet-title" className="font-bold text-navy">{c.benefitsCredit}</h2>
+                  {(!apiMode || walletReady) && (
+                    <p className="mt-1">
+                      <span className="block text-4xl font-black leading-none tracking-tight text-navy">{formatMoney(availableMinor)}</span>
+                      <span className="mt-1 block text-sm text-muted">{c.benefitsAvailableSuffix}</span>
+                    </p>
+                  )}
+                  {apiMode && !walletReady && !walletError && (
+                    <p role="status" className="mt-2 text-sm text-muted">{c.benefitsLoadingShort}</p>
+                  )}
                 </div>
               </div>
-              <span className="hidden rotate-[8deg] rounded-2xl bg-gradient-to-br from-[#2b94ff] to-[#0b63ee] p-4 text-3xl font-black text-white shadow-lg sm:block">
-                %
-              </span>
             </div>
-
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              <div className="rounded-2xl bg-mist/80 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">{c.benefitsAvailable}</p>
-                <p className="mt-1 text-lg font-black text-navy">{formatMoney(availableMinor)}</p>
-              </div>
-              <div className="rounded-2xl bg-mist/80 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">{c.benefitsEarnedTotal}</p>
-                <p className="mt-1 text-lg font-black text-navy">{formatMoney(totalEarnedMinor)}</p>
-              </div>
-              <div className="rounded-2xl bg-mist/80 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">{c.benefitsSpentTotal}</p>
-                <p className="mt-1 text-lg font-black text-navy">{formatMoney(totalSpentMinor)}</p>
-              </div>
-            </div>
-            {pendingMinor > 0 && (
-              <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-sm font-semibold text-navy">
-                {formatMoney(pendingMinor)}{" "}{c.benefitsPending}</p>
-            )}
-            {reservedMinor > 0 && (
-              <p className="mt-3 rounded-2xl bg-blue-50 px-3 py-2 text-sm font-semibold text-navy">
-                {formatMoney(reservedMinor)}{" "}{c.benefitsReserved}</p>
-            )}
-
-            {progress !== null && goalTarget !== null && (
-              <div className="mt-5 flex items-center gap-3">
-                <p className="whitespace-nowrap text-sm font-bold text-navy">
-                  {formatMoney(Math.min(availableMinor, goalTarget))}{" "}
-                  <span className="font-medium text-muted">{c.benefitsOf}{" "}{formatMoney(goalTarget)}</span>
-                </p>
-                <div className="h-3 flex-1 overflow-hidden rounded-full bg-blue-100">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#2b94ff] to-[#0b63ee] transition-all"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <p className="text-sm font-bold text-navy">{progress}%</p>
-              </div>
-            )}
 
             {walletError && (
               <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -534,57 +471,48 @@ function MijnVoordelenInner() {
                 >{c.benefitsRetryShort}</button>
               </div>
             )}
-          </div>
+          </section>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-3" role="tablist" aria-label={c.benefitsSections}>
-          <button
-            role="tab"
-            aria-selected={tab === "vouchers"}
-            onClick={() => {
-              setTab("vouchers");
-              router.replace("/mijn-voordelen?tab=vouchers", { scroll: false });
-            }}
-            className={`flex items-center gap-2.5 rounded-full px-8 py-3.5 font-extrabold transition ${
+        <nav className="mt-5 flex flex-wrap gap-2 sm:gap-3" aria-label={c.benefitsSections}>
+          <Link
+            href="/vouchers"
+            scroll={false}
+            aria-current={tab === "vouchers" ? "page" : undefined}
+            className={`flex items-center gap-2 rounded-full px-3 py-2.5 text-sm sm:px-6 sm:py-3 sm:text-base font-extrabold transition ${
               tab === "vouchers" ? "bg-brand text-white shadow-[0_12px_28px_-10px_rgba(11,116,255,0.7)]" : "bg-white text-navy shadow-sm hover:bg-brand-light"
             }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z" stroke="currentColor" strokeWidth="2" />
               <path d="M13 7v2m0 6v2m0-8.5v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="1 3" />
-            </svg>{c.benefitsVouchers}</button>
-          <button
-            role="tab"
-            aria-selected={tab === "transacties"}
-            onClick={() => {
-              setTab("transacties");
-              router.replace("/mijn-voordelen?tab=transacties", { scroll: false });
-            }}
-            className={`flex items-center gap-2.5 rounded-full px-8 py-3.5 font-extrabold transition ${
+            </svg>{c.benefitsVouchers}</Link>
+          <Link
+            href="/transacties"
+            scroll={false}
+            aria-current={tab === "transacties" ? "page" : undefined}
+            className={`flex items-center gap-2 rounded-full px-3 py-2.5 text-sm sm:px-6 sm:py-3 sm:text-base font-extrabold transition ${
               tab === "transacties" ? "bg-brand text-white shadow-[0_12px_28px_-10px_rgba(11,116,255,0.7)]" : "bg-white text-navy shadow-sm hover:bg-brand-light"
             }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <rect x="4" y="3" width="16" height="18" rx="2.5" stroke="currentColor" strokeWidth="2" />
               <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>{c.benefitsTransactions}</button>
-          <button
-            role="tab"
-            aria-selected={tab === "aankopen"}
-            onClick={() => {
-              setTab("aankopen");
-              router.replace("/mijn-voordelen?tab=aankopen", { scroll: false });
-            }}
-            className={`flex items-center gap-2.5 rounded-full px-8 py-3.5 font-extrabold transition ${
+            </svg>{c.benefitsTransactions}</Link>
+          <Link
+            href="/aankopen"
+            scroll={false}
+            aria-current={tab === "aankopen" ? "page" : undefined}
+            className={`flex items-center gap-2 rounded-full px-3 py-2.5 text-sm sm:px-6 sm:py-3 sm:text-base font-extrabold transition ${
               tab === "aankopen" ? "bg-brand text-white shadow-[0_12px_28px_-10px_rgba(11,116,255,0.7)]" : "bg-white text-navy shadow-sm hover:bg-brand-light"
             }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M4 7h16M6 7l1.2 12h9.6L18 7M9 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>{c.benefitsAffiliatePurchases}</button>
-        </div>
+            </svg>{c.benefitsAffiliatePurchases}</Link>
+        </nav>
 
-        <div className="mt-6 grid gap-6 pb-16 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <div className={"mt-6 grid gap-6 pb-16 " + (tab === "vouchers" && dashboard?.relevant_offers?.length ? "lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start" : "")}>
           <div className="min-w-0">
           {tab === "vouchers" ? (
             <>
@@ -611,11 +539,10 @@ function MijnVoordelenInner() {
               </div>
 
               <div className="space-y-5">
-                {apiMode && shownApi.length === 0 && (
+                {apiMode && voucherStatus === "ready" && shownApi.length === 0 && (
                   <div className="rounded-3xl bg-white p-12 text-center shadow-sm">
                     <h3 className="text-xl font-black text-navy">{c.benefitsEmptyVouchers}</h3>
                     <p className="mt-2 text-muted">{c.benefitsFirstVoucher}</p>
-                    <Link href="/webshops" className="mt-5 inline-block rounded-2xl bg-brand px-6 py-3 font-extrabold text-white">{c.benefitsDiscover}</Link>
                   </div>
                 )}
 
@@ -633,7 +560,6 @@ function MijnVoordelenInner() {
                         <div className="flex flex-col gap-5 p-5 sm:flex-row">
                           <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-sky-100 to-blue-200 sm:h-auto sm:min-h-[190px] sm:w-52">
                             {v.webshop.logo_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={v.webshop.logo_url}
                                 alt=""
@@ -789,6 +715,7 @@ function MijnVoordelenInner() {
                   })}
               </div>
 
+              {!showDiscover && (
               <Link
                 href="/webshops"
                 className="mt-8 flex items-center gap-3 rounded-2xl bg-brand-light/70 p-4 transition hover:bg-brand-light"
@@ -806,6 +733,7 @@ function MijnVoordelenInner() {
                   </svg>
                 </span>
               </Link>
+              )}
             </>
           ) : tab === "aankopen" ? (
             <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
@@ -856,8 +784,18 @@ function MijnVoordelenInner() {
               <div className="border-b border-slate-100 px-6 py-5">
                 <h3 className="text-lg font-black text-navy">{c.benefitsAllTransactions}</h3>
                 <p className="text-sm text-muted">
-                  {apiMode ? c.benefitsTransactionCount.replace("{count}", String(ledgerMeta.total)) : c.benefitsDemoCount.replace("{count}", String(demoTransactions.length))}
+                  {apiMode
+                    ? ledgerLoaded && !ledgerLoading
+                      ? c.benefitsTransactionCount.replace("{count}", String(ledgerMeta.total))
+                      : c.benefitsLoadingShort
+                    : c.benefitsDemoCount.replace("{count}", String(demoTransactions.length))}
                 </p>
+                {walletReady && (
+                  <p className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
+                    <span>{c.benefitsEarnedTotal}{" "}<strong className="text-navy">{formatMoney(totalEarnedMinor)}</strong></span>
+                    <span>{c.benefitsSpentTotal}{" "}<strong className="text-navy">{formatMoney(totalSpentMinor)}</strong></span>
+                  </p>
+                )}
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="flex flex-wrap gap-2">
                     {(
@@ -865,7 +803,6 @@ function MijnVoordelenInner() {
                         ["all", c.benefitsAllFilters],
                         ["earned", c.benefitsEarned],
                         ["spent", c.benefitsSpent],
-                        ["holds", c.benefitsHolds],
                         ["adjustments", c.benefitsAdjustments],
                       ] as const
                     ).map(([k, label]) => (
@@ -913,7 +850,7 @@ function MijnVoordelenInner() {
                     </div>
                   )}
                   {ledgerLoading && <p className="px-6 py-8 text-sm text-muted">{c.benefitsLoadingShort}</p>}
-                  {!ledgerLoading && !ledgerError && ledger.length === 0 && (
+                  {ledgerLoaded && !ledgerLoading && !ledgerError && ledger.length === 0 && (
                     <p className="px-6 py-8 text-sm text-muted">{c.benefitsEmptyTransactions}</p>
                   )}
                   {ledger.map((t) => {
@@ -938,9 +875,14 @@ function MijnVoordelenInner() {
                             {t.subtitle || t.merchant_name || "—"} • {formatDate(t.created_at)}
                           </p>
                         </div>
+                        <div className="shrink-0 text-right">
                         <p className={`text-lg font-black ${credit ? "text-green-600" : "text-navy"}`}>
                           {signedReward(t.amount, t.unit, t.sign)}
                         </p>
+                          {typeof t.available_after === "number" && (
+                            <p className="text-xs text-muted">{c.benefitsBalanceAfter} {formatMoney(t.available_after)}</p>
+                          )}
+                        </div>
                       </button>
                     );
                   })}
@@ -987,50 +929,12 @@ function MijnVoordelenInner() {
           )}
           </div>
 
-          <aside className="space-y-5 lg:sticky lg:top-24">
-            <section className="rounded-3xl bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-black text-navy">{c.benefitsActivity}</h2>
-              {dashboardLoading && (
-                <p role="status" className="mt-3 text-sm text-muted">{c.benefitsActivityLoading}</p>
-              )}
-              {dashboardError && (
-                <div role="alert" className="mt-3 space-y-2 text-sm text-red-700">
-                  <p>{c.benefitsActivityError}</p>
-                  <button type="button" onClick={() => setDashboardEpoch((n) => n + 1)} className="font-extrabold text-brand hover:underline">
-                    {c.benefitsRetry}
-                  </button>
-                </div>
-              )}
-              {(dashboardLoading || dashboardError) && dashboard && (
-                <p className="mt-2 text-sm text-muted">{c.benefitsActivityStale}</p>
-              )}
-              {!apiMode && <p className="mt-3 text-sm text-muted">{c.benefitsActivityUnavailable}</p>}
-              {!dashboardLoading && !dashboardError && dashboard && dashboard.recent_activity.length === 0 && (
-                <p className="mt-3 text-sm text-muted">{c.benefitsEmptyActivity}</p>
-              )}
-              {dashboard && dashboard.recent_activity.length > 0 && (
-                <ul className="mt-4 space-y-3">
-                  {dashboard!.recent_activity.slice(0, 6).map((row) => (
-                    <li key={row.id} className="flex items-start justify-between gap-3 text-sm">
-                      <span>
-                        <span className="font-bold text-navy">{row.reason || row.type}</span>
-                        {row.at && (
-                          <span className="mt-0.5 block text-xs text-muted">{formatDate(row.at)}</span>
-                        )}
-                      </span>
-                      <strong className={row.amount >= 0 ? "text-green-600" : "text-navy"}>
-                        {signedReward(row.amount, row.unit)}
-                      </strong>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-            {(dashboard?.relevant_offers?.length ?? 0) > 0 && (
+          {tab === "vouchers" && dashboard && dashboard.relevant_offers?.length > 0 && (
+            <aside className="lg:sticky lg:top-24">
               <section className="rounded-3xl bg-white p-5 shadow-sm">
                 <h2 className="text-lg font-black text-navy">{c.benefitsOffers}</h2>
                 <ul className="mt-4 space-y-3">
-                  {dashboard!.relevant_offers.slice(0, 5).map((offer) => (
+                  {dashboard.relevant_offers.slice(0, 5).map((offer) => (
                     <li key={offer.slug || offer.title}>
                       {offer.slug ? (
                         <Link
@@ -1051,8 +955,8 @@ function MijnVoordelenInner() {
                   ))}
                 </ul>
               </section>
-            )}
-          </aside>
+            </aside>
+          )}
         </div>
       </section>
 

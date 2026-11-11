@@ -24,55 +24,16 @@ const activity = [{ id: "reward-1", type: "credit", reason: "Cashback", amount: 
 const dashboard = (rows = activity) => ({ first_name: "Anna", vouchers: { issued: 0, expiring_within_30_days: 0 }, recent_vouchers: [], recent_activity: rows, relevant_offers: [{ slug: "offer", title: "Test offer" }] });
 
 for (const locale of ["nl", "en"] as const) {
-  test(`${locale}: activity loading, failure, recovery and localized history`, async ({ page }) => {
+  test(`${locale}: failed dashboard leaves one usable wallet and one empty-state CTA`, async ({ page }) => {
     await mockConsumer(page, locale);
-    const recent = page.locator("aside section").first();
-    let fail = true;
-    let release!: () => void;
-    const gate = new Promise<void>(resolve => { release = resolve; });
-    await page.route("**/api/v1/consumer/dashboard", async route => {
-      await gate;
-      return fail ? route.fulfill({ status: 503, json: { message: "Unavailable" } }) : route.fulfill({ json: { data: dashboard() } });
-    });
+    await page.route("**/api/v1/consumer/dashboard", route => route.fulfill({ status: 503, json: { message: "Unavailable" } }));
     await page.goto("/mijn-voordelen");
-    const loading = locale === "nl" ? "Recente activiteit laden…" : "Loading recent activity…";
-    const empty = locale === "nl" ? "Nog geen recente walletbewegingen." : "No recent wallet activity yet.";
-    await expect(page.getByText(loading, { exact: true })).toBeVisible();
-    await expect(recent.getByText(empty, { exact: true })).toHaveCount(0);
-    release();
-    const error = locale === "nl" ? "Recente activiteit kon niet worden geladen." : "Could not load recent activity.";
-    await expect(page.getByRole("alert").filter({ hasText: error })).toBeVisible();
-    await expect(recent.getByText(empty, { exact: true })).toHaveCount(0);
-    fail = false;
-    // Focus recovery may remove Retry between the error assertion and the action.
-    // Either an explicit retry or already-recovered activity is valid; success is
-    // asserted independently below so failed recovery still fails the test.
-    await Promise.any([
-      page.locator("aside").getByRole("button", { name: locale === "nl" ? "Opnieuw proberen" : "Try again", exact: true }).dispatchEvent("click", { timeout: 2000 }),
-      recent.getByText("Cashback", { exact: true }).waitFor({ state: "visible" }),
-    ]);
-    await expect(recent.getByText("Cashback", { exact: true })).toBeVisible();
-    await expect(recent.getByText(locale === "nl" ? "12 okt 2026" : "12 Oct 2026", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: locale === "nl" ? "Relevante aanbiedingen" : "Relevant offers" })).toBeVisible();
-    await expect(page.getByText(locale === "nl" ? /€\s?2,75 cashback in behandeling/ : /€2.75 pending cashback/)).toBeVisible();
-    await expect(page.getByText(locale === "nl" ? /€\s?10,00 beschikbaar/ : /€10.00 available/)).toBeVisible();
-    // Focus recovery uses the actual wallet refresh/revision path, with mocked HTTP responses.
-    fail = true;
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await expect(page.getByRole("alert").filter({ hasText: error })).toBeVisible();
-    await expect(recent.getByText("Cashback", { exact: true })).toBeVisible();
-    await expect(recent.getByText(locale === "nl" ? "Eerder geladen activiteit kan verouderd zijn." : "Previously loaded activity may be out of date.")).toBeVisible();
-    await expect(recent.getByText(empty, { exact: true })).toHaveCount(0);
+    const wallet = page.getByRole("region", { name: locale === "nl" ? "Mijn ShopBonus-tegoed" : "My ShopBonus credit", exact: true });
+    await expect(wallet.getByText(locale === "nl" ? /€\s?10,00/ : /€10.00/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: locale === "nl" ? "Recente activiteit" : "Recent activity", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: locale === "nl" ? "Ontdek webshops" : "Discover shops", exact: true })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: locale === "nl" ? "Profiel" : "Profile", exact: true })).toHaveCount(0);
   });
-
-  test(`${locale}: only a successful empty response displays empty activity`, async ({ page }) => {
-    await mockConsumer(page, locale);
-    await page.route("**/api/v1/consumer/dashboard", route => route.fulfill({ json: { data: dashboard([]) } }));
-    await page.goto("/mijn-voordelen");
-    await expect(page.locator("aside").getByText(locale === "nl" ? "Nog geen recente walletbewegingen." : "No recent wallet activity yet.", { exact: true })).toBeVisible();
-    await expect(page.locator("aside").getByRole("alert")).toHaveCount(0);
-  });
-
   test(`${locale}: voucher details and transaction history on mobile`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockConsumer(page, locale);
@@ -80,13 +41,13 @@ for (const locale of ["nl", "en"] as const) {
     await page.route("**/api/v1/consumer/dashboard", route => route.fulfill({ json: { data: dashboard() } }));
     await page.route(/\/api\/v1\/consumer\/vouchers(?:\?.*)?$/, route => route.fulfill({ json: { data: [voucher] } }));
     await page.route("**/api/v1/consumer/vouchers/v1", route => route.fulfill({ json: { data: voucher } }));
-    await page.route("**/api/v1/consumer/wallet/transactions?*", route => route.fulfill({ json: { data: [{ id: "t1", title: "Cashback", subtitle: "Test shop", type: "credit", status: "posted", sign: "credit", amount_minor: 250, created_at: "2026-10-12T12:00:00Z" }], meta: { total: 1, current_page: 1, last_page: 1 } } }));
+    await page.route("**/api/v1/consumer/wallet/transactions?*", route => route.fulfill({ json: { data: [{ id: "t1", title: "Cashback", subtitle: "Test shop", type: "credit", status: "posted", sign: "credit", amount: 250, unit: "eur_credit", available_after: 1000, amount_minor: 250, created_at: "2026-10-12T12:00:00Z" }], meta: { total: 1, current_page: 1, last_page: 1 } } }));
     await page.goto("/mijn-voordelen");
     await page.getByRole("button", { name: locale === "nl" ? "Bekijk details" : "View details", exact: true }).click();
     await expect(page.getByText(locale === "nl" ? "Uitgegeven" : "Issued", { exact: true })).toBeVisible();
     await expect(page.getByText(locale === "nl" ? "12 okt 2026" : "12 Oct 2026", { exact: true }).last()).toBeVisible();
     await page.getByRole("button", { name: locale === "nl" ? "Sluiten" : "Close", exact: true }).last().click();
-    await page.getByRole("tab", { name: locale === "nl" ? "Transacties" : "Transactions", exact: true }).click();
+    await page.getByRole("link", { name: locale === "nl" ? "Tegoedtransacties" : "Credit transactions", exact: true }).click();
     await expect(page.getByRole("heading", { name: locale === "nl" ? "Alle transacties" : "All transactions", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Cashback Test shop/ })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

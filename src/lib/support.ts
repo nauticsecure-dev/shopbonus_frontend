@@ -248,7 +248,7 @@ export function newIdempotencyKey(): string {
 /** Map backend action routes onto Next consumer/workspace paths. */
 export function resolveSupportActionHref(route: string): string {
   if (route.startsWith("/app/wallet") || route === "/app/wallet") return "/mijn-voordelen";
-  if (route.startsWith("/app/vouchers")) return "/mijn-voordelen?tab=vouchers";
+  if (route.startsWith("/app/vouchers")) return "/vouchers";
   if (route.startsWith("/app/support")) return route;
   const workspace = route.match(/^\/app\/workspaces\/([0-9a-hjkmnp-tv-z]{26})\/(wallet|offers|banners|integrations)$/i);
   if (workspace) {

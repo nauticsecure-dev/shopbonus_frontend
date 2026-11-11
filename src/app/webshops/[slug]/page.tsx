@@ -50,7 +50,7 @@ function cardTitle(offer: DiscoveryOfferSummary, en = false): string {
 
 function cardSummary(offer: DiscoveryOfferSummary, shopName: string, en = false): string {
   const kind = (offer.offer_kind || "") as OfferKind;
-  if (en) return kind === "combined" ? "Reveal the code, then shop through ShopBonus to earn cashback under the advertiser’s terms." : kind === "cashback" ? `Shop at ${shopName} and earn wallet credit after approval and settlement.` : "Reveal the discount code and shop. Code conditions apply.";
+  if (en) return kind === "combined" ? "Reveal the code, then shop through ShopBonus to earn voucher credit if the purchase qualifies." : kind === "cashback" ? `Eligible purchases at ${shopName} earn spendable voucher credit as soon as they are validated.` : "Reveal the discount code and shop. Code conditions apply.";
   if (kind === "cashback") {
     return offer.summary || `Shop bij ${shopName} en verdien tegoed.`;
   }
@@ -316,7 +316,7 @@ function WebshopDetail({ slug }: { slug: string }) {
           {offerCount} {pick("beschikbaar", "available")}
         </h2>
         <p className="mt-1.5 text-muted">
-          {pick(`Verdien ShopBonus-tegoed via aankopen bij ${shop.name} via de ShopBonus-link. Cashback wordt beschikbaar na goedkeuring én ontvangen netwerkbetaling.`, `Earn ShopBonus credit on purchases at ${shop.name} through the ShopBonus link. Cashback becomes available after approval and receipt of the network payment.`)}
+          {locale === "de" ? `Kaufe über den ShopBonus-Link bei ${shop.name} ein. Sobald ein berechtigter Einkauf geprüft ist, kannst du das Guthaben für Gutscheine verwenden.` : pick(`Winkel bij ${shop.name} via de ShopBonus-link. Zodra een aankoop is gevalideerd en aan de voorwaarden voldoet, kun je het tegoed direct gebruiken voor vouchers.`, `Shop at ${shop.name} through the ShopBonus link. Once an eligible purchase is validated, you can use the credit for vouchers immediately.`)}
         </p>
         {claimError && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-red-700">{claimError}</p>}
         {displayOffers.length === 0 ? (

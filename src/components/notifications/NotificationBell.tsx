@@ -33,6 +33,7 @@ export default function NotificationBell({ viewAllHref, variant = "light", class
   const { locale, dictionary: t } = useLocale();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const {
     items,
     unreadCount,
@@ -51,7 +52,10 @@ export default function NotificationBell({ viewAllHref, variant = "light", class
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
@@ -68,12 +72,12 @@ export default function NotificationBell({ viewAllHref, variant = "light", class
   }, [toast, dismissToast]);
 
   const openItem = async (notice: CentralNotification) => {
+    setOpen(false);
     try {
       if (!notice.read_at) await markRead(notice.id);
     } catch {
       /* navigate anyway */
     }
-    setOpen(false);
   };
 
   const onMarkAll = async () => {
@@ -92,6 +96,7 @@ export default function NotificationBell({ viewAllHref, variant = "light", class
   return (
     <div className={`relative ${className}`} ref={panelRef} data-testid="notification-bell">
       <button
+        ref={buttonRef}
         type="button"
         className={bellBtn}
         aria-label={
@@ -120,7 +125,7 @@ export default function NotificationBell({ viewAllHref, variant = "light", class
 
       {toast && (
         <div
-          className="absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-blue-100 bg-white p-3 shadow-xl"
+          className="fixed inset-x-3 top-[4.75rem] z-30 rounded-2xl border border-blue-100 bg-white p-3 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
           role="status"
           data-testid="notification-toast"
         >
@@ -141,7 +146,7 @@ export default function NotificationBell({ viewAllHref, variant = "light", class
 
       {open && (
         <div
-          className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-1.5rem,24rem)] overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-xl"
+          className="fixed inset-x-3 top-[4.75rem] z-40 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96"
           role="dialog"
           aria-label={t.notifications}
           data-testid="notification-dropdown"

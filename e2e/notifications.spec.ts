@@ -33,7 +33,7 @@ test("1. Consumer bell and notification center", async ({ page }) => {
   await page.getByTestId("notification-bell-button").click();
   await expect(page.getByTestId("notification-dropdown")).toBeVisible();
   await page.getByTestId("notification-view-all").click();
-  await expect(page).toHaveURL(/\/app\/notifications/);
+  await expect(page).toHaveURL(/\/meldingen/);
   await expect(page.getByTestId("notification-center")).toBeVisible();
   await expect(page.getByTestId("notification-filter-all")).toBeVisible();
   await expect(page.getByTestId("notification-filter-unread")).toBeVisible();

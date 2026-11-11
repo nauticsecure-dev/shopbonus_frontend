@@ -176,10 +176,10 @@ export function ShopBonusProvider({ children }: { children: React.ReactNode }) {
         }
         const next = applyWallet(summary);
         const points = summary.balances?.points;
-        if (points && (points.unit !== "points" || ![points.available, points.reserved, points.pending, points.total_earned, points.total_spent].every(amount => Number.isSafeInteger(amount) && amount >= 0))) {
-          throw new Error("Invalid points summary");
-        }
-        setPointsBalance(points ?? null);
+        const pointsValid = points?.unit === "points"
+          && [points.available, points.reserved, points.pending, points.total_earned, points.total_spent]
+            .every(amount => Number.isSafeInteger(amount) && amount >= 0);
+        setPointsBalance(pointsValid ? points : null);
         setVerifiedWalletOwner(owner);
         setAvailableMinor(next.availableMinor);
         setReservedMinor(next.reservedMinor);

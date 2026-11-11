@@ -59,6 +59,7 @@ export default function NotificationCenter({
   const onMarkAll = async () => {
     try {
       await markAllRead();
+      setPage(1);
       pushToast({
         title: t.notificationsUpdated,
         message: t.notificationsMarkAllDone,
