@@ -105,6 +105,10 @@ if ($probe) {
         app(OfferService::class)->transition(Offer::whereHas('currentVersion', fn ($q) => $q->where('name', 'Local points voucher'))->sole(), OfferStatus::Paused);
     } elseif ($action === 'cache-clear') {
         DiscoveryCache::flush();
+    } elseif ($action === 'dispatch-notifications') {
+        app(App\Services\Notifications\NotificationDispatcher::class)->drain();
+    } elseif ($action === 'registration-throttle-clear') {
+        app(Illuminate\Cache\RateLimiter::class)->clear(md5('identity-register'.'register-ip:127.0.0.1'));
     } elseif ($action === 'throttle-clear') {
         Illuminate\Support\Facades\Cache::forget('claims:127.0.0.1');
         Illuminate\Support\Facades\Cache::forget('claims:127.0.0.1:timer');
@@ -149,6 +153,12 @@ try {
     Artisan::call('migrate', ['--force' => true]);
     User::factory()->create(['email' => 'other@platform-local.test', 'password' => 'Local-only-2026!', 'first_name' => 'Other']);
     $owner = User::factory()->create();
+    $contactReviewer = User::factory()->create();
+    foreach ([$owner, $contactReviewer] as $contactAdmin) {
+        $contactAdmin->platformRoles()->create(['role' => 'super_admin', 'granted_via' => 'console', 'granted_at' => now()]);
+    }
+    $settings = app(App\Services\Admin\PlatformSettings::class);
+    $settings->publish($settings->submit($settings->draft($owner, 'public.support_email', 'support@platform-local.test', 'Synthetic local contact recipient'), $owner), $contactReviewer, 'Independent synthetic contact review');
     $cms = app(App\Services\Cms\CmsService::class);
     $homepage = $cms->ensureHomepage($owner->id);
     foreach (['nl', 'en'] as $locale) {
@@ -160,7 +170,7 @@ try {
     }
     App\Models\CookiePolicy::create(['version' => 'consumer-local-1', 'status' => 'published', 'created_by' => $owner->id, 'published_by' => $owner->id, 'published_at' => now(), 'requires_reconsent' => true,
         'categories' => array_map(fn ($key) => ['key' => $key, 'required' => $key === 'necessary', 'trackers' => []], ['necessary', 'preferences', 'analytics', 'marketing']),
-        'texts' => ['nl' => ['title' => 'Cookies', 'body' => 'Lokale cookiekeuzes.', 'accept_all' => 'Alles accepteren', 'reject_optional' => 'Optionele weigeren', 'customize' => 'Aanpassen'], 'en' => ['title' => 'Cookies', 'body' => 'Local cookie choices.', 'accept_all' => 'Accept all', 'reject_optional' => 'Reject optional', 'customize' => 'Customize']],
+        'texts' => ['de' => ['title' => 'Cookies', 'body' => 'Lokale Cookie-Auswahl.', 'accept_all' => 'Alle akzeptieren', 'reject_optional' => 'Optionale ablehnen', 'customize' => 'Anpassen'], 'nl' => ['title' => 'Cookies', 'body' => 'Lokale cookiekeuzes.', 'accept_all' => 'Alles accepteren', 'reject_optional' => 'Optionele weigeren', 'customize' => 'Aanpassen'], 'en' => ['title' => 'Cookies', 'body' => 'Local cookie choices.', 'accept_all' => 'Accept all', 'reject_optional' => 'Reject optional', 'customize' => 'Customize']],
     ]);
     $fixture = new class {
         use CreatesActiveWebshops;
@@ -212,7 +222,7 @@ try {
     if (! $socket) throw new RuntimeException('Cannot reserve loopback port.');
     $address = stream_socket_get_name($socket, false);
     fclose($socket);
-    $log = dirname(__DIR__).'/docs/consumer-platform-local-api.log';
+    $log = dirname(__DIR__, 2).'/qa-evidence/consumer-platform-local-api.log';
     $opcache = dirname(PHP_BINARY).'/ext/php_opcache.dll';
     $phpFlags = file_exists($opcache) ? ['-d', 'zend_extension='.$opcache, '-d', 'opcache.enable_cli=1', '-d', 'opcache.validate_timestamps=1'] : [];
     $server = proc_open([PHP_BINARY, '-d', 'xdebug.mode=off', ...$phpFlags, '-S', $address, '-t', $backend.'/public', $backend.'/public/index.php'], [0 => ['pipe', 'r'], 1 => ['file', $log, 'w'], 2 => ['file', $log, 'a']], $pipes, $backend);

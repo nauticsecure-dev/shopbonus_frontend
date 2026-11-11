@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { searchPublic, type SearchSuggestion } from "@/lib/homepage";
 import { useLocale } from "@/i18n/LocaleContext";
+import { useSession } from "@/store/SessionContext";
 
 type Props = {
   placeholder?: string;
@@ -14,6 +15,8 @@ export default function HomeSearchBar({
 }: Props) {
   const router = useRouter();
   const { locale } = useLocale();
+  const { ready, session } = useSession();
+  const canSearch = ready && !!session;
   const listId = useId();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -39,9 +42,9 @@ export default function HomeSearchBar({
     queueMicrotask(() => {
       if (ac.signal.aborted) return;
       setItems([]); setActive(-1); setOpen(false);
-      setEmpty(false); setLoading(term.length >= 2);
+      setEmpty(false); setLoading(canSearch && term.length >= 2);
     });
-    if (term.length < 2) {
+    if (!canSearch || term.length < 2) {
       return () => ac.abort();
     }
     debounceRef.current = setTimeout(() => {
@@ -65,7 +68,7 @@ export default function HomeSearchBar({
       ac.abort();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [q, locale]);
+  }, [q, locale, canSearch]);
 
   function go(href?: string) {
     setOpen(false);

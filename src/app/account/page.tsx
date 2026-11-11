@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Icon from "@/components/DashboardIcon";
 import { useShopBonus } from "@/store/ShopBonusContext";
 import { useSession } from "@/store/SessionContext";
@@ -39,13 +39,14 @@ function strengthLabel(copy: ReturnType<typeof authCopy>, label: string) {
 
 function AccountForm() {
   const params = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
   const { locale, setLocale } = useLocale();
   const copy = authCopy(locale);
   const { setUser, session, ready, refresh } = useSession();
   const { updateProfile, pushToast } = useShopBonus();
 
-  const initialMode = params.get("mode") === "login" || params.get("verify") === "1" ? "login" : "register";
+  const initialMode = pathname === "/inloggen" || params.get("mode") === "login" || params.get("verify") === "1" ? "login" : "register";
   const [mode, setMode] = useState(initialMode);
   const [role, setRole] = useState<"consumer" | "merchant">(
     params.get("role") === "consumer" ? "consumer" : "merchant"
@@ -60,7 +61,9 @@ function AccountForm() {
   const [code, setCode] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string[]>>>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  const focusInvalidField = useRef(false);
   const [loading, setLoading] = useState(false);
   const [legal, setLegal] = useState<LegalRequirements | null>(null);
   const [legalLoading, setLegalLoading] = useState(true);
@@ -68,6 +71,13 @@ function AccountForm() {
 
   const login = mode === "login";
   const strength = useMemo(() => passwordStrength(form.password), [form.password]);
+
+  useEffect(() => {
+    if (!loading && focusInvalidField.current) {
+      formRef.current?.querySelector<HTMLElement>('input[aria-invalid="true"]')?.focus();
+      focusInvalidField.current = false;
+    }
+  }, [loading, fieldErrors]);
 
   const loadLegal = useCallback(async () => {
     setLegalLoading(true);
@@ -145,13 +155,13 @@ function AccountForm() {
   function mapCaughtError(err: unknown) {
     const mapped = fieldErrorsFromApi(err);
     setFieldErrors(mapped);
-    if (err instanceof ApiError && err.status === 401) {
-      setError(copy.genericLoginError);
-    } else if (err instanceof ApiError && err.status === 422 && login && !twoFactor && !verifying) {
-      setError(Object.values(mapped)[0] || copy.genericLoginError);
-    } else {
-      setError(Object.values(mapped)[0] || formatApiError(err, copy.genericLoginError));
+    if (Object.values(mapped).some(Boolean)) {
+      focusInvalidField.current = true;
+      return;
     }
+    setError(err instanceof ApiError && err.status === 401
+      ? copy.genericLoginError
+      : formatApiError(err, copy.genericLoginError));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -198,21 +208,13 @@ function AccountForm() {
         setError(copy.legalUnavailable);
         return;
       }
-      if (!acceptTerms) {
-        const msg =
-          locale === "en" ? "Please accept the Terms and Privacy Policy." : "Accepteer de voorwaarden om door te gaan.";
-        setFieldErrors({ consent: msg });
-        setError(msg);
-        return;
-      }
-
       const user = await registerAccount(
         {
           account_type: role === "merchant" ? "merchant" : "consumer",
           first_name: form.name.trim(),
           email: form.email.trim(),
           password: form.password,
-          accept_terms: true,
+          accept_terms: acceptTerms,
           terms_version: legal.documents.terms.version,
           privacy_version: legal.documents.privacy.version,
           marketing_opt_in: marketing,
@@ -340,7 +342,7 @@ function AccountForm() {
               </p>
             </div>
           )}
-          <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
+          <form ref={formRef} onSubmit={submit} className="mt-6 space-y-5" noValidate>
             {twoFactor ? (
               <>
                 <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-brand">
@@ -369,7 +371,7 @@ function AccountForm() {
                     />
                     {fieldErrors.recovery && (
                       <p id="recovery-error" role="alert" className="mt-1 text-sm text-red-700">
-                        {fieldErrors.recovery}
+                        {fieldErrors.recovery.map((message) => <span className="block" key={message}>{message}</span>)}
                       </p>
                     )}
                   </div>
@@ -403,7 +405,7 @@ function AccountForm() {
                     />
                     {fieldErrors.code && (
                       <p id="totp-error" role="alert" className="mt-1 text-sm text-red-700">
-                        {fieldErrors.code}
+                        {fieldErrors.code.map((message) => <span className="block" key={message}>{message}</span>)}
                       </p>
                     )}
                   </div>
@@ -459,7 +461,7 @@ function AccountForm() {
                 />
                 {fieldErrors.code && (
                   <p id="verification-error" role="alert" className="mt-1 text-sm text-red-700">
-                    {fieldErrors.code}
+                    {fieldErrors.code.map((message) => <span className="block" key={message}>{message}</span>)}
                   </p>
                 )}
                 <button
@@ -491,7 +493,7 @@ function AccountForm() {
                     />
                     {fieldErrors.name && (
                       <p id="name-error" role="alert" className="mt-1 text-sm text-red-700">
-                        {fieldErrors.name}
+                        {fieldErrors.name.map((message) => <span className="block" key={message}>{message}</span>)}
                       </p>
                     )}
                   </div>
@@ -514,7 +516,7 @@ function AccountForm() {
                   />
                   {fieldErrors.email && (
                     <p id="email-error" role="alert" className="mt-1 text-sm text-red-700">
-                      {fieldErrors.email}
+                      {fieldErrors.email.map((message) => <span className="block" key={message}>{message}</span>)}
                     </p>
                   )}
                 </div>
@@ -530,11 +532,14 @@ function AccountForm() {
                       minLength={login ? 1 : 10}
                       required
                       value={form.password}
-                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      onChange={(e) => {
+                        setForm({ ...form, password: e.target.value });
+                        if (fieldErrors.password) setFieldErrors((current) => ({ ...current, password: undefined }));
+                      }}
                       className="form-input pr-14"
                       placeholder={copy.passwordPlaceholder}
                       aria-invalid={!!fieldErrors.password}
-                      aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                      aria-describedby={fieldErrors.password ? "password-error" : !login ? "password-requirements" : undefined}
                     />
                     <button
                       type="button"
@@ -548,11 +553,11 @@ function AccountForm() {
                   </div>
                   {fieldErrors.password && (
                     <p id="password-error" role="alert" className="mt-1 text-sm text-red-700">
-                      {fieldErrors.password}
+                      {fieldErrors.password.map((message) => <span className="block" key={message}>{message}</span>)}
                     </p>
                   )}
-                  {!login && form.password && (
-                    <div className="mt-2" aria-live="polite">
+                  {!login && !fieldErrors.password && (
+                    <div id="password-requirements" className="mt-2" aria-live="polite">
                       <div className="flex gap-1">
                         {[0, 1, 2, 3].map((i) => (
                           <span
@@ -562,8 +567,20 @@ function AccountForm() {
                         ))}
                       </div>
                       <p className="mt-1 text-xs text-muted">
-                        {strengthLabel(copy, strength.label)} · {copy.strengthHint}
+                        {form.password ? strengthLabel(copy, strength.label) : copy.strengthHint}
                       </p>
+                      <ul className="mt-1 space-y-1 text-xs text-muted">
+                        {([
+                          [strength.requirements.length, copy.passwordLength],
+                          [strength.requirements.letter, copy.passwordLetter],
+                          [strength.requirements.number, copy.passwordNumber],
+                        ] as const).map(([met, label]) => (
+                          <li key={label} className={met ? "text-green-700" : undefined}>
+                            <span aria-hidden="true">{met ? "✓" : "○"}</span>{" "}
+                            {label} <span className="sr-only">{met ? copy.passwordMet : copy.passwordUnmet}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>
@@ -601,7 +618,7 @@ function AccountForm() {
                     </label>
                     {fieldErrors.consent && (
                       <p id="consent-error" role="alert" className="-mt-3 text-sm text-red-700">
-                        {fieldErrors.consent}
+                        {fieldErrors.consent.map((message) => <span className="block" key={message}>{message}</span>)}
                       </p>
                     )}
                     <label className="flex items-start gap-3 text-sm leading-relaxed text-muted">
@@ -617,15 +634,8 @@ function AccountForm() {
                 )}
               </>
             )}
-            {error && !Object.keys(fieldErrors).length && (
-              <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
-                {error}
-              </p>
-            )}
-            {error && Object.keys(fieldErrors).length > 0 && error !== Object.values(fieldErrors)[0] && (
-              <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
-                {error}
-              </p>
+            {error && (
+              <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>
             )}
             {!ready && <p role="status" className="text-sm text-muted">{copy.loading}</p>}
             {!login && !verifying && !twoFactor && (legalLoading ? (
@@ -690,8 +700,8 @@ function AccountForm() {
               <div className="absolute h-40 w-40 rounded-full bg-white/60" />
               <div className="relative -rotate-6 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 px-8 py-6 text-white shadow-xl shadow-blue-500/20">
                 <Icon name="wallet" size={36} />
-                <p className="mt-4 text-xs text-blue-100">Jouw ShopBonus-tegoed</p>
-                <p className="mt-1 text-3xl font-extrabold">Meer voordeel.</p>
+                <p className="mt-4 text-xs text-blue-100">{copy.cardCredit}</p>
+                <p className="mt-1 text-3xl font-extrabold">{copy.cardBenefit}</p>
               </div>
               <span className="absolute -right-1 top-0 rotate-12 rounded-2xl border-4 border-white bg-blue-500 p-4 text-3xl font-extrabold text-white shadow-lg">
                 %

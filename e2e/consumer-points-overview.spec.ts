@@ -31,26 +31,18 @@ async function consumer(page: Page, locale: "nl" | "en", state: "available" | "m
 }
 
 for (const locale of ["nl", "en"] as const) {
-  test(`${locale}: central points balance, pending, holds and unit-filtered activity`, async ({ page }, testInfo) => {
+  test(`${locale}: benefits shows one EUR wallet and three navigation links`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await consumer(page, locale);
     await page.goto("/mijn-voordelen");
-    const overview = page.getByRole("region", { name: locale === "nl" ? "Mijn punten" : "My points", exact: true });
-    const unit = locale === "nl" ? "punten" : "points";
-    for (const value of [321, 80, 25, 500, 154]) await expect(overview.getByText(`${value} ${unit}`, { exact: true })).toBeVisible();
-    await expect(overview.getByText(`− 45 ${unit}`, { exact: true })).toBeVisible();
-    await expect(overview.getByText(locale === "nl" ? "Verwerkt" : "Posted", { exact: true })).toBeVisible();
-    await expect(overview.getByText("posted", { exact: true })).toHaveCount(0);
-    await expect(overview.getByText(/€/)).toHaveCount(0);
-    await expect(overview.getByText(locale === "nl" ? "In behandeling (niet inwisselbaar)" : "Pending (not spendable)", { exact: true })).toBeVisible();
-    const untyped = page.locator("li").filter({ hasText: "Unspecified wallet" });
-    await expect(untyped.locator("strong")).toHaveText("—");
+    const wallet = page.getByRole("region", { name: locale === "nl" ? "Mijn ShopBonus-tegoed" : "My ShopBonus credit", exact: true });
+    await expect(wallet.getByText(locale === "nl" ? /€\s?12,34/ : /€12.34/)).toHaveCount(1);
+    await expect(page.getByRole("region", { name: locale === "nl" ? "Mijn punten" : "My points", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: locale === "nl" ? "Recente activiteit" : "Recent activity", exact: true })).toHaveCount(0);
+    await expect(page.locator("nav").filter({ has: page.getByRole("link", { name: locale === "nl" ? "Tegoedtransacties" : "Credit transactions", exact: true }) }).getByRole("link")).toHaveCount(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: testInfo.outputPath(`points-${locale}-mobile.png`), fullPage: true });
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.screenshot({ path: testInfo.outputPath(`points-${locale}-desktop.png`), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath(`wallet-${locale}-mobile.png`), fullPage: true });
   });
-
   test(`${locale}: points offer shows integer cost and opens checkout`, async ({ page }) => {
     await consumer(page, locale);
     await page.goto("/aanbiedingen/points-offer");
@@ -61,15 +53,20 @@ for (const locale of ["nl", "en"] as const) {
 }
 
 for (const state of ["missing", "invalid", "error"] as const) {
-  test(`${state} wallet never invents zero points or hangs indefinitely`, async ({ page }) => {
+  test(`${state} points projection stays separate from the EUR balance`, async ({ page }) => {
     const fixture = await consumer(page, "en", state);
     await page.goto("/mijn-voordelen");
-    const overview = page.getByRole("region", { name: "My points", exact: true });
-    await expect(overview.getByText("Points balance unavailable", { exact: false })).toBeVisible();
-    await expect(overview.getByText("0 points", { exact: true })).toHaveCount(0);
-    await expect(overview.getByRole("button", { name: "Try again" })).toBeVisible();
-    fixture.recover();
-    await overview.getByRole("button", { name: "Try again" }).dispatchEvent("click");
-    await expect(overview.getByText("321 points", { exact: true })).toBeVisible();
+    const wallet = page.getByRole("region", { name: "My ShopBonus credit", exact: true });
+    await expect(page.getByRole("region", { name: "My points", exact: true })).toHaveCount(0);
+    if (state === "error") {
+      await expect(wallet.getByText("Wallet unavailable", { exact: true })).toBeVisible();
+      await expect(wallet.getByText(/€0.00/)).toHaveCount(0);
+      fixture.recover();
+      await Promise.any([
+        wallet.getByRole("button", { name: "Retry", exact: true }).dispatchEvent("click", { timeout: 2000 }),
+        wallet.getByText(/€12.34/).waitFor({ state: "visible" }),
+      ]);
+    }
+    await expect(wallet.getByText(/€12.34/)).toBeVisible();
   });
 }

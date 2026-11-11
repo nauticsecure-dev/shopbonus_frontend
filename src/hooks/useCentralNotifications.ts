@@ -24,7 +24,7 @@ type Options = {
 
 export function useCentralNotifications(options: Options = {}) {
   const { session } = useSession();
-  const { locale } = useLocale();
+  const { locale, dictionary: t } = useLocale();
   const {
     list = false,
     filter = "all",
@@ -68,12 +68,12 @@ export function useCentralNotifications(options: Options = {}) {
         setCurrentPage(res.meta.current_page);
       } catch (err) {
         if (signal?.aborted) return;
-        setError(err instanceof ApiError ? err.message : "Meldingen konden niet worden geladen.");
+        setError(err instanceof ApiError ? err.message : t.errorGeneric);
       } finally {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [enabled, userId, list, filter, page, perPage, locale]
+    [enabled, userId, list, filter, page, perPage, locale, t.errorGeneric]
   );
 
   const scheduleRefresh = useCallback(() => {
@@ -127,12 +127,19 @@ export function useCentralNotifications(options: Options = {}) {
     const onOnline = () => scheduleRefresh();
     window.addEventListener("focus", onFocus);
     window.addEventListener("online", onOnline);
+    window.addEventListener("shopbonus:notifications-changed", onFocus);
+    // Keep independent tabs/devices current even when realtime is unavailable.
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === "visible") scheduleRefresh();
+    }, 30_000);
 
     return () => {
       disposed = true;
       unsubscribe?.();
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("online", onOnline);
+      window.removeEventListener("shopbonus:notifications-changed", onFocus);
+      window.clearInterval(poll);
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
     };
   }, [enabled, userId, locale, scheduleRefresh]);
@@ -141,7 +148,7 @@ export function useCentralNotifications(options: Options = {}) {
     async (id: string) => {
       const updated = await markNotificationRead(id, locale);
       setItems((current) => current.map((n) => (n.id === id ? { ...n, ...updated } : n)));
-      setUnreadCount((n) => Math.max(0, n - 1));
+      window.dispatchEvent(new Event("shopbonus:notifications-changed"));
       return updated;
     },
     [locale]
@@ -153,6 +160,7 @@ export function useCentralNotifications(options: Options = {}) {
       current.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
     );
     setUnreadCount(0);
+    window.dispatchEvent(new Event("shopbonus:notifications-changed"));
     return result;
   }, [locale]);
 

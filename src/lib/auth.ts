@@ -67,7 +67,7 @@ export interface RegisterInput {
   first_name: string;
   email: string;
   password: string;
-  accept_terms: true;
+  accept_terms: boolean;
   terms_version: string;
   privacy_version: string;
   marketing_opt_in?: boolean;
@@ -95,17 +95,20 @@ export function deriveUiRole(user: MeUser): "consumer" | "merchant" | "super_adm
 
 /** Same-origin relative paths only — blocks open redirects after login/activation. */
 function safeInternalNext(next?: string | null): string | null {
-  if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) {
+    if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//") || /[\\\x00-\x20]/.test(next)) {
     return null;
   }
-  // Allow public consumer destinations and merchant dashboard; reject protocol-relative / external.
+    const origin = "https://shopbonus.invalid";
+    const url = new URL(next, origin);
+    if (url.origin !== origin || url.pathname.startsWith("//")) return null;
+    // Check the normalized path so dot segments cannot bypass the destination allowlist.
   if (
-    /^\/(?:dashboard|mijn-voordelen|profiel|webshops|aanbiedingen|afrekenen|checkout|claim|account|voor-webshops|onboarding|invitations|hoe-werkt-het|kortingscodes|pagina)(?:\/|$|\?)/.test(
-      next
+      /^\/(?:dashboard|mijn-voordelen|vouchers|transacties|aankopen|meldingen|contact|profiel|webshops|aanbiedingen|afrekenen|checkout|claim|account|voor-webshops|onboarding|invitations|hoe-werkt-het|kortingscodes|pagina)(?:\/|$)/.test(
+        url.pathname
     ) ||
-    next === "/"
+      url.pathname === "/"
   ) {
-    return next;
+      return url.pathname + url.search + url.hash;
   }
   return null;
 }
@@ -190,22 +193,23 @@ export function maskEmail(email: string): string {
   return `${local[0]}***${local[local.length - 1]}@${domain}`;
 }
 
-export function passwordStrength(password: string): {
-  score: 0 | 1 | 2 | 3 | 4;
-  label: string;
-  hints: string[];
-} {
-  const hints: string[] = [];
-  if (password.length < 10) hints.push("min10");
-  if (!/[A-Za-z]/.test(password)) hints.push("letters");
-  if (!/[0-9]/.test(password)) hints.push("numbers");
-  let score = 0;
-  if (password.length >= 10) score += 1;
-  if (password.length >= 14) score += 1;
-  if (/[A-Za-z]/.test(password) && /[0-9]/.test(password)) score += 1;
-  if (/[^A-Za-z0-9]/.test(password)) score += 1;
-  const labels = ["weak", "fair", "ok", "strong", "strong"] as const;
-  return { score: score as 0 | 1 | 2 | 3 | 4, label: labels[score], hints };
+export function passwordStrength(password: string) {
+  const length = Array.from(password).length;
+  const requirements = {
+    length: length >= 10 && length <= 255,
+    letter: /\p{L}/u.test(password),
+    number: /\p{N}/u.test(password),
+  };
+  const eligible = Object.values(requirements).every(Boolean);
+  const common = /^(password|wachtwoord|passwort|qwerty|qwertyuiop|welcome|admin|administrator|letmein|iloveyou|dragon|abc)[\p{N}\p{P}]*$/iu.test(password);
+  let score = password ? 1 : 0;
+  if (eligible && !common) {
+    score = 2;
+    if (length >= 14) score = 3;
+    if (length >= 20) score = 4;
+  }
+  const label = score >= 3 ? "strong" : score === 2 ? "ok" : "weak";
+  return { score, label, requirements };
 }
 
 export function formatApiError(error: unknown, fallback: string): string {
@@ -292,7 +296,7 @@ export async function completeTwoFactorChallenge(
  * Maps Fortify/Laravel names onto the shared register/login inputs.
  */
 export function fieldErrorsFromApi(error: unknown): Partial<
-  Record<"name" | "email" | "password" | "consent" | "code" | "recovery", string>
+  Record<"name" | "email" | "password" | "consent" | "code" | "recovery", string[]>
 > {
   if (!(error instanceof ApiError)) return {};
   const body = error.body as {
@@ -302,21 +306,18 @@ export function fieldErrorsFromApi(error: unknown): Partial<
   const fields = body?.error?.fields ?? body?.errors;
   if (!fields) return {};
 
-  const first = (keys: string[]) => {
-    for (const key of keys) {
-      const msg = fields[key]?.[0];
-      if (msg) return msg;
-    }
-    return undefined;
+  const messages = (...keys: string[]) => {
+    const errors = [...new Set(keys.flatMap((key) => fields[key] ?? []))];
+    return errors.length > 0 ? errors : undefined;
   };
 
   return {
-    name: first(["first_name", "name"]),
-    email: first(["email"]),
-    password: first(["password", "password_confirmation"]),
-    consent: first(["accept_terms", "terms_version", "privacy_version"]),
-    code: first(["code"]),
-    recovery: first(["recovery_code"]),
+    name: messages("first_name", "name"),
+    email: messages("email"),
+    password: messages("password", "password_confirmation"),
+    consent: messages("accept_terms", "terms_version", "privacy_version"),
+    code: messages("code"),
+    recovery: messages("recovery_code"),
   };
 }
 

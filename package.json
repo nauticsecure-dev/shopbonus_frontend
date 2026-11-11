@@ -25,7 +25,9 @@
     "test:lint-tooling": "node --test scripts/test-lint-tooling.cjs",
     "qa:discover": "node scripts/qa-discover.cjs",
     "qa:discover:verify": "node scripts/qa-discover.cjs --verify",
-    "test:qa-discovery": "node --test tests/qa-discovery.test.cjs"
+    "test:qa-discovery": "node --test tests/qa-discovery.test.cjs",
+    "qa:i18n": "node scripts/qa-i18n.cjs --strict",
+    "test:qa-i18n": "node --test tests/qa-i18n.test.cjs"
   },
   "dependencies": {
     "dotenv": "17.3.1",

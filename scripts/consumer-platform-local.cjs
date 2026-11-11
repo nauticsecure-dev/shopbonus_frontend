@@ -12,6 +12,7 @@ const password = 'Local-only-2026!';
 const email = 'consumer@platform-local.test';
 const secrets = [password];
 const selectedJourneys = process.env.CONSUMER_LOCAL_JOURNEYS?.split(',').map(Number) ?? null;
+const reportPath = process.env.CONSUMER_LOCAL_REPORT || '../qa-evidence/consumer-platform-local-results.json';
 const sanitize = text => secrets.reduce((out, secret) => out.split(secret).join('[redacted]'), String(text));
 const probe = (action, ...args) => {
   const result = spawnSync(process.env.CONSUMER_LOCAL_PHP, ['-d', 'xdebug.mode=off', 'scripts/consumer-platform-local.php', 'probe', action, ...args], { cwd: process.cwd(), windowsHide: true, encoding: 'utf8', env: process.env });
@@ -24,7 +25,7 @@ const offer = fixture.offers['Local points voucher'];
 const headers = { Accept: 'application/json', Origin: site, Referer: site + '/', 'Accept-Language': 'nl' };
 const report = {
   status: 'RUNNING',
-  date: '2026-11-03', full_release_acceptance: false, environment: { api, frontend: site, database: 'isolated SQLite file', cache: 'database', queue: 'database (captured, no external delivery)', php: 'Xdebug disabled; bundled OPcache enabled for the isolated HTTP server when available', concurrency: 1 },
+  date: new Date().toISOString(), full_release_acceptance: false, environment: { api, frontend: site, database: 'isolated SQLite file', cache: 'database', queue: 'database (captured, no external delivery)', php: 'Xdebug disabled; bundled OPcache enabled for the isolated HTTP server when available', concurrency: 1 },
   response_interception: false, selected_journeys: selectedJourneys, synthetic_catalog_and_eligibility: true, journeys: [], http: [],
   limitations: ['Local results do not establish staging performance', 'Synthetic eligible orders and claim tokens; no external Answer24 handoff', 'Verification codes read from encrypted local notification jobs; no external mailbox delivery', 'Full accessibility and approved reference comparison remain unverified', 'No production provider or customer data'],
 };
@@ -33,7 +34,7 @@ const run = async (id, name, fn) => {
   const start = performance.now();
   try { const detail = await fn(); report.journeys.push({ id, name, result: 'PASS', duration_ms: Math.round(performance.now() - start), detail }); console.log(`PASS ${id}: ${name}`); }
   catch (error) { report.journeys.push({ id, name, result: 'FAIL', error: sanitize(error.message).slice(0, 1800) }); console.log(`FAIL ${id}: ${name} (${error.name})`); }
-  fs.writeFileSync('docs/consumer-platform-local-results.json', JSON.stringify(report, null, 2) + '\n');
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
 };
 async function call(context, method, pathname, data, extraHeaders = {}) {
   if (!(await context.cookies(api)).some(cookie => cookie.name === 'XSRF-TOKEN')) await context.request.get(api + '/sanctum/csrf-cookie', { headers });
@@ -44,7 +45,7 @@ async function call(context, method, pathname, data, extraHeaders = {}) {
 }
 async function data(context, pathname) { const response = await call(context, 'GET', pathname); assert.equal(response.status(), 200, pathname); return (await response.json()).data; }
 async function login(context, address) { assert.equal((await call(context, 'POST', '/login', { email: address, password })).status(), 200); }
-const logPath = 'docs/consumer-platform-local-next.log';
+const logPath = '../qa-evidence/consumer-platform-local-next.log';
 const nextEnvBefore = fs.readFileSync('next-env.d.ts', 'utf8');
 const log = fs.openSync(logPath, 'w');
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--hostname', '127.0.0.1', '--port', '3340'], {
@@ -63,7 +64,15 @@ let browser;
     await context.addInitScript(() => { localStorage.setItem('shopbonus-locale', 'nl'); localStorage.setItem('shopbonus-locale-explicit', '1'); });
     const page = await context.newPage();
     page.setDefaultTimeout(60000);
-    const go = url => page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+    const go = async url => {
+      try {
+        return await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+      } catch (error) {
+        if (!error.message.includes("net::ERR_ABORTED")) throw error;
+        report.navigation_retries = (report.navigation_retries || 0) + 1;
+        return page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+      }
+    };
     if (selectedJourneys && !selectedJourneys.includes(5)) {
       // Establish the same synthetic account, balances and two owned vouchers
       // through real HTTP when rerunning only profile/operational scenarios.
@@ -72,7 +81,7 @@ let browser;
       assert.equal((await call(context, 'POST', '/api/v1/auth/email/verify-code', { code })).status(), 200);
       probe('fund');
       assert.equal((await call(context, 'POST', '/api/v1/consumer/activation/complete', { token: fixture.claims.valid })).status(), 200);
-      assert.equal((await call(context, 'POST', '/api/v1/consumer/checkouts', { offer, wallet_unit: 'points', use_wallet: true }, { 'Idempotency-Key': 'consumer-local-targeted-checkout' })).status(), 201);
+      if (!selectedJourneys.includes(8)) assert.equal((await call(context, 'POST', '/api/v1/consumer/checkouts', { offer, wallet_unit: 'points', use_wallet: true }, { 'Idempotency-Key': 'consumer-local-targeted-checkout' })).status(), 201);
     }
     await run(1, 'Homepage, published CMS, locale, cookies and responsive navigation', async () => {
       await go(site);
@@ -172,7 +181,7 @@ let browser;
       await other.close();
       return 'Real 404/410/403 responses; denial audit exists; recipient data absent from failures.';
     });
-    await run(8, 'Authoritative points dashboard, pending isolation and actual voucher checkout', async () => {
+    await run(8, 'One EUR wallet page, legacy points isolation and actual voucher checkout', async () => {
       const initial = await data(context, '/api/v1/me/wallet');
       assert.equal(initial.balances.points.available, 300); assert.equal(initial.balances.points.pending, 1000); assert.equal(initial.balances.points.reserved, 100);
       await go(site + '/afrekenen/' + fixture.offers['Local expensive voucher']);
@@ -190,13 +199,35 @@ let browser;
       assert.equal(wallet.balances.points.pending, 1000); assert.equal(wallet.balances.points.reserved, 100);
       const proof = JSON.parse(probe('evidence')); assert.equal(proof.checkouts, before + 1); assert.equal(proof.points_debits, 1);
       await go(site + '/mijn-voordelen');
-      const overview = page.getByRole('region', { name: 'Mijn punten', exact: true });
-      await expect(overview.getByText('50 punten', { exact: true })).toBeVisible();
-      await expect(overview.getByText('− 250 punten', { exact: true })).toBeVisible();
-      await page.screenshot({ path: 'docs/consumer-platform-local-dashboard-desktop.png', fullPage: true });
+      const walletCard = page.getByRole('region', { name: 'Mijn ShopBonus-tegoed', exact: true });
+      await expect(walletCard.getByText(/€\s?12,34/)).toHaveCount(1);
+      await expect(page.getByRole('region', { name: 'Mijn punten', exact: true })).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Recente activiteit', exact: true })).toHaveCount(0);
+      const navigation = page.getByRole('navigation', { name: 'Mijn voordelen secties' });
+      await expect(navigation.getByRole('link')).toHaveCount(3);
+      await navigation.getByRole('link', { name: 'Tegoedtransacties' }).click();
+      await expect(page).toHaveURL(/\/transacties$/);
+      await expect(page.getByText('Tegoed na transactie', { exact: false })).toHaveCount(1);
+      await expect(page.getByText(/− 250 punten/)).toHaveCount(0);
+      await navigation.getByRole('link', { name: 'Mijn aankopen' }).click();
+      await expect(page).toHaveURL(/\/aankopen$/);
+      await page.reload();
+      await expect(navigation.getByRole('link', { name: 'Mijn aankopen' })).toHaveAttribute('aria-current', 'page');
+      await page.goBack();
+      await expect(navigation.getByRole('link', { name: 'Tegoedtransacties' })).toHaveAttribute('aria-current', 'page');
+      const posted = await data(context, '/api/v1/consumer/wallet/transactions?filter=posted&unit=eur_credit');
+      assert.deepEqual(posted.map(row => [row.unit, row.available_after]), [['eur_credit', 1234]]);
+      await page.getByTestId('cookie-reject').click();
+      await expect(page.getByTestId('cookie-consent-banner')).toHaveCount(0);
+      await expect(page.getByText('Tegoed na transactie', { exact: false })).toBeVisible();
+      await expect(walletCard).toHaveAttribute('aria-busy', 'false');
+      await expect(walletCard.getByText(/€\s?12,34/)).toBeVisible();
+      await page.screenshot({ path: '../qa-evidence/consumer-platform-local-dashboard-desktop.png', fullPage: true });
       await page.setViewportSize({ width: 390, height: 844 });
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-      await page.screenshot({ path: 'docs/consumer-platform-local-dashboard-mobile.png', fullPage: true });
+      await expect(page.getByText('Tegoed na transactie', { exact: false })).toBeVisible();
+      await expect(walletCard).toHaveAttribute('aria-busy', 'false');
+      await page.screenshot({ path: '../qa-evidence/consumer-platform-local-dashboard-mobile.png', fullPage: true });
       await page.setViewportSize({ width: 1440, height: 1000 });
       const other = await browser.newContext(); await login(other, 'other@platform-local.test');
       const foreign = await data(other, '/api/v1/consumer/dashboard'); assert.equal(foreign.wallet.points.available, 0); assert.equal(foreign.vouchers.issued, 0);
@@ -263,6 +294,219 @@ let browser;
       await anonymous.close();
       return 'Real 401/403/404/419/422/429/500 handling and local cache invalidation exercised. Accessibility, security scans and staging remain separate.';
     });
+    await run(11, 'Registration reports all password and terms errors together for both roles in NL/EN/DE', async () => {
+      const languages = {
+        nl: { length: /minimaal 10 tekens/, letter: /minimaal één letter/, terms: /Accepteer de voorwaarden/, weak: 'Zwak', card: 'Meer voordeel.' },
+        en: { length: /at least 10 characters/, letter: /at least one letter/, terms: /Accept the Terms/, weak: 'Weak', card: 'More benefits.' },
+        de: { length: /mindestens 10 Zeichen/, letter: /mindestens einen Buchstaben/, terms: /Akzeptiere die Nutzungsbedingungen/, weak: 'Schwach', card: 'Mehr Vorteile.' },
+      };
+      const cases = [];
+      for (const [locale, expected] of Object.entries(languages)) {
+        probe('registration-throttle-clear'); // Each locale is an independent registration case.
+        for (const role of ['consumer', 'merchant']) {
+          const signup = await browser.newContext({ viewport: { width: 390, height: 844 } });
+          try {
+            await signup.addInitScript(language => {
+              localStorage.setItem('shopbonus-locale', language);
+              localStorage.setItem('shopbonus-locale-explicit', '1');
+            }, locale);
+            const screen = await signup.newPage();
+            await screen.goto(site + '/account?role=' + role, { waitUntil: 'domcontentloaded' });
+            await expect(screen.locator('html')).toHaveAttribute('lang', locale);
+            await screen.getByTestId('cookie-reject').click();
+            await expect(screen.locator('form button[type=submit]')).toBeEnabled();
+            await expect(screen.getByText(expected.card, { exact: true })).toBeVisible();
+            await screen.locator('#name').fill('Local QA');
+            await expect(screen.locator('#name')).toHaveValue('Local QA');
+            await screen.locator('#email').fill(role + '-' + locale + '@registration.test');
+            await expect(screen.locator('#email')).toHaveValue(role + '-' + locale + '@registration.test');
+            await screen.locator('#password').fill('Password123!');
+            await expect(screen.locator('#password-requirements').getByText(expected.weak, { exact: true })).toBeVisible();
+            await screen.locator('#password').fill('123');
+            await expect(screen.locator('#password')).toHaveValue('123');
+            await expect(screen.locator('#password-requirements').getByText(expected.weak, { exact: true })).toBeVisible();
+            for (const checkbox of await screen.locator('form input[type=checkbox]').all()) await expect(checkbox).not.toBeChecked();
+            const response = screen.waitForResponse(res => new URL(res.url()).pathname === '/register' && res.request().method() === 'POST');
+            await screen.locator('form button[type=submit]').click();
+            const rejection = await response;
+            assert.equal(rejection.status(), 422);
+            assert.equal(rejection.headers()['content-language'], locale);
+            const { error } = await rejection.json();
+            assert.equal(error.code, 'validation_failed');
+            assert.equal(error.request_id, rejection.headers()['x-request-id']);
+            assert.equal(error.fields.password.length, 2);
+            assert(error.fields.password.some(message => expected.length.test(message)));
+            assert(error.fields.password.some(message => expected.letter.test(message)));
+            assert(expected.terms.test(error.fields.accept_terms[0]));
+            for (const message of [...error.fields.password, ...error.fields.accept_terms]) {
+              await expect(screen.getByText(message, { exact: true })).toHaveCount(1);
+            }
+            await expect(screen.locator('#password')).toBeFocused();
+            await expect(screen.locator('#name')).toHaveValue('Local QA');
+            await expect(screen.locator('form [role=alert]')).toHaveCount(2);
+            if (locale === 'nl' && role === 'consumer') {
+              await screen.screenshot({ path: '../qa-evidence/final-integration-registration-nl-mobile.png', fullPage: true });
+            }
+            cases.push({ role, locale, status: 422, request_id: error.request_id, fields: error.fields });
+          } catch (error) {
+            const failurePage = signup.pages()[0];
+            if (failurePage) await failurePage.screenshot({ path: '../qa-evidence/final-integration-registration-failure-' + locale + '-' + role + '.png', fullPage: true });
+            throw new Error(locale + '/' + role + ': ' + error.message);
+          } finally { await signup.close(); }
+        }
+      }
+      return { cases };
+    });
+    await run(12, 'Responsive empty wallet and three translated links in NL/EN/DE', async () => {
+      const labels = {
+        nl: ['Mijn ShopBonus-tegoed', 'Ontdek webshops', 'Mijn vouchers', 'Tegoedtransacties', 'Mijn aankopen'],
+        en: ['My ShopBonus credit', 'Discover shops', 'My vouchers', 'Credit transactions', 'My purchases'],
+        de: ['Mein ShopBonus-Guthaben', 'Shops entdecken', 'Meine Gutscheine', 'Guthabenbuchungen', 'Meine Einkäufe'],
+      };
+      for (const [locale, names] of Object.entries(labels)) {
+        const empty = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+        try {
+          await empty.addInitScript(language => { localStorage.setItem('shopbonus-locale', language); localStorage.setItem('shopbonus-locale-explicit', '1'); }, locale);
+          await login(empty, 'other@platform-local.test');
+          const screen = await empty.newPage();
+          await screen.goto(site + '/mijn-voordelen', { waitUntil: 'domcontentloaded' });
+          await expect(screen.locator('html')).toHaveAttribute('lang', locale);
+          await screen.getByTestId('cookie-reject').click();
+          await expect(screen.getByTestId('cookie-consent-banner')).toHaveCount(0);
+          const wallet = screen.getByRole('region', { name: names[0], exact: true });
+          await expect(wallet).toHaveAttribute('aria-busy', 'false');
+          await expect(wallet.getByText(locale === 'en' ? /€0.00/ : /0,00/)).toHaveCount(1);
+          await expect(screen.getByRole('link', { name: names[1], exact: true })).toHaveCount(1);
+          for (const name of names.slice(2)) await expect(screen.getByRole('link', { name, exact: true })).toBeVisible();
+          await screen.getByTestId('header-profile').click();
+          await expect(screen.locator('header').getByRole('link', { name: names[3], exact: true })).toHaveAttribute('href', '/transacties');
+          const closeAccount = { nl: 'Accountmenu sluiten', en: 'Close account menu', de: 'Kontomenü schließen' };
+          await screen.getByRole('button', { name: closeAccount[locale], exact: true }).click();
+          await expect(screen.getByRole('heading', { name: locale === 'nl' ? 'Nog geen vouchers hier' : locale === 'en' ? 'No vouchers here yet' : 'Hier gibt es noch keine Gutscheine', exact: true })).toBeVisible();
+          const heroTitle = await screen.getByRole('heading', { level: 1 }).boundingBox();
+          const card = await wallet.boundingBox();
+          assert(Math.abs(card.y - heroTitle.y) < 80);
+          if (locale === 'nl') await screen.screenshot({ path: '../qa-evidence/final-integration-empty-desktop.png', fullPage: true });
+          await screen.setViewportSize({ width: 390, height: 844 });
+          await screen.bringToFront();
+          await expect(wallet).toHaveAttribute('aria-busy', 'false');
+          await expect(screen.getByRole('link', { name: names[1], exact: true })).toBeVisible();
+          await expect(screen.getByRole('heading', { name: locale === 'nl' ? 'Nog geen vouchers hier' : locale === 'en' ? 'No vouchers here yet' : 'Hier gibt es noch keine Gutscheine', exact: true })).toBeVisible();
+          assert(await screen.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          if (locale === 'nl') await screen.screenshot({ path: '../qa-evidence/final-integration-empty-mobile.png', fullPage: true });
+        } finally { await empty.close(); }
+      }
+      return { locales: Object.keys(labels), viewports: ['1440x1000', '390x844'] };
+    });
+    await run(13, 'Protected discovery, login return and legacy benefits routes', async () => {
+      const visitor = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await visitor.addInitScript(() => { localStorage.setItem('shopbonus-locale', 'nl'); localStorage.setItem('shopbonus-locale-explicit', '1'); });
+      try {
+        const guest = await visitor.newPage();
+        await guest.goto(site + '/contact');
+        await expect(guest.locator('header a[href="/webshops"], header a[href="/kortingscodes"]')).toHaveCount(0);
+        for (const target of ['/webshops?q=consumer', '/kortingscodes']) {
+          await guest.goto(site + target);
+          await expect(guest).toHaveURL(`${site}/inloggen?next=${encodeURIComponent(target)}`);
+        }
+        assert.equal((await call(visitor, 'GET', '/api/v1/public/webshops')).status(), 401);
+        assert.equal((await call(visitor, 'GET', '/api/v1/public/discount-codes')).status(), 401);
+        const reject = guest.getByTestId('cookie-reject');
+        if (await reject.isVisible()) await reject.click();
+        await guest.locator('#email').fill(email);
+        await guest.locator('#password').fill(password);
+        await guest.locator('form button[type="submit"]').click();
+        await expect(guest).toHaveURL(site + '/kortingscodes');
+        await expect(guest.locator('header a[href="/kortingscodes"]').first()).toBeAttached();
+        await guest.goto(site + '/mijn-voordelen?tab=transacties&source=legacy');
+        await expect(guest).toHaveURL(site + '/transacties?source=legacy');
+        await guest.reload();
+        await expect(guest.locator('a[href="/transacties"][aria-current="page"]')).toBeVisible();
+        await guest.getByRole('link', { name: 'Mijn aankopen', exact: true }).click();
+        await expect(guest).toHaveURL(site + '/aankopen');
+        await guest.goBack();
+        await expect(guest).toHaveURL(site + '/transacties?source=legacy');
+        await guest.goForward();
+        await expect(guest).toHaveURL(site + '/aankopen');
+        await guest.goto(site + '/vouchers');
+        await expect(guest.locator('a[href="/vouchers"][aria-current="page"]')).toBeVisible();
+        return { guest_api_status: 401, login_return: '/kortingscodes', verified_routes: ['/vouchers', '/transacties', '/aankopen'] };
+      } finally { await visitor.close(); }
+    });
+    await run(14, 'Notification profile and welcome links, mark read, and mobile inbox', async () => {
+      probe('dispatch-notifications');
+      if ((await call(context, 'GET', '/api/v1/me')).status() === 401) await login(context, email);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await go(site + '/mijn-voordelen');
+      const reject = page.getByTestId('cookie-reject');
+      if (await reject.isVisible()) await reject.click();
+      const bell = page.getByTestId('notification-bell-button');
+      await bell.click();
+      const verified = page.getByTestId('notification-item').filter({ hasText: 'E-mailadres bevestigd' });
+      const welcome = page.getByTestId('notification-item').filter({ hasText: 'Welkom bij ShopBonus' });
+      await expect(verified).toHaveAttribute('href', '/profiel');
+      await expect(welcome).toHaveAttribute('href', '/mijn-voordelen');
+      const panel = page.getByTestId('notification-dropdown');
+      const bounds = await panel.boundingBox();
+      assert(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390);
+      await panel.screenshot({ path: '../qa-evidence/final-followup-notification-mobile.png' });
+      const read = page.waitForResponse(r => /\/api\/v1\/notifications\/[^/]+\/read$/.test(r.url()) && r.request().method() === 'PATCH');
+      await verified.click();
+      assert.equal((await read).status(), 200);
+      await expect(page).toHaveURL(site + '/profiel');
+      await bell.click();
+      await page.getByTestId('notification-view-all').click();
+      await expect(page).toHaveURL(site + '/meldingen');
+      await expect(page.getByTestId('notification-center')).toBeVisible();
+      const second = await browser.newContext();
+      try {
+        await login(second, email);
+        const otherDevice = await second.newPage();
+        await otherDevice.goto(site + '/meldingen');
+        await expect(otherDevice.getByTestId('notification-unread-badge')).toBeVisible();
+        await page.getByTestId('notification-center-mark-all').click();
+        await expect(page.getByTestId('notification-unread-badge')).toHaveCount(0);
+        await otherDevice.bringToFront();
+        await expect(otherDevice.getByTestId('notification-unread-badge')).toHaveCount(0);
+      } finally { await second.close(); }
+      const inbox = await call(context, 'GET', '/api/v1/notifications?filter=unread&per_page=1');
+      assert.equal((await inbox.json()).meta.unread_count, 0);
+      return { destination: '/profiel', welcome: '/mijn-voordelen', inbox: '/meldingen', unread: 0, viewport: '390x844', second_authenticated_browser_synced: true };
+    });
+    await run(15, 'Canonical contact page and localized real form validation', async () => {
+      const results = [];
+      for (const [locale, label] of Object.entries({ nl: 'Verstuur bericht', en: 'Send message', de: 'Nachricht senden' })) {
+        const visitor = await browser.newContext({ viewport: { width: 390, height: 844 } });
+        await visitor.addInitScript(language => { localStorage.setItem('shopbonus-locale', language); localStorage.setItem('shopbonus-locale-explicit', '1'); }, locale);
+        try {
+          const contact = await visitor.newPage();
+          await contact.goto(site + '/over-ons#contact');
+          await expect(contact).toHaveURL(site + '/contact');
+          const reject = contact.getByTestId('cookie-reject');
+          if (await reject.isVisible()) await reject.click();
+          const submit = contact.getByRole('button', { name: label, exact: true });
+          const validation = contact.waitForResponse(r => r.url().endsWith('/api/v1/public/contact') && r.request().method() === 'POST');
+          await submit.click();
+          assert.equal((await validation).status(), 422);
+          await expect(contact.locator('form [aria-invalid="true"]')).toHaveCount(5);
+          await expect(contact.locator('#contact-name')).toBeFocused();
+          results.push({ locale, field_errors: 5 });
+          if (locale === 'de') {
+            await contact.locator('#contact-name').fill('Synthetischer Kontakt');
+            await contact.locator('#contact-email').fill('contact@platform-local.test');
+            await contact.locator('#contact-subject').fill('Testanfrage');
+            await contact.locator('#contact-message').fill('Synthetische Nachricht für den lokalen Test.');
+            await contact.locator('[name="privacy"]').check();
+            const accepted = contact.waitForResponse(r => r.url().endsWith('/api/v1/public/contact') && r.request().method() === 'POST');
+            await submit.click();
+            assert.equal((await accepted).status(), 202);
+            await expect(contact.getByText('Deine Nachricht ist eingegangen.', { exact: false })).toBeFocused();
+            await contact.screenshot({ path: '../qa-evidence/final-followup-contact-mobile.png', fullPage: true });
+          }
+        } finally { await visitor.close(); }
+      }
+      return { validation: results, accepted_status: 202, transport: 'queued; not external delivery' };
+    });
     report.database_evidence = JSON.parse(probe('evidence'));
     const operational = report.journeys.find(row => row.id === 10);
     if (operational?.result === 'PASS') {
@@ -282,8 +526,9 @@ let browser;
     tsconfig.include = tsconfig.include.filter(entry => !entry.startsWith('.next-consumer-local/') && !entry.startsWith('.next-consumer-local-turbo/'));
     fs.writeFileSync('tsconfig.json', JSON.stringify(tsconfig, null, 2) + '\n');
     if (fs.readFileSync('next-env.d.ts', 'utf8').includes('.next-consumer-local-turbo/')) fs.writeFileSync('next-env.d.ts', nextEnvBefore);
-    fs.writeFileSync('docs/consumer-platform-local-results.json', JSON.stringify(report, null, 2) + '\n');
+    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
     if (report.journeys.some(row => row.result === 'FAIL')) process.exitCode = 1;
     console.log(report.status);
+    process.exit(process.exitCode || 0);
   }
 })();

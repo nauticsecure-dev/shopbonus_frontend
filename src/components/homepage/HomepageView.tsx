@@ -9,6 +9,7 @@ import HomeSearchBar from "./HomeSearchBar";
 import HowItWorks from "./HowItWorks";
 import DiscountCodesPanel from "./DiscountCodesPanel";
 import WalletPreviewCard from "./WalletPreviewCard";
+import { useSession } from "@/store/SessionContext";
 import PopularWebshops from "@/components/PopularWebshops";
 import {
   CmsToolbar,
@@ -169,6 +170,8 @@ function HomepageBody({
 }: Omit<Props, "initialContent">) {
   const { content } = useInlineCms();
   const { locale } = useLocale();
+  const { ready, session } = useSession();
+  const canDiscover = ready && !!session;
   const vis = content.section_visibility;
 
   useEffect(() => {
@@ -228,7 +231,7 @@ search: <>
           )}
 </>,
 popular_webshops: <>
-      {vis.popular_webshops !== false && (
+      {canDiscover && vis.popular_webshops !== false && (
         <PopularWebshops
           initialShops={featuredShops}
           limit={content.popular_webshops.limit}
@@ -284,7 +287,7 @@ benefits: <>
 
 </>,
 discount_codes: <>
-{vis.discount_codes !== false && <section className="mx-auto w-full max-w-[640px] px-4 pt-8 lg:ml-auto lg:mr-0"><DiscountCodesPanel content={content.discount_codes} initialCodes={discountCodes} /></section>}
+{canDiscover && vis.discount_codes !== false && <section className="mx-auto w-full max-w-[640px] px-4 pt-8 lg:ml-auto lg:mr-0"><DiscountCodesPanel content={content.discount_codes} initialCodes={discountCodes} /></section>}
 </>,
 wallet_preview: <>
 {vis.wallet_preview !== false && <section className="mx-auto w-full max-w-[640px] px-4 pt-8 lg:ml-0 lg:mr-auto"><WalletPreviewCard content={content.wallet_preview} /></section>}

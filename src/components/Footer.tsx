@@ -13,7 +13,7 @@ export default function Footer() {
   const pathname = usePathname();
   const { dictionary: t, locale } = useLocale();
   const { session, ready } = useSession();
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname === "/account") return null;
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname === "/account" || pathname === "/inloggen") return null;
   // Guest footer until /me is ready — avoids SSR vs client link-list mismatch.
   const authed = ready && !!session;
 
@@ -33,11 +33,11 @@ export default function Footer() {
         <div>
           <h4 className="font-extrabold">{t.footerDiscover}</h4>
           <ul className="mt-4 space-y-2.5 text-sm text-blue-100/80">
-            <li>
+            {authed && <li>
               <Link href="/webshops" className="hover:text-white">
                 {t.footerAllShops}
               </Link>
-            </li>
+            </li>}
             {authed && (
               <li>
                 <Link href="/mijn-voordelen" className="hover:text-white">
@@ -61,15 +61,15 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link href="/over-ons#contact" className="hover:text-white">
+              <Link href="/contact" className="hover:text-white">
                 {t.navContact}
               </Link>
             </li>
-            <li>
+            {authed && <li>
               <Link href="/kortingscodes" className="hover:text-white">
                 {t.navDiscountCodes}
               </Link>
-            </li>
+            </li>}
           </ul>
         </div>
         <div>

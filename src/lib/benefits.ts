@@ -74,12 +74,13 @@ export type ConsumerVoucher = {
   redemption?: { at?: string; source?: string | null } | null;
 };
 
-export type LedgerFilter = "all" | "earned" | "spent" | "adjustments" | "holds";
+export type LedgerFilter = "all" | "posted" | "earned" | "spent" | "adjustments" | "holds";
 
 export type LedgerEntry = {
   id: string;
   type: string;
   ledger_type?: string;
+  available_after?: number;
   amount: number;
   amount_minor: number;
   currency: string | null;

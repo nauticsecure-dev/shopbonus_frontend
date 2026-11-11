@@ -3,7 +3,7 @@
 import { useInlineCms } from "@/components/homepage/InlineCms";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Logo from "./Logo";
 import Icon from "./DashboardIcon";
 import NotificationBell from "@/components/notifications/NotificationBell";
@@ -84,16 +84,26 @@ function HeaderInner() {
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
   // Keep guest nav until session is ready so SSR HTML matches the first client paint.
   const authed = ready && !!session;
-  const links = pathname === "/" ? cms.content.nav.links : [
+  useEffect(() => {
+    const redirectContact = () => {
+      if (pathname === "/over-ons" && window.location.hash === "#contact") router.replace("/contact");
+    };
+    redirectContact();
+    window.addEventListener("hashchange", redirectContact);
+    return () => window.removeEventListener("hashchange", redirectContact);
+  }, [pathname, router]);
+  const sourceLinks = pathname === "/" ? cms.content.nav.links : [
     { href: "/webshops", label: t.navWebshops },
     ...(authed ? [{ href: "/mijn-voordelen", label: t.navCashback }] : []),
     { href: "/kortingscodes", label: t.navDiscountCodes },
     { href: "/hoe-werkt-het", label: t.navHowItWorks },
     { href: "/over-ons", label: t.navAbout },
     { href: "/faq", label: t.navFaq },
-    { href: "/over-ons#contact", label: t.navContact },
+    { href: "/contact", label: t.navContact },
     { href: "/voor-webshops", label: t.navForMerchants },
   ];
+  const links = sourceLinks.map((link) => ({ ...link, href: link.href === "/over-ons" + "#contact" ? "/contact" : link.href }))
+    .filter((link) => authed || !/^\/(?:webshops|kortingscodes)(?:[/?#]|$)/.test(link.href));
   const displayName = session?.user.first_name || profile.firstName || "S";
   const avatarUrl = profile.avatarUrl;
   const canOpenDashboard =
@@ -240,9 +250,7 @@ function HeaderInner() {
                 )}
                 <Icon name="chevron" size={14} className="text-muted" />
               </Link>
-              <div className="hidden sm:block">
-                <NotificationBell viewAllHref="/app/notifications" variant="light" />
-              </div>
+              <NotificationBell viewAllHref="/meldingen" variant="light" />
               <div className="relative">
                 <button
                   aria-label={t.headerAccountMenu}
@@ -280,14 +288,14 @@ function HeaderInner() {
                         {t.navBenefits}
                       </Link>
                       <Link
-                        href="/mijn-voordelen?tab=transacties"
+                        href="/transacties"
                         onClick={() => setProfileOpen(false)}
                         className="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
                       >
-                        {t.navPoints}
+                        {t.benefitsTransactions}
                       </Link>
                       <Link
-                        href="/mijn-voordelen?tab=vouchers"
+                        href="/vouchers"
                         onClick={() => setProfileOpen(false)}
                         className="block rounded-lg px-3 py-2 text-sm hover:bg-blue-50"
                       >
@@ -359,7 +367,7 @@ function HeaderInner() {
           )}
           {authed && (
             <Link
-              href="/app/notifications"
+              href="/meldingen"
               onClick={() => setOpen(false)}
               className="block rounded-xl px-3 py-3 text-sm font-bold text-navy hover:bg-blue-50"
             >
